@@ -3,6 +3,8 @@
 A desktop git history viewer built with Avalonia and modelled on the
 [Git Graph](https://github.com/mhutchie/vscode-git-graph) extension for VS Code.
 
+![The commit graph with branch and tag labels, the sidebar with workspaces, folders and worktrees, and a commit's details below](docs/screenshots/graph.png)
+
 - **Commit graph**: every branch, remote branch and tag on a colored lane, with uncommitted changes as a dashed row on top.
 - **History**: filter by branch, show or hide remotes, find commits by message, author, hash or branch name, and scroll down to load older commits.
 - **Diffs**: files changed by a commit, the working tree, or between any two commits (Ctrl+click the second one). Diffs are computed with [DiffPlex](https://github.com/mmanela/diffplex), with changed words highlighted inside modified lines. View them unified or side by side, or double-click a file (or right-click it) to open the whole file side by side in a full window, where unchanged stretches fold and can be opened or closed.
@@ -17,6 +19,26 @@ A desktop git history viewer built with Avalonia and modelled on the
 - **Worktrees**: each repository lists its linked worktrees in the sidebar. Add one from any commit or branch, open it in its own tab, or remove it. Commits checked out in another worktree are marked in the graph.
 - **Workspaces**: named sets of folders. Repositories inside them, up to three levels deep, are found automatically. Each workspace keeps its own open tabs.
 - **Layout**: as in VS Code, a menu bar (File, View, Repository) with sidebar (Ctrl+B) and commit details panel (Ctrl+J) toggles on its right; the panel can also be maximized over the graph. As in VS Code, a single click in the sidebar opens a preview tab (in italics) that the next one replaces; double-click it, or the tab, to keep it open.
+
+## Screenshots
+
+**Diffs, in the day theme.** The working tree's changes, unified, with changed words marked inside modified lines.
+
+![Uncommitted changes in the day theme, with the file list and a unified diff](docs/screenshots/diff-light.png)
+
+**A file's diff in a full window.** Side by side, with unchanged stretches folded away until opened.
+
+![A side-by-side diff with folded unchanged lines](docs/screenshots/full-diff.png)
+
+**Contributors.** Activity by day and week for the current branch, then each person's commits and lines changed.
+
+![The contributors view with a daily heatmap, weekly bars and contributor cards](docs/screenshots/contributors.png)
+
+**Folders.** A workspace folder's files coloured by their git state, with the selected file highlighted in a read-only editor.
+
+![A folder tab: a file tree with git states and a TypeScript file with syntax highlighting](docs/screenshots/folder.png)
+
+The screenshots come from the demo repositories: `make screenshots` renders them again.
 
 ## Run
 
@@ -73,6 +95,7 @@ The macOS app is only ad-hoc signed, not notarized, so the first launch needs ri
 | `make demo-run` | Create demo repositories in `.demo/` and open the app on them |
 | `make snapshot SELECT=3 COMPARE=6` | Render the demo window to `.demo/snapshot.png` |
 | `make icons` | Re-render the PNG and ICO app icons from the drawing in `scripts/render_icon.py` (needs Pillow) |
+| `make screenshots` | Render the README screenshots from the demo repositories into `docs/screenshots` |
 | `make reindex` | Rebuild the generated indexes in `AGENTS.md` and `docs/` |
 
 Fonts: the interface uses IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`). Icons are [Lucide](https://lucide.dev) (ISC license), through the Lucide.Avalonia package.

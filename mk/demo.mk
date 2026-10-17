@@ -31,3 +31,8 @@ snapshot: demo ## Render the demo window to a PNG (SHOT=path, SELECT=row, COMPAR
 	GITGRAPH_SNAPSHOT_STATS=$(STATS) \
 	$(DOTNET) run --project $(APP) -c $(CONFIG)
 	@echo "snapshot: $(SHOT)"
+
+.PHONY: screenshots
+
+screenshots: ## Render the README screenshots into docs/screenshots (needs Pillow to downscale)
+	$(PYTHON) scripts/screenshots.py
