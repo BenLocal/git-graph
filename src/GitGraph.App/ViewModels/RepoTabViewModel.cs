@@ -1,0 +1,517 @@
+using System.Collections.ObjectModel;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using GitGraph.App.Controls;
+using GitGraph.App.Services;
+using GitGraph.Core.Git;
+using GitGraph.Core.Graph;
+
+namespace GitGraph.App.ViewModels;
+
+public sealed record BranchOption(string Label, string? RefName, bool IsRemote)
+{
+    public override string ToString() => Label;
+}
+
+/// <summary>The graph, history and diff view for one working tree.</summary>
+public partial class RepoTabViewModel : ObservableObject, IDisposable
+{
+    private const int PageSize = 400;
+    private const string UncommittedHash = "*uncommitted*";
+
+    private readonly WorkspaceViewModel _workspace;
+    private readonly GitRepository _repo;
+    private readonly List<FileSystemWatcher> _watchers = [];
+    private readonly DispatcherTimer _debounce;
+    private CancellationTokenSource? _loadCts;
+    private bool _loaded;
+    private bool _suppressFilterReload;
+    private int _maxCount = PageSize;
+    private List<WorktreeInfo> _worktrees = [];
+    private string? _commonDir;
+
+    public RepoTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host)
+    {
+        Path = path;
+        Host = host;
+        _workspace = workspace;
+        _repo = new GitRepository(path);
+        _showRemotes = host.ShowRemoteBranches;
+        Title = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
+        Details = new DetailsViewModel(_repo, host);
+        _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+        _debounce.Tick += (_, _) =>
+        {
+            _debounce.Stop();
+            _ = RefreshAsync();
+        };
+    }
+
+    public string Path { get; }
+    public string Title { get; }
+    public IAppHost Host { get; }
+    public DetailsViewModel Details { get; }
+
+    [ObservableProperty]
+    private string? _branchLabel;
+
+    [ObservableProperty]
+    private bool _isWorktree;
+
+    [ObservableProperty]
+    private ObservableCollection<CommitRowViewModel> _rows = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCompare))]
+    private CommitRowViewModel? _selectedRow;
+
+    [ObservableProperty]
+    private CommitRowViewModel? _compareRow;
+
+    [ObservableProperty]
+    private double _graphWidth = GraphCell.WidthFor(1);
+
+    [ObservableProperty]
+    private bool _isLoading;
+
+    [ObservableProperty]
+    private bool _hasMore;
+
+    [ObservableProperty]
+    private string? _loadError;
+
+    [ObservableProperty]
+    private bool _isEmpty;
+
+    public ObservableCollection<BranchOption> BranchOptions { get; } = [];
+
+    [ObservableProperty]
+    private BranchOption? _selectedBranch;
+
+    [ObservableProperty]
+    private bool _showRemotes;
+
+    [ObservableProperty]
+    private string _findText = "";
+
+    [ObservableProperty]
+    private string? _findStatus;
+
+    public bool CanCompare => SelectedRow != null;
+
+    public void EnsureLoaded()
+    {
+        if (_loaded) return;
+        _loaded = true;
+        _ = InitAsync();
+    }
+
+    private async Task InitAsync()
+    {
+        try
+        {
+            var gitDir = await _repo.GetGitDirAsync();
+            _commonDir = await _repo.GetCommonDirAsync();
+            IsWorktree = gitDir != null && _commonDir != null &&
+                         !WorkspaceViewModel.PathEquals(System.IO.Path.TrimEndingDirectorySeparator(gitDir), _commonDir);
+            StartWatching(gitDir, _commonDir);
+        }
+        catch (Exception)
+        {
+            // Not fatal: the tab still works, it just will not refresh on its own.
+        }
+        await RefreshAsync();
+    }
+
+    partial void OnSelectedRowChanged(CommitRowViewModel? value)
+    {
+        if (CompareRow != null && value == CompareRow) ClearCompare();
+        ShowDetails();
+    }
+
+    partial void OnSelectedBranchChanged(BranchOption? value)
+    {
+        if (_suppressFilterReload) return;
+        _maxCount = PageSize;
+        _ = RefreshAsync();
+    }
+
+    partial void OnShowRemotesChanged(bool value)
+    {
+        _maxCount = PageSize;
+        _ = RefreshAsync();
+    }
+
+    partial void OnFindTextChanged(string value) => ApplyFind(jump: false);
+
+    // ---- Loading -----------------------------------------------------------------------------
+
+    [RelayCommand]
+    public async Task RefreshAsync()
+    {
+        _loadCts?.Cancel();
+        var cts = _loadCts = new CancellationTokenSource();
+        var ct = cts.Token;
+        IsLoading = true;
+        try
+        {
+            var filter = SelectedBranch?.RefName is { } refName ? new[] { refName } : null;
+            var headTask = _repo.GetHeadAsync(ct);
+            var refsTask = _repo.GetRefsAsync(ct);
+            var wtTask = _repo.GetWorktreesAsync(ct);
+            var countTask = _repo.CountUncommittedAsync(ct);
+            var commitsTask = _repo.GetCommitsAsync(_maxCount, filter, ShowRemotes, ct);
+            await Task.WhenAll(headTask, refsTask, wtTask, countTask, commitsTask);
+            if (ct.IsCancellationRequested) return;
+
+            var head = headTask.Result;
+            _worktrees = wtTask.Result;
+            BranchLabel = head.Branch ?? (head.Hash is { } h ? $"detached at {h[..7]}" : "no commits yet");
+            UpdateBranchOptions(refsTask.Result);
+            Build(commitsTask.Result, refsTask.Result, head, countTask.Result);
+            LoadError = null;
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception e) when (e is GitException or IOException or System.ComponentModel.Win32Exception)
+        {
+            if (!ct.IsCancellationRequested) LoadError = e.Message;
+        }
+        finally
+        {
+            if (_loadCts == cts) IsLoading = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task LoadMore()
+    {
+        _maxCount += PageSize;
+        await RefreshAsync();
+    }
+
+    private void Build(List<CommitInfo> commits, List<GitRef> refs, HeadInfo head, int uncommitted)
+    {
+        var inputs = new List<GraphInput>(commits.Count + 1);
+        var hasUncommitted = uncommitted > 0;
+        if (hasUncommitted)
+            inputs.Add(new GraphInput(UncommittedHash, head.Hash is { } hh ? [hh] : [], Dashed: true));
+        inputs.AddRange(commits.Select(c => new GraphInput(c.Hash, c.Parents)));
+        var graph = GraphLayout.Build(inputs);
+
+        var refsByTarget = refs.Where(r => ShowRemotes || r.Kind != RefKind.RemoteBranch).ToLookup(r => r.Target);
+        var otherWorktrees = _worktrees
+            .Where(w => !WorkspaceViewModel.PathEquals(w.Path, Path) && w.Head != null && !w.IsBare)
+            .ToLookup(w => w.Head!);
+
+        var rows = new ObservableCollection<CommitRowViewModel>();
+        var maxLanes = 1;
+        var g = 0;
+        if (hasUncommitted)
+        {
+            var info = new CommitInfo(UncommittedHash, head.Hash is { } hh ? [hh] : [], "", "", DateTimeOffset.Now,
+                $"Uncommitted changes ({uncommitted})");
+            rows.Add(new CommitRowViewModel(this, info, graph[g++], false, true));
+        }
+        foreach (var c in commits)
+        {
+            var gr = graph[g++];
+            maxLanes = Math.Max(maxLanes, gr.LaneCount);
+            var row = new CommitRowViewModel(this, c, gr, c.Hash == head.Hash, false);
+            foreach (var r in refsByTarget[c.Hash].OrderBy(r => r.Kind).ThenByDescending(r => r.IsHead))
+            {
+                var kind = r.Kind switch { RefKind.LocalBranch => BadgeKind.Local, RefKind.RemoteBranch => BadgeKind.Remote, _ => BadgeKind.Tag };
+                row.Badges.Add(new RefBadgeViewModel(this, kind, r.Name, gr.NodeColor, r, r.IsHead && r.Name == head.Branch));
+            }
+            foreach (var w in otherWorktrees[c.Hash])
+                row.Badges.Add(new RefBadgeViewModel(this, BadgeKind.Worktree, System.IO.Path.GetFileName(w.Path), gr.NodeColor, null, false));
+            rows.Add(row);
+        }
+
+        var selectedHash = SelectedRow?.Hash;
+        var compareHash = CompareRow?.Hash;
+        GraphWidth = GraphCell.WidthFor(Math.Min(maxLanes, 24));
+        Rows = rows;
+        HasMore = commits.Count >= _maxCount;
+        IsEmpty = rows.Count == 0;
+
+        CompareRow = compareHash is null ? null : rows.FirstOrDefault(r => r.Hash == compareHash);
+        if (CompareRow != null) CompareRow.IsCompareTarget = true;
+        var reselect = selectedHash is null ? null : rows.FirstOrDefault(r => r.Hash == selectedHash);
+        if (reselect != null)
+        {
+            SelectedRow = reselect;
+        }
+        else if (selectedHash == UncommittedHash)
+        {
+            SelectedRow = null; // changes were committed or discarded
+        }
+        ApplyFind(jump: false);
+    }
+
+    private void UpdateBranchOptions(List<GitRef> refs)
+    {
+        var current = SelectedBranch?.RefName;
+        var options = new List<BranchOption> { new("All branches", null, false) };
+        options.AddRange(refs.Where(r => r.Kind == RefKind.LocalBranch).Select(r => new BranchOption(r.Name, r.FullName, false)));
+        if (ShowRemotes)
+            options.AddRange(refs.Where(r => r.Kind == RefKind.RemoteBranch).Select(r => new BranchOption(r.Name, r.FullName, true)));
+
+        if (options.Select(o => o.RefName).SequenceEqual(BranchOptions.Select(o => o.RefName))) return;
+        _suppressFilterReload = true;
+        BranchOptions.Clear();
+        foreach (var o in options) BranchOptions.Add(o);
+        SelectedBranch = options.FirstOrDefault(o => o.RefName == current) ?? options[0];
+        _suppressFilterReload = false;
+    }
+
+    // ---- Selection, compare, find --------------------------------------------------------------
+
+    private void ShowDetails()
+    {
+        var row = SelectedRow;
+        if (row is null)
+        {
+            Details.Clear();
+            return;
+        }
+        if (CompareRow != null && CompareRow != row)
+        {
+            // Older commit on the left, so the diff reads as "what changed going forward".
+            var (older, newer) = Rows.IndexOf(CompareRow) > Rows.IndexOf(row) ? (CompareRow, row) : (row, CompareRow);
+            Details.ShowCompare(older.Commit, newer.IsUncommitted ? null : newer.Commit);
+            return;
+        }
+        if (row.IsUncommitted) Details.ShowUncommitted(row.Commit.Parents.Count > 0 ? "HEAD" : GitRepository.EmptyTree);
+        else Details.ShowCommit(row.Commit);
+    }
+
+    public void SetCompare(CommitRowViewModel row)
+    {
+        if (SelectedRow is null || SelectedRow == row)
+        {
+            SelectedRow = row;
+            return;
+        }
+        if (CompareRow != null) CompareRow.IsCompareTarget = false;
+        CompareRow = row;
+        row.IsCompareTarget = true;
+        ShowDetails();
+    }
+
+    [RelayCommand]
+    public void ClearCompare()
+    {
+        if (CompareRow is null) return;
+        CompareRow.IsCompareTarget = false;
+        CompareRow = null;
+        ShowDetails();
+    }
+
+    private void ApplyFind(bool jump)
+    {
+        var text = FindText.Trim();
+        var matches = 0;
+        foreach (var r in Rows)
+        {
+            r.IsMatch = text.Length > 0 && !r.IsUncommitted && Matches(r, text);
+            if (r.IsMatch) matches++;
+        }
+        FindStatus = text.Length == 0 ? null : matches == 0 ? "No matches" : matches == 1 ? "1 match" : $"{matches} matches";
+        if (jump) FindNext();
+    }
+
+    private static bool Matches(CommitRowViewModel r, string text) =>
+        r.Subject.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+        r.Author.Contains(text, StringComparison.OrdinalIgnoreCase) ||
+        r.Hash.StartsWith(text, StringComparison.OrdinalIgnoreCase) ||
+        r.Badges.Any(b => b.Text.Contains(text, StringComparison.OrdinalIgnoreCase));
+
+    [RelayCommand]
+    public void FindNext() => StepFind(+1);
+
+    [RelayCommand]
+    public void FindPrevious() => StepFind(-1);
+
+    private void StepFind(int dir)
+    {
+        if (Rows.Count == 0) return;
+        var start = SelectedRow is null ? (dir > 0 ? -1 : Rows.Count) : Rows.IndexOf(SelectedRow);
+        for (var i = 1; i <= Rows.Count; i++)
+        {
+            var idx = ((start + dir * i) % Rows.Count + Rows.Count) % Rows.Count;
+            if (Rows[idx].IsMatch)
+            {
+                SelectedRow = Rows[idx];
+                return;
+            }
+        }
+    }
+
+    // ---- Commands from rows and badges --------------------------------------------------------
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (GitException e) { Host.ReportError(e.Message); }
+        await RefreshAsync();
+    }
+
+    [RelayCommand]
+    private Task Fetch() => RunAsync(() => _repo.FetchAsync());
+
+    public async Task CheckoutCommitAsync(CommitRowViewModel row)
+    {
+        if (row.IsUncommitted) return;
+        if (!await Host.Dialogs.ConfirmAsync("Check out commit",
+                $"Check out {row.ShortHash} in {Title}? You will be on a detached HEAD until you switch to a branch.", "Check out"))
+            return;
+        await RunAsync(() => _repo.CheckoutAsync(row.Hash));
+        await _workspace.RefreshRepoAsync(Path);
+    }
+
+    public async Task CheckoutRefAsync(RefBadgeViewModel badge)
+    {
+        if (badge.Ref is not { } r) return;
+        if (r.Kind == RefKind.RemoteBranch)
+        {
+            var localName = r.Name[(r.Remote!.Length + 1)..];
+            var refs = await _repo.GetRefsAsync();
+            await RunAsync(() => refs.Any(x => x.Kind == RefKind.LocalBranch && x.Name == localName)
+                ? _repo.CheckoutAsync(localName)
+                : GitRunner.RunAsync(Path, ["checkout", "--track", r.Name]));
+        }
+        else await RunAsync(() => _repo.CheckoutAsync(r.Name));
+        await _workspace.RefreshRepoAsync(Path);
+    }
+
+    public async Task DeleteRefAsync(RefBadgeViewModel badge)
+    {
+        if (badge.Ref is not { } r) return;
+        if (r.Kind == RefKind.Tag)
+        {
+            if (!await Host.Dialogs.ConfirmAsync("Delete tag", $"Delete the tag {r.Name}? Remote copies are not touched.", "Delete tag", true)) return;
+            await RunAsync(() => _repo.DeleteTagAsync(r.Name));
+            return;
+        }
+        if (!await Host.Dialogs.ConfirmAsync("Delete branch", $"Delete the branch {r.Name}?", "Delete branch", true)) return;
+        try
+        {
+            await _repo.DeleteBranchAsync(r.Name, force: false);
+        }
+        catch (GitException e) when (e.Message.Contains("not fully merged", StringComparison.OrdinalIgnoreCase))
+        {
+            if (await Host.Dialogs.ConfirmAsync("Branch is not merged",
+                    $"{r.Name} has commits that are not on any other branch. Deleting it may lose them.", "Delete anyway", true))
+            {
+                try { await _repo.DeleteBranchAsync(r.Name, force: true); }
+                catch (GitException e2) { Host.ReportError(e2.Message); }
+            }
+        }
+        catch (GitException e) { Host.ReportError(e.Message); }
+        await RefreshAsync();
+    }
+
+    public async Task CreateBranchAsync(CommitRowViewModel row)
+    {
+        var res = await Host.Dialogs.PromptAsync("Create branch", $"Start a new branch at {row.ShortHash}.",
+            [new PromptField("Branch name", "", "feature/my-change"), new PromptField("Check it out", "true", IsCheckbox: true)],
+            "Create branch");
+        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
+        await RunAsync(() => _repo.CreateBranchAsync(res[0].Trim(), row.Hash, res[1] == "true"));
+        await _workspace.RefreshRepoAsync(Path);
+    }
+
+    public async Task CreateTagAsync(CommitRowViewModel row)
+    {
+        var res = await Host.Dialogs.PromptAsync("Create tag", $"Tag {row.ShortHash}.",
+            [new PromptField("Tag name", "", "v1.0.0"), new PromptField("Message", "", "Leave empty for a lightweight tag")],
+            "Create tag");
+        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
+        await RunAsync(() => _repo.CreateTagAsync(res[0].Trim(), row.Hash, res[1]));
+    }
+
+    public async Task AddWorktreeAtAsync(CommitRowViewModel row, string? branch)
+    {
+        var main = _worktrees.FirstOrDefault(w => w.IsMain)?.Path ?? Path;
+        await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), row.IsUncommitted ? "HEAD" : row.Hash, branch);
+        await RefreshAsync();
+    }
+
+    public async Task AddWorktreeForBranchAsync(RefBadgeViewModel badge)
+    {
+        if (badge.Ref is not { } r) return;
+        var main = _worktrees.FirstOrDefault(w => w.IsMain)?.Path ?? Path;
+        if (r.Kind == RefKind.RemoteBranch)
+        {
+            await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), r.Name, null);
+        }
+        else await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), r.Name, r.Name);
+        await RefreshAsync();
+    }
+
+    public void OpenWorktreeByName(string name)
+    {
+        var wt = _worktrees.FirstOrDefault(w => System.IO.Path.GetFileName(w.Path) == name);
+        if (wt != null) _workspace.OpenTab(wt.Path);
+    }
+
+    // ---- File watching -----------------------------------------------------------------------
+
+    private void StartWatching(params string?[] dirs)
+    {
+        foreach (var dir in dirs.Where(d => d != null).Distinct())
+        {
+            if (!Directory.Exists(dir)) continue;
+            try
+            {
+                var w = new FileSystemWatcher(dir!)
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.DirectoryName,
+                };
+                w.Changed += OnGitDirChanged;
+                w.Created += OnGitDirChanged;
+                w.Deleted += OnGitDirChanged;
+                w.Renamed += OnGitDirChanged;
+                w.EnableRaisingEvents = true;
+                _watchers.Add(w);
+            }
+            catch (Exception e) when (e is IOException or ArgumentException or PlatformNotSupportedException)
+            {
+                // Watching is a convenience; manual refresh still works.
+            }
+        }
+    }
+
+    private void OnGitDirChanged(object sender, FileSystemEventArgs e)
+    {
+        var name = e.Name ?? "";
+        if (name.StartsWith("objects", StringComparison.Ordinal) || name.StartsWith("logs", StringComparison.Ordinal) ||
+            name.EndsWith(".lock", StringComparison.Ordinal) || name.Contains("fsmonitor", StringComparison.Ordinal))
+            return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _debounce.Stop();
+            _debounce.Start();
+        });
+    }
+
+    /// <summary>Cheap refresh for when the window regains focus: files may have been edited elsewhere.</summary>
+    public void OnActivated()
+    {
+        if (_loaded) _ = RefreshAsync();
+    }
+
+    public void Dispose()
+    {
+        _loadCts?.Cancel();
+        _debounce.Stop();
+        foreach (var w in _watchers) w.Dispose();
+        _watchers.Clear();
+        Details.Clear();
+    }
+}

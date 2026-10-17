@@ -1,0 +1,145 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:ctl="using:GitGraph.App.Controls"
+             x:Class="GitGraph.App.Views.SidebarView"
+             x:DataType="vm:MainWindowViewModel"
+             Background="{DynamicResource SurfaceBrush}">
+  <DockPanel>
+    <!-- Workspace switcher -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="12,12,8,6">
+      <ComboBox ItemsSource="{Binding Workspaces}" SelectedItem="{Binding SelectedWorkspace}"
+                HorizontalAlignment="Stretch" ToolTip.Tip="Switch workspace">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:WorkspaceViewModel">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ctl:IconView Data="{StaticResource I.Layers}" Width="14" Height="14" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <Button Grid.Column="1" Classes="ghost" Margin="4,0,0,0" Command="{Binding NewWorkspaceCommand}" ToolTip.Tip="New workspace">
+        <ctl:IconView Data="{StaticResource I.Plus}" />
+      </Button>
+      <Button Grid.Column="2" Classes="ghost" ToolTip.Tip="Workspace options">
+        <ctl:IconView Data="{StaticResource I.More}" StrokeThickness="2.6" />
+        <Button.Flyout>
+          <MenuFlyout Placement="BottomEdgeAlignedRight">
+            <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
+            <MenuItem Header="Rescan folders" Command="{Binding SelectedWorkspace.ScanCommand}" />
+            <Separator />
+            <MenuItem Header="Delete workspace…" Command="{Binding DeleteWorkspaceCommand}" />
+          </MenuFlyout>
+        </Button.Flyout>
+      </Button>
+    </Grid>
+
+    <!-- Theme -->
+    <Border DockPanel.Dock="Bottom" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0" Padding="8,6">
+      <Button Classes="ghost" HorizontalAlignment="Left" Command="{Binding CycleThemeCommand}" ToolTip.Tip="Switch between night, day and the system setting">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <ctl:IconView Data="{StaticResource I.Moon}" Width="14" Height="14" VerticalAlignment="Center" />
+          <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding ThemeLabel, StringFormat='Theme: {0}'}" />
+        </StackPanel>
+      </Button>
+    </Border>
+
+    <ScrollViewer DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
+      <StackPanel Margin="8,4,8,12" Spacing="2">
+
+        <!-- Folders -->
+        <Grid ColumnDefinitions="*,Auto" Margin="6,8,0,2">
+          <TextBlock Classes="section" Text="Folders" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding AddFolderCommand}" ToolTip.Tip="Add folder">
+            <ctl:IconView Data="{StaticResource I.FolderPlus}" Width="15" Height="15" />
+          </Button>
+        </Grid>
+        <ItemsControl ItemsSource="{Binding Folders}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,0,0,0" Height="26" Background="Transparent" ToolTip.Tip="{Binding}">
+                <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Text="{Binding Converter={x:Static vm:Converters.FileName}}" />
+                <Button Grid.Column="2" Classes="ghost" Padding="3" ToolTip.Tip="Remove from workspace"
+                        Command="{Binding $parent[ItemsControl].((vm:WorkspaceViewModel)DataContext).RemoveFolderCommand}"
+                        CommandParameter="{Binding}">
+                  <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
+                </Button>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="muted small" Margin="6,2,6,0" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
+                   Text="No folders yet. Add one to find the repositories inside it." />
+
+        <!-- Repositories and their worktrees -->
+        <Grid ColumnDefinitions="*,Auto" Margin="6,16,0,2">
+          <TextBlock Classes="section" Text="Repositories" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding ScanCommand}" ToolTip.Tip="Rescan folders">
+            <ctl:IconView Data="{StaticResource I.Refresh}" Width="14" Height="14" />
+          </Button>
+        </Grid>
+        <TextBlock Classes="muted small" Margin="6,0" Text="Looking for repositories…" IsVisible="{Binding IsScanning}" />
+        <TextBlock Classes="muted small" Margin="6,0" TextWrapping="Wrap" IsVisible="{Binding HasNoRepos}"
+                   Text="No repositories in these folders. Repositories up to three levels deep are found." />
+
+        <ItemsControl ItemsSource="{Binding Repos}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:RepoNodeViewModel">
+              <StackPanel Spacing="1">
+                <Grid ColumnDefinitions="18,*">
+                  <Button Classes="ghost" Padding="1" Width="18" Height="18" IsVisible="{Binding HasLinkedWorktrees}"
+                          Command="{Binding ToggleExpandedCommand}" ToolTip.Tip="Show or hide worktrees">
+                    <Panel>
+                      <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" IsVisible="{Binding IsExpanded}" />
+                      <ctl:IconView Data="{StaticResource I.ChevronRight}" Width="14" Height="14" IsVisible="{Binding !IsExpanded}" />
+                    </Panel>
+                  </Button>
+                  <Button Grid.Column="1" Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}"
+                          ToolTip.Tip="{Binding MainPath}">
+                    <Button.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+                        <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
+                        <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
+                    <Grid ColumnDefinitions="Auto,Auto,*">
+                      <ctl:IconView Data="{StaticResource I.Repo}" Width="15" Height="15" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" VerticalAlignment="Center"
+                                 HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                    </Grid>
+                  </Button>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Worktrees}" IsVisible="{Binding IsExpanded}" Margin="26,0,0,2">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WorktreeNodeViewModel">
+                      <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tooltip}"
+                              Opacity="{Binding IsPrunable, Converter={x:Static vm:Converters.DimIfTrue}}">
+                        <Button.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+                            <MenuItem Header="Remove worktree…" Command="{Binding RemoveCommand}" />
+                          </ContextMenu>
+                        </Button.ContextMenu>
+                        <Grid ColumnDefinitions="Auto,Auto,*">
+                          <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" VerticalAlignment="Center"
+                                     HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

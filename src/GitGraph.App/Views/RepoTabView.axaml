@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:v="using:GitGraph.App.Views"
+             xmlns:ctl="using:GitGraph.App.Controls"
+             x:Class="GitGraph.App.Views.RepoTabView"
+             x:DataType="vm:RepoTabViewModel">
+  <UserControl.KeyBindings>
+    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding ClearCompareCommand}" />
+  </UserControl.KeyBindings>
+
+  <Grid RowDefinitions="Auto,Auto,*,Auto,320">
+    <!-- Toolbar -->
+    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="16,10,12,8">
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" />
+        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <ctl:IconView Data="{StaticResource I.Worktree}" Width="12" Height="12" IsVisible="{Binding IsWorktree}"
+                          VerticalAlignment="Center" ToolTip.Tip="This is a linked worktree" />
+            <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+        <ComboBox ItemsSource="{Binding BranchOptions}" SelectedItem="{Binding SelectedBranch}" MinWidth="170" MaxWidth="260"
+                  VerticalAlignment="Center" ToolTip.Tip="Show one branch, or all of them">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:BranchOption">
+              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <CheckBox Content="Remotes" IsChecked="{Binding ShowRemotes}" VerticalAlignment="Center" Margin="4,0"
+                  ToolTip.Tip="Include remote-tracking branches in the graph" />
+
+        <Panel Width="230" VerticalAlignment="Center">
+          <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="Find commits"
+                   ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous.">
+            <TextBox.KeyBindings>
+              <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" />
+              <KeyBinding Gesture="Shift+Enter" Command="{Binding FindPreviousCommand}" />
+            </TextBox.KeyBindings>
+            <TextBox.InnerRightContent>
+              <TextBlock Classes="muted small" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="0,0,8,0" />
+            </TextBox.InnerRightContent>
+          </TextBox>
+          <ctl:IconView Data="{StaticResource I.Search}" Width="14" Height="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+        </Panel>
+        <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="Previous match (Shift+Enter)">
+          <ctl:IconView Data="{StaticResource I.ChevronUp}" />
+        </Button>
+        <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="Next match (Enter)">
+          <ctl:IconView Data="{StaticResource I.Chevron}" />
+        </Button>
+
+        <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
+        <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="Fetch from all remotes">
+          <ctl:IconView Data="{StaticResource I.Fetch}" />
+        </Button>
+        <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh (F5)">
+          <ctl:IconView Data="{StaticResource I.Refresh}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <!-- Column headings -->
+    <Border Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,1" Background="{DynamicResource SurfaceBrush}">
+      <Grid ColumnDefinitions="Auto,*,140,150,84" Height="26">
+        <TextBlock Classes="section" Width="{Binding GraphWidth}" Padding="10,0,0,0" Text="Graph" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Classes="section" Margin="4,0" Text="Description" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Classes="section" Text="Date" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Classes="section" Text="Author" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="4" Classes="section" Text="Commit" VerticalAlignment="Center" />
+      </Grid>
+    </Border>
+
+    <!-- The graph -->
+    <Panel Grid.Row="2">
+      <ListBox x:Name="CommitList" Classes="dense" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CommitRowViewModel">
+            <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.match="{Binding IsMatch}"
+                  Classes.compare="{Binding IsCompareTarget}"
+                  ColumnDefinitions="Auto,*,140,150,84" Height="{StaticResource RowHeight}">
+              <Grid.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
+                            ToolTip.Tip="Or Ctrl+click a second commit" />
+                  <Separator />
+                  <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" />
+                  <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <Separator />
+                  <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding !IsUncommitted}" />
+                </ContextMenu>
+              </Grid.ContextMenu>
+
+              <ctl:GraphCell Row="{Binding Graph}" IsHead="{Binding IsHead}"
+                             Width="{Binding $parent[ListBox].((vm:RepoTabViewModel)DataContext).GraphWidth}" />
+
+              <DockPanel Grid.Column="1" Margin="4,0,12,0">
+                <ItemsControl DockPanel.Dock="Left" ItemsSource="{Binding Badges}" IsVisible="{Binding HasBadges}"
+                              VerticalAlignment="Center" Margin="0,0,8,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <StackPanel Orientation="Horizontal" Spacing="4" />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RefBadgeViewModel">
+                      <Border Classes="badge" Classes.local="{Binding IsLocal}" Classes.remote="{Binding IsRemote}"
+                              Classes.tag="{Binding IsTag}" Classes.wt="{Binding IsWorktree}" Classes.current="{Binding IsCurrent}"
+                              ToolTip.Tip="{Binding Tooltip}">
+                        <Border.ContextMenu>
+                          <ContextMenu>
+                            <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
+                            <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
+                            <MenuItem Header="Open worktree" Command="{Binding OpenWorktreeCommand}" IsVisible="{Binding IsWorktree}" />
+                            <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
+                            <Separator IsVisible="{Binding CanDelete}" />
+                            <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+                          </ContextMenu>
+                        </Border.ContextMenu>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <ctl:IconView Data="{StaticResource I.Worktree}" Width="11" Height="11" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding Text}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="subject" Text="{Binding Subject}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           ToolTip.Tip="{Binding Tooltip}" />
+              </DockPanel>
+
+              <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding DateText}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="3" Classes="muted small" Text="{Binding Author}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+              <TextBlock Grid.Column="4" Classes="mono muted" Text="{Binding ShortHash}" VerticalAlignment="Center" />
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="460" IsVisible="{Binding IsEmpty}">
+        <TextBlock Classes="title" HorizontalAlignment="Center" Text="No commits yet" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                   Text="Make the first commit in this repository and its history appears here." />
+      </StackPanel>
+
+      <Border VerticalAlignment="Top" Background="{DynamicResource DelBgBrush}" Padding="14,8" Margin="12"
+              CornerRadius="6" IsVisible="{Binding LoadError, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <SelectableTextBlock Text="{Binding LoadError, StringFormat='Could not read this repository: {0}'}" TextWrapping="Wrap" />
+      </Border>
+
+      <Button Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
+              IsVisible="{Binding HasMore}" Command="{Binding LoadMoreCommand}" Content="Load more commits" />
+    </Panel>
+
+    <GridSplitter Grid.Row="3" Height="1" ResizeDirection="Rows" />
+
+    <v:DetailsView Grid.Row="4" DataContext="{Binding Details}" />
+  </Grid>
+</UserControl>

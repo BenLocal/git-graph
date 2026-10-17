@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GitGraph.App/GitGraph.App.csproj" />
+    <Project Path="src/GitGraph.Core/GitGraph.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GitGraph.Core.Tests/GitGraph.Core.Tests.csproj" />
+  </Folder>
+</Solution>

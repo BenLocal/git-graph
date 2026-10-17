@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGraph.App.ViewModels"
+        xmlns:v="using:GitGraph.App.Views"
+        xmlns:ctl="using:GitGraph.App.Controls"
+        x:Class="GitGraph.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Git Graph"
+        Width="1440" Height="900" MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterScreen">
+
+  <Grid ColumnDefinitions="264,1,*">
+    <v:SidebarView Grid.Column="0" />
+    <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+
+    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
+      <!-- Open repositories in this workspace -->
+      <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1"
+              IsVisible="{Binding HasTabs}">
+        <ListBox Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:RepoTabViewModel">
+              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}">
+                <StackPanel Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="36">
+                  <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
+                  <TextBlock Classes="name" Text="{Binding Title}" VerticalAlignment="Center" />
+                  <TextBlock Classes="muted small" Text="{Binding BranchLabel}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
+                  <Button Classes="ghost close" Padding="3" Margin="2,0,0,0"
+                          Command="{Binding $parent[ListBox].((vm:WorkspaceViewModel)DataContext).CloseTabCommand}"
+                          CommandParameter="{Binding}" ToolTip.Tip="Close tab">
+                    <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
+                  </Button>
+                </StackPanel>
+                <Border Grid.Row="1" Classes="tabline" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Border>
+
+      <!-- Git errors surface here, in place, until dismissed -->
+      <Border Grid.Row="1" Background="{DynamicResource DelBgBrush}" Padding="14,8"
+              DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
+              IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <Grid ColumnDefinitions="*,Auto">
+          <SelectableTextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" MaxHeight="120" />
+          <Button Grid.Column="1" Classes="ghost" Command="{Binding DismissErrorCommand}" ToolTip.Tip="Dismiss" VerticalAlignment="Top">
+            <ctl:IconView Data="{StaticResource I.Close}" Width="14" Height="14" />
+          </Button>
+        </Grid>
+      </Border>
+
+      <v:RepoTabView Grid.Row="2" DataContext="{Binding SelectedTab}" IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).HasTabs}" />
+
+      <!-- Nothing open yet -->
+      <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420"
+                  IsVisible="{Binding !HasTabs}">
+        <ctl:IconView Data="{StaticResource I.Repo}" Width="40" Height="40" HorizontalAlignment="Center" StrokeThickness="1.4" />
+        <TextBlock Classes="title" HorizontalAlignment="Center" TextAlignment="Center"
+                   Text="{Binding Name, StringFormat='{}{0} has nothing open'}" />
+        <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasFolders}"
+                   Text="Pick a repository or worktree on the left to see its history." />
+        <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
+                   Text="Add a folder to this workspace. Every repository inside it, and each of its worktrees, shows up in the sidebar." />
+        <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" IsVisible="{Binding !HasFolders}"
+                Content="Add folder" />
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>
