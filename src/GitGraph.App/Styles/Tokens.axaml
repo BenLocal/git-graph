@@ -44,6 +44,7 @@
       <Color x:Key="LinkColor">#7FA6F5</Color>
       <Color x:Key="ScrollThumbColor">#30FFFFFF</Color>
       <Color x:Key="BadgeFillColor">#14FFFFFF</Color>
+      <Color x:Key="FieldColor">#232A37</Color>
       <!-- VS Code's git decoration colours (Dark+) -->
       <Color x:Key="GitModifiedColor">#E2C08D</Color>
       <Color x:Key="GitAddedColor">#81B88B</Color>
@@ -82,6 +83,7 @@
       <Color x:Key="LinkColor">#2F5FC4</Color>
       <Color x:Key="ScrollThumbColor">#2A1C2330</Color>
       <Color x:Key="BadgeFillColor">#0A1C2330</Color>
+      <Color x:Key="FieldColor">#EEF1F5</Color>
       <!-- VS Code's git decoration colours (Light+) -->
       <Color x:Key="GitModifiedColor">#895503</Color>
       <Color x:Key="GitAddedColor">#587C0C</Color>

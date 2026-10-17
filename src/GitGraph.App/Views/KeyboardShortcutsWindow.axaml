@@ -41,15 +41,15 @@
                        HorizontalAlignment="Left" Margin="8,0,0,0" />
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
               <Button Classes="ghost" Padding="5" Click="OnChange" ToolTip.Tip="Record a new shortcut">
-                <ctl:IconView Data="{StaticResource I.Pencil}" Width="13" Height="13" />
+                <LucideIcon Kind="Pencil" Size="13" />
               </Button>
               <Button Classes="ghost" Padding="5" Command="{Binding $parent[Window].((vm:ShortcutsEditorViewModel)DataContext).ResetCommand}"
                       CommandParameter="{Binding}" IsVisible="{Binding IsChanged}" ToolTip.Tip="Back to the default">
-                <ctl:IconView Data="{StaticResource I.Refresh}" Width="13" Height="13" />
+                <LucideIcon Kind="RotateCw" Size="13" />
               </Button>
               <Button Classes="ghost" Padding="5" Command="{Binding $parent[Window].((vm:ShortcutsEditorViewModel)DataContext).RemoveCommand}"
                       CommandParameter="{Binding}" IsVisible="{Binding HasShortcut}" ToolTip.Tip="Remove the shortcut">
-                <ctl:IconView Data="{StaticResource I.Close}" Width="13" Height="13" />
+                <LucideIcon Kind="X" Size="13" />
               </Button>
             </StackPanel>
           </Grid>

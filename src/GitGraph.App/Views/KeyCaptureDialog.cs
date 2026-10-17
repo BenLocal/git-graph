@@ -57,7 +57,6 @@ public sealed class KeyCaptureDialog : Window
             },
         };
         AddHandler(KeyDownEvent, OnKey, RoutingStrategies.Tunnel);
-        Opened += (_, _) => WaylandAppId.Apply(this);
     }
 
     private void OnKey(object? sender, KeyEventArgs e)

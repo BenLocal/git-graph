@@ -6,9 +6,9 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://GitGraph/Styles/Tokens.axaml" />
-        <ResourceInclude Source="avares://GitGraph/Styles/Icons.axaml" />
         <ResourceInclude Source="avares://GitGraph/Styles/DiffTemplates.axaml" />
         <ResourceInclude Source="avares://GitGraph/Styles/ScrollBar.axaml" />
+        <ResourceInclude Source="avares://GitGraph/Styles/Fields.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

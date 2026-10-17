@@ -20,7 +20,6 @@ public sealed class PromptDialog : Window
         CanResize = false;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         ShowInTaskbar = false;
-        Opened += (_, _) => WaylandAppId.Apply(this);
 
         var stack = new StackPanel { Margin = new Thickness(24, 20, 24, 20), Spacing = 14 };
         stack.Children.Add(new TextBlock { Text = title, FontSize = 16, FontWeight = FontWeight.SemiBold });

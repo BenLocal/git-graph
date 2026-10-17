@@ -25,7 +25,7 @@ dotnet run --project src/GitGraph.App
 ```
 
 Needs the .NET 10 SDK and `git` on `PATH`. State is saved to `~/.config/GitGraph/state.json`
-(`%APPDATA%\GitGraph\state.json` on Windows). Set `GITGRAPH_STATE` to use a different file, and `GITGRAPH_REDUCED_MOTION=1` to turn off animations. On a Wayland desktop the app uses Avalonia's native Wayland backend, which renders sharply at fractional scales such as 125%; it is still experimental, so `GITGRAPH_BACKEND=x11` switches back to XWayland.
+(`%APPDATA%\GitGraph\state.json` on Windows). Set `GITGRAPH_STATE` to use a different file, and `GITGRAPH_REDUCED_MOTION=1` to turn off animations. On Linux the app runs on X11 (XWayland on a Wayland desktop); `GITGRAPH_BACKEND=wayland` tries Avalonia's experimental native Wayland backend instead.
 
 ## Layout
 
@@ -54,4 +54,4 @@ dotnet test
 | `make icons` | Re-render the PNG and ICO app icons from the drawing in `scripts/render_icon.py` (needs Pillow) |
 | `make reindex` | Rebuild the generated indexes in `AGENTS.md` and `docs/` |
 
-Fonts: the interface uses IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`).
+Fonts: the interface uses IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`). Icons are [Lucide](https://lucide.dev) (ISC license), through the Lucide.Avalonia package.

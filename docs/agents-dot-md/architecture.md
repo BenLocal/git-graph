@@ -72,5 +72,5 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 
 - New git operation: add a method to `GitRepository` → add a `[RelayCommand]` to `RepoTabViewModel` / `CommitRowViewModel` → add it to the context menu in `RepoTabView.axaml`. Use `IDialogService.PromptAsync` when input is needed.
 - New keyboard-shortcut command: add it to `ShortcutService.Commands` (default gesture matching VS Code if VS Code has the command) and its action to the table in `Views/MainWindow.Shortcuts.cs`. Show it in menus with `InputGesture="{Binding Keys[Id], Source={x:Static svc:ShortcutService.Instance}}"` and in tooltips with `Tips[Id]`; never hard-code a key in a tooltip or `KeyBinding`.
-- New icon: add a stroke geometry on the 24-unit grid to `Styles/Icons.axaml` and show it with `IconView`.
+- New icon: use a Lucide icon (`<LucideIcon Kind="…" />`, names at lucide.dev/icons); don't draw icons by hand.
 - Not allowed: starting git with `new Process` in a view model; referencing Avalonia from Core; hard-coding colors in axaml.

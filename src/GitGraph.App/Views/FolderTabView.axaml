@@ -55,18 +55,18 @@
       <Grid RowDefinitions="Auto,*" Background="{DynamicResource SurfaceBrush}">
         <Grid ColumnDefinitions="*,Auto" Margin="16,10,8,6">
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-            <ctl:IconView Data="{StaticResource I.Folder}" Width="15" Height="15" VerticalAlignment="Center" />
+            <LucideIcon Kind="Folder" Size="15" VerticalAlignment="Center" />
             <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
             <Button Classes="ghost" Padding="5" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Open the folder in VS Code">
-              <ctl:IconView Data="{StaticResource I.Code}" Width="15" Height="15" />
+              <LucideIcon Kind="SquareCode" Size="15" />
             </Button>
             <Button Classes="ghost" Padding="5" Command="{Binding RefreshTreeCommand}" ToolTip.Tip="Refresh">
-              <ctl:IconView Data="{StaticResource I.Refresh}" Width="14" Height="14" />
+              <LucideIcon Kind="RotateCw" Size="14" />
             </Button>
             <Button Classes="ghost" Padding="5" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse all folders">
-              <ctl:IconView Data="{StaticResource I.CollapseAll}" Width="14" Height="14" />
+              <LucideIcon Kind="ChevronsDownUp" Size="14" />
             </Button>
           </StackPanel>
         </Grid>
@@ -87,8 +87,8 @@
                   </ContextMenu>
                 </Grid.ContextMenu>
                 <Panel Margin="0,0,7,0">
-                  <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}" />
-                  <ctl:IconView Data="{StaticResource I.File}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsFile}" />
+                  <LucideIcon Kind="Folder" Size="14" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}" />
+                  <LucideIcon Kind="File" Size="14" VerticalAlignment="Center" IsVisible="{Binding IsFile}" />
                 </Panel>
                 <TextBlock Grid.Column="1" Classes="name" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <!-- M, A, U, R, D or ! after a changed file, a dot after a folder with changes, as in VS Code -->
@@ -117,19 +117,19 @@
             </TextBlock>
             <Button Grid.Column="0" Classes="ghost" Padding="4" Margin="-6,0,0,0" Command="{Binding CopyPathCommand}" CommandParameter="{x:Null}"
                     ToolTip.Tip="Copy path">
-              <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" />
+              <LucideIcon Kind="Copy" Size="13" />
             </Button>
             <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding FileInfo}" VerticalAlignment="Center" Margin="12,0,8,0" />
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
               <Button Classes="ghost text" Command="{Binding CopyContentsCommand}" ToolTip.Tip="Copy the whole file">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" VerticalAlignment="Center" />
+                  <LucideIcon Kind="Copy" Size="13" VerticalAlignment="Center" />
                   <TextBlock Classes="small" Text="Copy contents" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
               <Button Classes="ghost text" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{Binding SelectedNode}" ToolTip.Tip="Open this file in VS Code">
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <ctl:IconView Data="{StaticResource I.Code}" Width="14" Height="14" VerticalAlignment="Center" />
+                  <LucideIcon Kind="SquareCode" Size="14" VerticalAlignment="Center" />
                   <TextBlock Classes="small" Text="Open in VS Code" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
@@ -156,7 +156,7 @@
     <Border Classes="toast" Classes.show="{Binding IsCopiedNoteVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
             Margin="0,0,16,16" IsHitTestVisible="False">
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <ctl:IconView Data="{StaticResource I.Check}" Width="13" Height="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
+        <LucideIcon Kind="Check" Size="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
         <TextBlock Classes="small" Text="{Binding CopiedNote}" VerticalAlignment="Center" />
       </StackPanel>
     </Border>

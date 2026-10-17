@@ -1,0 +1,45 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Text boxes and dropdowns, everywhere in the app: 30 px tall, a soft fill instead of an outline, a faint
+    border on hover, and a 1 px signal border while focused or open. These replace Fluent's own resources,
+    so every field follows them, including ones created in code (dialog fields).
+  -->
+  <x:Double x:Key="TextControlThemeMinHeight">30</x:Double>
+  <Thickness x:Key="TextControlThemePadding">10,5,10,5</Thickness>
+  <Thickness x:Key="TextControlBorderThemeThickness">1</Thickness>
+  <Thickness x:Key="TextControlBorderThemeThicknessFocused">1</Thickness>
+  <SolidColorBrush x:Key="TextControlBackground" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+  <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="{DynamicResource RuleColor}" />
+  <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SignalColor}" />
+  <SolidColorBrush x:Key="TextControlForeground" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{DynamicResource MutedColor}" />
+
+  <x:Double x:Key="ComboBoxMinHeight">30</x:Double>
+  <Thickness x:Key="ComboBoxPadding">10,0,6,0</Thickness>
+  <Thickness x:Key="ComboBoxBorderThemeThickness">1</Thickness>
+  <SolidColorBrush x:Key="ComboBoxBackground" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="Transparent" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="{DynamicResource RuleColor}" />
+  <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="{DynamicResource SignalColor}" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="{DynamicResource SignalColor}" />
+  <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="Transparent" />
+  <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource SurfaceColor}" />
+  <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource RuleColor}" />
+  <Thickness x:Key="ComboBoxItemThemePadding">10,5,10,5</Thickness>
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{DynamicResource HoverWashColor}" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{DynamicResource SignalWashColor}" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="{DynamicResource SignalWashColor}" />
+  <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="{DynamicResource HoverWashColor}" />
+</ResourceDictionary>

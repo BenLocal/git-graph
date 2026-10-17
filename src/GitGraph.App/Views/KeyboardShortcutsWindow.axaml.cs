@@ -15,7 +15,6 @@ public partial class KeyboardShortcutsWindow : Window
         InitializeComponent();
         DataContext = _vm;
         Closed += (_, _) => _vm.Detach();
-        Opened += (_, _) => Services.WaylandAppId.Apply(this);
         List.DoubleTapped += (_, e) =>
         {
             if (RowFrom(e.Source) is { } row) _ = RecordAsync(row);

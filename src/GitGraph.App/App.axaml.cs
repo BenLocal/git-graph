@@ -13,6 +13,7 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        Services.WindowSetup.Register();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // GITGRAPH_STATE points the app at a separate state file, e.g. for demos or tests.

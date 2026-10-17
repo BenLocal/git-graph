@@ -11,11 +11,11 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
     {
         var builder = AppBuilder.Configure<App>().UsePlatformDetect();
-        // On a Wayland desktop, talk to Wayland directly: under XWayland with fractional scaling (GNOME at 125%)
-        // the compositor shrinks the app's 2x window, which blurs text and icons. Avalonia's Wayland backend is
-        // still experimental; GITGRAPH_BACKEND=x11 goes back to XWayland, and it falls back by itself on failure.
+        // X11 (XWayland on a Wayland desktop) by default: on GNOME at 125% its text looked sharper to the user
+        // than Avalonia's experimental native Wayland backend. GITGRAPH_BACKEND=wayland opts into Wayland, which
+        // falls back to X11 by itself if it can't start.
         if (OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable("WAYLAND_DISPLAY") is { Length: > 0 }
-            && Environment.GetEnvironmentVariable("GITGRAPH_BACKEND") != "x11")
+            && Environment.GetEnvironmentVariable("GITGRAPH_BACKEND") == "wayland")
             builder = builder.UseWaylandWithFallback();
         return builder
 #if DEBUG

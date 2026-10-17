@@ -5,7 +5,7 @@ namespace GitGraph.App.Services;
 
 /// <summary>
 /// Gives Wayland windows an app_id, so GNOME links them to gitgraph.desktop (name and icon in the dock) instead
-/// of showing "Unknown". Avalonia 12.1's experimental Wayland backend never sets one, and doesn't expose its
+/// of showing "Unknown". Called for every window by <see cref="WindowSetup"/>. Avalonia 12.1's experimental Wayland backend never sets one, and doesn't expose its
 /// xdg_toplevel; this finds the NWayland toplevel inside the window and calls its SetAppId. Does nothing under
 /// X11, where the window class GitGraph already matches the desktop file's StartupWMClass.
 /// </summary>

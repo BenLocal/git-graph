@@ -33,7 +33,7 @@
                 <Button Grid.Column="1" Classes="ghost" Padding="5" Margin="12,-2,0,0" VerticalAlignment="Top"
                         Command="{Binding CopyMessageCommand}" ToolTip.Tip="Copy message"
                         IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
-                  <ctl:IconView Data="{StaticResource I.Copy}" Width="14" Height="14" />
+                  <LucideIcon Kind="Copy" Size="14" />
                 </Button>
               </Grid>
               <TextBlock Classes="muted" Text="{Binding RangeText}" TextWrapping="Wrap"
@@ -44,7 +44,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
                   <SelectableTextBlock Classes="mono" Text="{Binding HashText}" VerticalAlignment="Center" />
                   <Button Classes="ghost" Padding="4" Command="{Binding CopyHashCommand}" ToolTip.Tip="Copy commit hash">
-                    <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" />
+                    <LucideIcon Kind="Copy" Size="13" />
                   </Button>
                 </StackPanel>
                 <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,16,4" VerticalAlignment="Center" />
@@ -131,18 +131,18 @@
                   </TextBlock>
                   <Button Grid.Column="0" Classes="ghost" Padding="4" Margin="-6,0,0,0"
                           Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path" IsVisible="{Binding HasDiff}">
-                    <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" />
+                    <LucideIcon Kind="Copy" Size="13" />
                   </Button>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
                     <ToggleButton Classes="ghost" IsChecked="{Binding IsUnified, Mode=OneWay}" Command="{Binding ShowUnifiedCommand}" ToolTip.Tip="One column">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <ctl:IconView Data="{StaticResource I.Unified}" Width="14" Height="14" VerticalAlignment="Center" />
+                        <LucideIcon Kind="TextAlignStart" Size="14" VerticalAlignment="Center" />
                         <TextBlock Classes="small" Text="Unified" VerticalAlignment="Center" />
                       </StackPanel>
                     </ToggleButton>
                     <ToggleButton Classes="ghost" IsChecked="{Binding IsSplit, Mode=OneWay}" Command="{Binding ShowSplitCommand}" ToolTip.Tip="Before and after side by side">
                       <StackPanel Orientation="Horizontal" Spacing="6">
-                        <ctl:IconView Data="{StaticResource I.Split}" Width="14" Height="14" VerticalAlignment="Center" />
+                        <LucideIcon Kind="Columns2" Size="14" VerticalAlignment="Center" />
                         <TextBlock Classes="small" Text="Split" VerticalAlignment="Center" />
                       </StackPanel>
                     </ToggleButton>
@@ -168,7 +168,7 @@
     <Border Classes="toast" Classes.show="{Binding IsCopiedNoteVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
             Margin="0,0,16,16" IsHitTestVisible="False">
       <StackPanel Orientation="Horizontal" Spacing="6">
-        <ctl:IconView Data="{StaticResource I.Check}" Width="13" Height="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
+        <LucideIcon Kind="Check" Size="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
         <TextBlock Classes="small" Text="{Binding CopiedNote}" VerticalAlignment="Center" />
       </StackPanel>
     </Border>
@@ -177,13 +177,13 @@
     <StackPanel Orientation="Horizontal" Spacing="2" Height="34" Margin="0,0,8,0"
                 HorizontalAlignment="Right" VerticalAlignment="Top">
       <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="{Binding Tips[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" IsVisible="{Binding !IsMaximized}">
-        <ctl:IconView Data="{StaticResource I.ChevronUp}" Width="14" Height="14" />
+        <LucideIcon Kind="ChevronUp" Size="14" />
       </Button>
       <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="Restore panel size" IsVisible="{Binding IsMaximized}">
-        <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" />
+        <LucideIcon Kind="ChevronDown" Size="14" />
       </Button>
       <Button Classes="ghost" Command="{Binding ClosePanelCommand}" ToolTip.Tip="{Binding Tips[TogglePanel], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Hide panel. {0}'}">
-        <ctl:IconView Data="{StaticResource I.Close}" Width="14" Height="14" />
+        <LucideIcon Kind="X" Size="14" />
       </Button>
     </StackPanel>
   </Panel>

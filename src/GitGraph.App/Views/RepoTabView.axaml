@@ -19,7 +19,7 @@
                    ToolTip.Tip="{Binding Path}" />
         <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="6">
-            <ctl:IconView Data="{StaticResource I.Worktree}" Width="12" Height="12" IsVisible="{Binding IsWorktree}"
+            <LucideIcon Kind="FolderTree" Size="12" IsVisible="{Binding IsWorktree}"
                           VerticalAlignment="Center" ToolTip.Tip="This is a linked worktree" />
             <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
           </StackPanel>
@@ -28,20 +28,20 @@
         <Button Classes="ghost syncbutton" Command="{Binding SyncNowCommand}" IsVisible="{Binding ShowSync}" ToolTip.Tip="{Binding SyncTooltip}"
                 Padding="6,3" Margin="-6,0,0,0">
           <StackPanel Orientation="Horizontal" Spacing="5">
-            <ctl:IconView Classes="sync" Classes.spinning="{Binding IsSyncing}" Data="{StaticResource I.Sync}" Width="14" Height="14"
+            <LucideIcon Kind="ArrowDownUp" Size="14" Classes="sync" Classes.spinning="{Binding IsSyncing}"
                           VerticalAlignment="Center" IsVisible="{Binding !CanPublish}">
-              <ctl:IconView.RenderTransform>
+              <LucideIcon.RenderTransform>
                 <RotateTransform />
-              </ctl:IconView.RenderTransform>
-            </ctl:IconView>
-            <ctl:IconView Data="{StaticResource I.Publish}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+              </LucideIcon.RenderTransform>
+            </LucideIcon>
+            <LucideIcon Kind="CloudUpload" Size="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
             <TextBlock Classes="sync small" Text="{Binding SyncCounts}" VerticalAlignment="Center" IsVisible="{Binding !IsInSync}" />
             <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
           </StackPanel>
         </Button>
         <Button Classes="ghost" Padding="5" Command="{Binding GoToHeadCommand}" Margin="-4,0,0,0"
                 ToolTip.Tip="{Binding Tips[GoToHead], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}: select the checked-out commit'}">
-          <ctl:IconView Data="{StaticResource I.Target}" Width="15" Height="15" />
+          <LucideIcon Kind="LocateFixed" Size="15" />
         </Button>
         <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
       </StackPanel>
@@ -69,25 +69,25 @@
               <TextBlock Classes="muted small" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="0,0,8,0" />
             </TextBox.InnerRightContent>
           </TextBox>
-          <ctl:IconView Data="{StaticResource I.Search}" Width="14" Height="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+          <LucideIcon Kind="Search" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
         </Panel>
         <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="{Binding Tips[FindPrevious], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Shift+Enter in the find box'}">
-          <ctl:IconView Data="{StaticResource I.ChevronUp}" />
+          <LucideIcon Kind="ChevronUp" />
         </Button>
         <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="{Binding Tips[FindNext], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Enter in the find box'}">
-          <ctl:IconView Data="{StaticResource I.Chevron}" />
+          <LucideIcon Kind="ChevronDown" />
         </Button>
 
         <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
         <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
                       ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
-          <ctl:IconView Data="{StaticResource I.Chart}" />
+          <LucideIcon Kind="ChartColumn" />
         </ToggleButton>
         <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
-          <ctl:IconView Data="{StaticResource I.Fetch}" />
+          <LucideIcon Kind="CloudDownload" />
         </Button>
         <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding Tips[Refresh], Source={x:Static svc:ShortcutService.Instance}}">
-          <ctl:IconView Data="{StaticResource I.Refresh}" />
+          <LucideIcon Kind="RotateCw" />
         </Button>
       </StackPanel>
     </Grid>
@@ -161,10 +161,10 @@
                         <StackPanel Orientation="Horizontal">
                           <Border Classes="refblock">
                             <Panel>
-                              <ctl:IconView Data="{StaticResource I.Branch}" IsVisible="{Binding IsLocal}" />
-                              <ctl:IconView Data="{StaticResource I.Cloud}" IsVisible="{Binding IsRemote}" />
-                              <ctl:IconView Data="{StaticResource I.Tag}" IsVisible="{Binding IsTag}" />
-                              <ctl:IconView Data="{StaticResource I.Worktree}" IsVisible="{Binding IsWorktree}" />
+                              <LucideIcon Kind="GitBranch" IsVisible="{Binding IsLocal}" />
+                              <LucideIcon Kind="Cloud" IsVisible="{Binding IsRemote}" />
+                              <LucideIcon Kind="Tag" IsVisible="{Binding IsTag}" />
+                              <LucideIcon Kind="FolderTree" IsVisible="{Binding IsWorktree}" />
                             </Panel>
                           </Border>
                           <TextBlock Classes="name" Text="{Binding Text}" Margin="5,0,5,0" />
