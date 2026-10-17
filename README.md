@@ -30,4 +30,18 @@ Needs the .NET 10 SDK and `git` on `PATH`. State is saved to `~/.config/GitGraph
 dotnet test
 ```
 
+## Make targets
+
+`make` lists every target. The targets are defined in `mk/*.mk` and helper scripts live in `scripts/`.
+
+| Target | What it does |
+| --- | --- |
+| `make build` / `make test` / `make run` | Build, test or run (`CONFIG=Release` for a release build) |
+| `make publish RID=linux-x64` | Self-contained build in `artifacts/publish/<rid>` |
+| `make install` | Install or update the app in `~/.local` (`PREFIX=...` to change): files in `opt/gitgraph`, a `gitgraph` command in `bin`, an app-menu entry and a desktop shortcut on Linux (`SHORTCUT=0` skips the shortcut) |
+| `make uninstall` | Remove what `make install` added |
+| `make demo-run` | Create demo repositories in `.demo/` and open the app on them |
+| `make snapshot SELECT=3 COMPARE=6` | Render the demo window to `.demo/snapshot.png` |
+| `make reindex` | Rebuild the generated indexes in `AGENTS.md` and `docs/` |
+
 Fonts: IBM Plex Sans and IBM Plex Mono, bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`).
