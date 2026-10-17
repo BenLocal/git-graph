@@ -3,6 +3,7 @@
         xmlns:vm="using:GitGraph.App.ViewModels"
         xmlns:v="using:GitGraph.App.Views"
         xmlns:ctl="using:GitGraph.App.Controls"
+        xmlns:svc="using:GitGraph.App.Services"
         x:Class="GitGraph.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Git Graph"
@@ -11,31 +12,32 @@
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource FrameBrush}">
 
-  <Window.KeyBindings>
-    <KeyBinding Gesture="Ctrl+B" Command="{Binding ToggleSidebarCommand}" />
-    <KeyBinding Gesture="Ctrl+J" Command="{Binding TogglePanelCommand}" />
-  </Window.KeyBindings>
 
+  <Panel>
   <DockPanel>
   <!-- Menu bar, with the layout toggles on the right as in VS Code's title bar. -->
   <Border DockPanel.Dock="Top" Classes="menubar">
     <Grid ColumnDefinitions="*,Auto">
       <Menu>
         <MenuItem Header="_File">
-          <MenuItem Header="Add folder to workspace…" Command="{Binding SelectedWorkspace.AddFolderCommand}" />
+          <MenuItem Header="Add folder to workspace…" Command="{Binding SelectedWorkspace.AddFolderCommand}" InputGesture="{Binding Keys[AddFolder], Source={x:Static svc:ShortcutService.Instance}}" />
           <Separator />
-          <MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" />
+          <MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" InputGesture="{Binding Keys[NewWorkspace], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
           <MenuItem Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
           <Separator />
-          <MenuItem Header="Exit" Click="OnExit" />
+          <MenuItem Header="Keyboard shortcuts…" Tag="KeyboardShortcuts" Click="OnMenuCommand"
+                    ToolTip.Tip="{Binding Tips[KeyboardShortcuts], Source={x:Static svc:ShortcutService.Instance}}" />
+          <Separator />
+          <MenuItem Header="Quit" Click="OnExit" InputGesture="{Binding Keys[Quit], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
         <MenuItem Header="_View">
           <MenuItem Header="Sidebar" ToggleType="CheckBox" IsChecked="{Binding ShowSidebar, Mode=OneWay}"
-                    Command="{Binding ToggleSidebarCommand}" InputGesture="Ctrl+B" />
+                    Command="{Binding ToggleSidebarCommand}" InputGesture="{Binding Keys[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}"
-                    Command="{Binding TogglePanelCommand}" InputGesture="Ctrl+J" />
-          <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" />
+                    Command="{Binding TogglePanelCommand}" InputGesture="{Binding Keys[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" InputGesture="{Binding Keys[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Switch diff between unified and split" Tag="ToggleDiffLayout" Click="OnMenuCommand" InputGesture="{Binding Keys[ToggleDiffLayout], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Author avatars">
             <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
                       Command="{Binding SetAvatarStyleCommand}" CommandParameter="Robots"
@@ -44,30 +46,47 @@
                       Command="{Binding SetAvatarStyleCommand}" CommandParameter="Initials"
                       ToolTip.Tip="Drawn here from the author's name; nothing is sent to Gravatar or GitHub" />
           </MenuItem>
+          <MenuItem Header="Compact folders" ToggleType="CheckBox" IsChecked="{Binding CompactFolders, Mode=OneWay}"
+                    Command="{Binding ToggleCompactFoldersCommand}"
+                    ToolTip.Tip="Show folders that only contain one folder, like src/main/java/com/example, as a single row" />
           <MenuItem Header="Fetch automatically every 3 minutes" ToggleType="CheckBox" IsChecked="{Binding AutoFetch, Mode=OneWay}"
                     Command="{Binding ToggleAutoFetchCommand}" />
           <Separator />
-          <MenuItem Header="{Binding ThemeLabel, StringFormat='Theme: {0}'}" Command="{Binding CycleThemeCommand}" />
+          <MenuItem Header="{Binding ThemeLabel, StringFormat='Theme: {0}'}" Command="{Binding CycleThemeCommand}" InputGesture="{Binding Keys[CycleTheme], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
         <MenuItem Header="_Repository">
-          <MenuItem Header="Find commits" Click="OnFind" InputGesture="Ctrl+F" />
-          <MenuItem Header="Refresh" Command="{Binding SelectedWorkspace.SelectedTab.RefreshCommand}" InputGesture="F5" />
-          <MenuItem Header="Fetch from all remotes" Command="{Binding SelectedWorkspace.SelectedTab.FetchCommand}" />
-          <MenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedTab.PullCommand}" />
-          <MenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedTab.PushCommand}" />
-          <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedTab.SyncNowCommand}" />
+          <MenuItem Header="Find commits" Tag="Find" Click="OnMenuCommand" InputGesture="{Binding Keys[Find], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Next match" Tag="FindNext" Click="OnMenuCommand" InputGesture="{Binding Keys[FindNext], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Previous match" Tag="FindPrevious" Click="OnMenuCommand" InputGesture="{Binding Keys[FindPrevious], Source={x:Static svc:ShortcutService.Instance}}" />
+          <Separator />
+          <MenuItem Header="Refresh" Command="{Binding SelectedWorkspace.SelectedRepoTab.RefreshCommand}" InputGesture="{Binding Keys[Refresh], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Fetch from all remotes" Command="{Binding SelectedWorkspace.SelectedRepoTab.FetchCommand}" InputGesture="{Binding Keys[Fetch], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedRepoTab.PullCommand}" InputGesture="{Binding Keys[Pull], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedRepoTab.PushCommand}" InputGesture="{Binding Keys[Push], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.SyncNowCommand}" InputGesture="{Binding Keys[Sync], Source={x:Static svc:ShortcutService.Instance}}" />
+          <Separator />
           <MenuItem Header="Show remote branches" ToggleType="CheckBox"
-                    IsChecked="{Binding SelectedWorkspace.SelectedTab.ShowRemotes, FallbackValue=False}" />
+                    IsChecked="{Binding SelectedWorkspace.SelectedRepoTab.ShowRemotes, FallbackValue=False}" />
+        </MenuItem>
+        <MenuItem Header="_Tabs">
+          <MenuItem Header="Next tab" Tag="NextTab" Click="OnMenuCommand" InputGesture="{Binding Keys[NextTab], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Previous tab" Tag="PreviousTab" Click="OnMenuCommand" InputGesture="{Binding Keys[PreviousTab], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Keep preview tab open" Tag="KeepTabOpen" Click="OnMenuCommand"
+                    ToolTip.Tip="{Binding Tips[KeepTabOpen], Source={x:Static svc:ShortcutService.Instance}}" />
+          <Separator />
+          <MenuItem Header="Close tab" Tag="CloseTab" Click="OnMenuCommand" InputGesture="{Binding Keys[CloseTab], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Close all tabs" Tag="CloseAllTabs" Click="OnMenuCommand"
+                    ToolTip.Tip="{Binding Tips[CloseAllTabs], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
       </Menu>
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0" VerticalAlignment="Center">
         <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}"
-                      ToolTip.Tip="Toggle sidebar (Ctrl+B)">
+                      ToolTip.Tip="{Binding Tips[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}">
           <ctl:IconView Data="{StaticResource I.Sidebar}" Width="15" Height="15" />
         </ToggleButton>
         <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}" Command="{Binding TogglePanelCommand}"
-                      ToolTip.Tip="Toggle commit details panel (Ctrl+J)">
+                      ToolTip.Tip="{Binding Tips[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}">
           <ctl:IconView Data="{StaticResource I.Panel}" Width="15" Height="15" />
         </ToggleButton>
       </StackPanel>
@@ -105,7 +124,7 @@
             </ItemsPanelTemplate>
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:RepoTabViewModel">
+            <DataTemplate x:DataType="vm:TabViewModel">
               <Grid RowDefinitions="2,*" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped">
                 <Grid.ContextMenu>
                   <ContextMenu>
@@ -118,11 +137,12 @@
                 <Border Grid.Row="0" Classes="tabline" />
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
                   <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
+                  <ctl:IconView Data="{StaticResource I.Folder}" Width="13" Height="13" IsVisible="{Binding IsFolder}" VerticalAlignment="Center" />
                   <TextBlock Classes="name" Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Classes="muted small" Text="{Binding BranchLabel}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
+                  <TextBlock Classes="muted small" Text="{Binding Subtitle}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
                   <Button Classes="ghost close" Padding="3" Margin="2,0,0,0"
                           Command="{Binding $parent[ListBox].((vm:WorkspaceViewModel)DataContext).CloseTabCommand}"
-                          CommandParameter="{Binding}" ToolTip.Tip="Close tab">
+                          CommandParameter="{Binding}" ToolTip.Tip="{Binding Tips[CloseTab], Source={x:Static svc:ShortcutService.Instance}}">
                     <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
                   </Button>
                 </StackPanel>
@@ -148,7 +168,10 @@
         </Grid>
       </Border>
 
-      <v:RepoTabView Grid.Row="1" DataContext="{Binding SelectedTab}" IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).HasTabs}" />
+      <v:RepoTabView Grid.Row="1" DataContext="{Binding SelectedRepoTab}"
+                     IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <v:FolderTabView Grid.Row="1" DataContext="{Binding SelectedFolderTab}"
+                       IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).SelectedFolderTab, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- Nothing open yet -->
       <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420"
@@ -168,4 +191,11 @@
     </Grid>
   </Grid>
   </DockPanel>
+
+  <!-- While a two-key shortcut (Ctrl+K …) waits for its second key -->
+  <Border x:Name="ChordHintBorder" Classes="toast" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,24"
+          IsHitTestVisible="False">
+    <TextBlock x:Name="ChordHint" Classes="small" />
+  </Border>
+  </Panel>
 </Window>

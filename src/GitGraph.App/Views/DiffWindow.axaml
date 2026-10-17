@@ -13,28 +13,31 @@
     <!-- File and range -->
     <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
       <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Spacing="2">
-          <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Classes="title mono" Text="{Binding Path}" VerticalAlignment="Center" Background="Transparent">
-              <TextBlock.ContextMenu>
-                <ContextMenu>
-                  <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
-                  <MenuItem Header="Copy full path" Command="{Binding CopyFullPathCommand}" />
-                </ContextMenu>
-              </TextBlock.ContextMenu>
-            </TextBlock>
-            <Button Classes="ghost" Padding="4" Margin="-6,0,0,0" Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path">
-              <Panel>
-                <ctl:IconView Data="{StaticResource I.Copy}" Width="14" Height="14" IsVisible="{Binding !IsCopied}" />
-                <ctl:IconView Data="{StaticResource I.Check}" Width="14" Height="14" IsVisible="{Binding IsCopied}" Foreground="{DynamicResource AddFgBrush}" />
-              </Panel>
-            </Button>
-            <TextBlock Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" />
-            <TextBlock Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="-6,0,0,0" />
+        <!-- A long path trims from the left, so the file name stays visible; the full path is in the tooltip. -->
+        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*">
+          <Button Classes="ghost" Padding="4" Margin="-8,0,4,0" Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path">
+            <Panel>
+              <ctl:IconView Data="{StaticResource I.Copy}" Width="14" Height="14" IsVisible="{Binding !IsCopied}" />
+              <ctl:IconView Data="{StaticResource I.Check}" Width="14" Height="14" IsVisible="{Binding IsCopied}" Foreground="{DynamicResource AddFgBrush}" />
+            </Panel>
+          </Button>
+          <TextBlock Grid.Column="1" Classes="title mono" Text="{Binding Path}" VerticalAlignment="Center" Background="Transparent"
+                     TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding Path}" Margin="0,0,16,0">
+            <TextBlock.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
+                <MenuItem Header="Copy full path" Command="{Binding CopyFullPathCommand}" />
+              </ContextMenu>
+            </TextBlock.ContextMenu>
+          </TextBlock>
+          <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,2,0,0">
+            <TextBlock Classes="add mono small" Text="{Binding AddText}" VerticalAlignment="Center" />
+            <TextBlock Classes="del mono small" Text="{Binding DelText}" VerticalAlignment="Center" Margin="-4,0,0,0" />
+            <TextBlock Classes="muted small" Text="{Binding Range}" VerticalAlignment="Center" />
           </StackPanel>
-          <TextBlock Classes="muted small" Text="{Binding OldPath, StringFormat='Renamed from {0}'}" IsVisible="{Binding HasOldPath}" />
-          <TextBlock Classes="muted small" Text="{Binding Range}" />
-        </StackPanel>
+          <TextBlock Grid.Row="2" Grid.Column="1" Classes="muted small" Text="{Binding OldPath, StringFormat='Renamed from {0}'}"
+                     IsVisible="{Binding HasOldPath}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding OldPath}" />
+        </Grid>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
           <Button Classes="ghost text" Command="{Binding ExpandAllCommand}" IsVisible="{Binding HasFolds}"
                   ToolTip.Tip="Show every unchanged line">

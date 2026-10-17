@@ -19,7 +19,11 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         Config = config;
         _host = host;
         _name = config.Name;
-        foreach (var f in config.Folders) Folders.Add(f);
+        foreach (var f in config.Folders)
+        {
+            Folders.Add(f);
+            FolderNodes.Add(new FolderNodeViewModel(f, this));
+        }
         Tabs.CollectionChanged += (_, _) => CloseTabsToRightCommand.NotifyCanExecuteChanged();
     }
 
@@ -33,11 +37,17 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<string> Folders { get; } = [];
     public ObservableCollection<RepoNodeViewModel> Repos { get; } = [];
-    public ObservableCollection<RepoTabViewModel> Tabs { get; } = [];
+    /// <summary>The sidebar's folder rows; selecting one opens a folder tab.</summary>
+    public ObservableCollection<FolderNodeViewModel> FolderNodes { get; } = [];
+    public ObservableCollection<TabViewModel> Tabs { get; } = [];
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasTabs))]
-    private RepoTabViewModel? _selectedTab;
+    [NotifyPropertyChangedFor(nameof(HasTabs), nameof(SelectedRepoTab), nameof(SelectedFolderTab))]
+    private TabViewModel? _selectedTab;
+
+    /// <summary>The selected tab when it shows a repository; menus and shortcuts for git act on it.</summary>
+    public RepoTabViewModel? SelectedRepoTab => SelectedTab as RepoTabViewModel;
+    public FolderTabViewModel? SelectedFolderTab => SelectedTab as FolderTabViewModel;
 
     [ObservableProperty]
     private bool _isScanning;
@@ -48,10 +58,12 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     partial void OnIsScanningChanged(bool value) => OnPropertyChanged(nameof(HasNoRepos));
 
-    partial void OnSelectedTabChanged(RepoTabViewModel? value)
+    partial void OnSelectedTabChanged(TabViewModel? value)
     {
-        Config.ActiveTab = value?.Path;
-        foreach (var r in Repos) r.MarkActive(value?.Path);
+        Config.ActiveTab = value?.StateKey;
+        var repoPath = value is RepoTabViewModel ? value.Path : null;
+        foreach (var r in Repos) r.MarkActive(repoPath);
+        foreach (var f in FolderNodes) f.IsActive = value is FolderTabViewModel && PathEquals(f.Path, value.Path);
         value?.EnsureLoaded();
         if (_tabsRestored) _host.SaveState();
     }
@@ -97,9 +109,16 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     {
         if (_tabsRestored) return;
         _tabsRestored = true;
-        foreach (var path in Config.OpenTabs.Where(Directory.Exists))
-            Tabs.Add(new RepoTabViewModel(path, this, _host) { IsPreview = PathEquals(path, Config.PreviewTab ?? "") });
-        SelectedTab = Tabs.FirstOrDefault(t => t.Path == Config.ActiveTab) ?? Tabs.FirstOrDefault();
+        foreach (var key in Config.OpenTabs)
+        {
+            TabViewModel tab = key.StartsWith(FolderPrefix, StringComparison.Ordinal)
+                ? new FolderTabViewModel(key[FolderPrefix.Length..], this, _host)
+                : new RepoTabViewModel(key, this, _host);
+            if (!Directory.Exists(tab.Path)) continue;
+            tab.IsPreview = tab.StateKey == Config.PreviewTab;
+            Tabs.Add(tab);
+        }
+        SelectedTab = Tabs.FirstOrDefault(t => t.StateKey == Config.ActiveTab) ?? Tabs.FirstOrDefault();
         // Nothing open yet: show the first repository so the window is never empty when there is something to show.
         if (SelectedTab is null && Repos.Count > 0) OpenTab(Repos[0].MainPath);
     }
@@ -108,12 +127,23 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     /// Shows a repository. A single click opens it as the preview tab, taking the place of the
     /// previous preview; <paramref name="pin"/> (a double-click or an explicit action) keeps it open.
     /// </summary>
-    public void OpenTab(string path, bool pin = false)
+    public void OpenTab(string path, bool pin = false) =>
+        Open(new RepoTabViewModel(path, this, _host), pin);
+
+    /// <summary>Shows a folder's files; preview and pinning work as for repositories.</summary>
+    public void OpenFolderTab(string path, bool pin = false) =>
+        Open(new FolderTabViewModel(path, this, _host), pin);
+
+    private const string FolderPrefix = "folder:";
+
+    private void Open(TabViewModel candidate, bool pin)
     {
-        var tab = Tabs.FirstOrDefault(t => PathEquals(t.Path, path));
+        var tab = Tabs.FirstOrDefault(t => t.GetType() == candidate.GetType() && PathEquals(t.Path, candidate.Path));
+        if (tab != null) candidate.Dispose();
         if (tab is null)
         {
-            tab = new RepoTabViewModel(path, this, _host) { IsPreview = !pin };
+            tab = candidate;
+            tab.IsPreview = !pin;
             var preview = pin ? null : Tabs.FirstOrDefault(t => t.IsPreview);
             if (preview != null)
             {
@@ -131,7 +161,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void PinTab(RepoTabViewModel tab)
+    private void PinTab(TabViewModel tab)
     {
         if (!tab.IsPreview) return;
         tab.IsPreview = false;
@@ -139,7 +169,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private void CloseTab(RepoTabViewModel tab)
+    private void CloseTab(TabViewModel tab)
     {
         var index = Tabs.IndexOf(tab);
         if (index < 0) return;
@@ -151,19 +181,19 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand(CanExecute = nameof(HasTabsToRight))]
-    private void CloseTabsToRight(RepoTabViewModel tab)
+    private void CloseTabsToRight(TabViewModel tab)
     {
         var index = Tabs.IndexOf(tab);
         if (index < 0) return;
         CloseTabs(Tabs.Skip(index + 1).ToList(), keep: tab);
     }
 
-    private bool HasTabsToRight(RepoTabViewModel? tab) => tab != null && Tabs.IndexOf(tab) is var i && i >= 0 && i < Tabs.Count - 1;
+    private bool HasTabsToRight(TabViewModel? tab) => tab != null && Tabs.IndexOf(tab) is var i && i >= 0 && i < Tabs.Count - 1;
 
     [RelayCommand]
     private void CloseAllTabs() => CloseTabs(Tabs.ToList(), keep: null);
 
-    private void CloseTabs(List<RepoTabViewModel> closing, RepoTabViewModel? keep)
+    private void CloseTabs(List<TabViewModel> closing, TabViewModel? keep)
     {
         if (closing.Count == 0) return;
         foreach (var t in closing)
@@ -178,8 +208,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     private void PersistTabs()
     {
-        Config.OpenTabs = Tabs.Select(t => t.Path).ToList();
-        Config.PreviewTab = Tabs.FirstOrDefault(t => t.IsPreview)?.Path;
+        Config.OpenTabs = Tabs.Select(t => t.StateKey).ToList();
+        Config.PreviewTab = Tabs.FirstOrDefault(t => t.IsPreview)?.StateKey;
         _host.SaveState();
     }
 
@@ -191,6 +221,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         path = System.IO.Path.TrimEndingDirectorySeparator(path);
         if (Folders.Any(f => PathEquals(f, path))) return;
         Folders.Add(path);
+        FolderNodes.Add(new FolderNodeViewModel(path, this));
         Config.Folders = Folders.ToList();
         OnPropertyChanged(nameof(HasFolders));
         _host.SaveState();
@@ -201,6 +232,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private async Task RemoveFolder(string path)
     {
         Folders.Remove(path);
+        if (FolderNodes.FirstOrDefault(f => f.Path == path) is { } node) FolderNodes.Remove(node);
+        if (Tabs.FirstOrDefault(t => t is FolderTabViewModel && PathEquals(t.Path, path)) is { } open) CloseTab(open);
         Config.Folders = Folders.ToList();
         OnPropertyChanged(nameof(HasFolders));
         _host.SaveState();
@@ -251,14 +284,14 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         {
             foreach (var r in Repos.ToList())
             {
-                var tab = Tabs.FirstOrDefault(t => r.Contains(t.Path));
+                var tab = Tabs.OfType<RepoTabViewModel>().FirstOrDefault(t => r.Contains(t.Path));
                 if (tab != null) await tab.AutoFetchAsync();
                 else
                 {
                     try { await new GitRepository(r.MainPath).FetchAsync(); }
                     catch (GitException) { }
                 }
-                foreach (var t in Tabs.Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshAsync();
+                foreach (var t in Tabs.OfType<RepoTabViewModel>().Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshAsync();
             }
             await LoadSyncAsync();
         }
@@ -448,8 +481,37 @@ internal static class WorktreeActions
         }
         catch (GitException e) { ws.Host.ReportError(e.Message); return; }
 
-        var tab = ws.Tabs.FirstOrDefault(t => WorkspaceViewModel.PathEquals(t.Path, wtPath));
+        var tab = ws.Tabs.OfType<RepoTabViewModel>().FirstOrDefault(t => WorkspaceViewModel.PathEquals(t.Path, wtPath));
         if (tab != null) ws.CloseTabCommand.Execute(tab);
         await ws.RefreshRepoAsync(repoPath);
     }
+}
+
+/// <summary>A folder row in the sidebar: a single click previews its files, a double-click keeps the tab.</summary>
+public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel workspace) : ObservableObject
+{
+    public string Path { get; } = path;
+    public string Name { get; } = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
+    public WorkspaceViewModel Workspace { get; } = workspace;
+
+    [ObservableProperty]
+    private bool _isActive;
+
+    [RelayCommand]
+    private void Open() => Workspace.OpenFolderTab(Path);
+
+    [RelayCommand]
+    private void Pin() => Workspace.OpenFolderTab(Path, pin: true);
+
+    [RelayCommand]
+    private void OpenInVsCode()
+    {
+        if (ExternalTools.OpenInVsCode(Path) is { } error) Workspace.Host.ReportError(error);
+    }
+
+    [RelayCommand]
+    private Task CopyPath() => Workspace.Host.Dialogs.CopyTextAsync(Path);
+
+    [RelayCommand]
+    private Task Remove() => Workspace.RemoveFolderCommand.ExecuteAsync(Path);
 }

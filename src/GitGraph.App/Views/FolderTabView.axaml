@@ -1,0 +1,135 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:ctl="using:GitGraph.App.Controls"
+             xmlns:ae="using:AvaloniaEdit"
+             x:Class="GitGraph.App.Views.FolderTabView"
+             x:DataType="vm:FolderTabViewModel">
+  <UserControl.Resources>
+    <!-- The selected file gets the same amber wash as selections elsewhere. -->
+    <!-- Deep folders stay readable in a narrow tree: a smaller indent, and names trim instead of scrolling sideways. -->
+    <x:Double x:Key="TreeViewItemIndent">12</x:Double>
+    <SolidColorBrush x:Key="TreeViewItemBackgroundSelected" Color="{DynamicResource SignalWashColor}" />
+    <SolidColorBrush x:Key="TreeViewItemBackgroundSelectedPointerOver" Color="{DynamicResource SignalWashColor}" />
+    <SolidColorBrush x:Key="TreeViewItemBackgroundPointerOver" Color="{DynamicResource HoverWashColor}" />
+    <SolidColorBrush x:Key="TreeViewItemForegroundSelected" Color="{DynamicResource TextColor}" />
+    <SolidColorBrush x:Key="TreeViewItemForegroundSelectedPointerOver" Color="{DynamicResource TextColor}" />
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <!-- Open folders follow the view model, which remembers them for next time. -->
+    <Style Selector="TreeView.files TreeViewItem" x:DataType="vm:FileNodeViewModel">
+      <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+      <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <Grid x:Name="Columns" ColumnDefinitions="300,1,*">
+      <!-- The tree -->
+      <Grid RowDefinitions="Auto,*" Background="{DynamicResource SurfaceBrush}">
+        <Grid ColumnDefinitions="*,Auto" Margin="16,10,8,6">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <ctl:IconView Data="{StaticResource I.Folder}" Width="15" Height="15" VerticalAlignment="Center" />
+            <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+            <Button Classes="ghost" Padding="5" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Open the folder in VS Code">
+              <ctl:IconView Data="{StaticResource I.Code}" Width="15" Height="15" />
+            </Button>
+            <Button Classes="ghost" Padding="5" Command="{Binding RefreshTreeCommand}" ToolTip.Tip="Refresh">
+              <ctl:IconView Data="{StaticResource I.Refresh}" Width="14" Height="14" />
+            </Button>
+            <Button Classes="ghost" Padding="5" Command="{Binding CollapseAllCommand}" ToolTip.Tip="Collapse all folders">
+              <ctl:IconView Data="{StaticResource I.CollapseAll}" Width="14" Height="14" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <TreeView x:Name="Tree" Grid.Row="1" Classes="files" ItemsSource="{Binding Root.Children}"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="4,0,12,8">
+          <TreeView.ItemTemplate>
+            <TreeDataTemplate x:DataType="vm:FileNodeViewModel" ItemsSource="{Binding Children}">
+              <Grid ColumnDefinitions="Auto,*" Background="Transparent" ToolTip.Tip="{Binding RelativePath}">
+                <Grid.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+                  </ContextMenu>
+                </Grid.ContextMenu>
+                <Panel Margin="0,0,7,0">
+                  <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}" />
+                  <ctl:IconView Data="{StaticResource I.File}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsFile}" />
+                </Panel>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </TreeDataTemplate>
+          </TreeView.ItemTemplate>
+        </TreeView>
+      </Grid>
+
+      <GridSplitter x:Name="TreeSplitter" Grid.Column="1" Width="1" ResizeDirection="Columns" />
+
+      <!-- The selected file -->
+      <Grid x:Name="FileArea" Grid.Column="2" RowDefinitions="Auto,*">
+        <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="16,8,8,8" IsVisible="{Binding HasFile}">
+          <!-- A long path trims from the left, so the file name stays visible; the full path is in the tooltip. -->
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+            <TextBlock Grid.Column="1" Classes="mono" Text="{Binding FilePath}" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis"
+                       Background="Transparent" ToolTip.Tip="{Binding FilePath}" Margin="4,0,0,0">
+              <TextBlock.ContextMenu>
+                <ContextMenu>
+                  <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" CommandParameter="{x:Null}" />
+                  <MenuItem Header="Copy full path" Command="{Binding CopyFullPathCommand}" CommandParameter="{x:Null}" />
+                </ContextMenu>
+              </TextBlock.ContextMenu>
+            </TextBlock>
+            <Button Grid.Column="0" Classes="ghost" Padding="4" Margin="-6,0,0,0" Command="{Binding CopyPathCommand}" CommandParameter="{x:Null}"
+                    ToolTip.Tip="Copy path">
+              <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" />
+            </Button>
+            <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding FileInfo}" VerticalAlignment="Center" Margin="12,0,8,0" />
+            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
+              <Button Classes="ghost text" Command="{Binding CopyContentsCommand}" ToolTip.Tip="Copy the whole file">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" VerticalAlignment="Center" />
+                  <TextBlock Classes="small" Text="Copy contents" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+              <Button Classes="ghost text" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{Binding SelectedNode}" ToolTip.Tip="Open this file in VS Code">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <ctl:IconView Data="{StaticResource I.Code}" Width="14" Height="14" VerticalAlignment="Center" />
+                  <TextBlock Classes="small" Text="Open in VS Code" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="1" Classes="muted" Text="Select a file to see what's in it." HorizontalAlignment="Center" VerticalAlignment="Center"
+                   IsVisible="{Binding !HasFile}" />
+        <TextBlock Grid.Row="1" Classes="muted" Text="{Binding FileMessage}" Margin="16" TextWrapping="Wrap"
+                   IsVisible="{Binding FileMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding Image, Converter={x:Static ObjectConverters.IsNotNull}}" HorizontalScrollBarVisibility="Auto">
+          <Image Source="{Binding Image}" Stretch="None" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16" />
+        </ScrollViewer>
+        <!-- AvaloniaEdit, read-only: TextMate highlighting as in VS Code, selection across lines, Ctrl+F to search. -->
+        <ae:TextEditor x:Name="Editor" Grid.Row="1" IsReadOnly="True" ShowLineNumbers="True"
+                       FontFamily="{StaticResource CodeFont}" FontSize="{StaticResource FontSizeCode}"
+                       HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8,6,0,0"
+                       IsVisible="{Binding FileText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </Grid>
+    </Grid>
+
+    <!-- Confirms a copy, then fades out. -->
+    <Border Classes="toast" Classes.show="{Binding IsCopiedNoteVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+            Margin="0,0,16,16" IsHitTestVisible="False">
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <ctl:IconView Data="{StaticResource I.Check}" Width="13" Height="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
+        <TextBlock Classes="small" Text="{Binding CopiedNote}" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+  </Panel>
+</UserControl>

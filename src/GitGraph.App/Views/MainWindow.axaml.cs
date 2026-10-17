@@ -22,7 +22,7 @@ public partial class MainWindow : Window, IDialogService
             _lastActivated = DateTime.UtcNow;
             (DataContext as MainWindowViewModel)?.SelectedWorkspace.SelectedTab?.OnActivated();
         };
-        KeyDown += OnWindowKeyDown;
+        InitShortcuts();
         TabStrip.AddHandler(PointerWheelChangedEvent, OnTabStripWheel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         TabStrip.SelectionChanged += (_, _) =>
         {
@@ -53,16 +53,10 @@ public partial class MainWindow : Window, IDialogService
 
     private void OnExit(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
-    private void OnFind(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
-        this.GetVisualDescendants().OfType<RepoTabView>().FirstOrDefault(v => v.IsEffectivelyVisible)?.FocusFind();
-
-    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    /// <summary>Menu items that run a shortcut command name it in their Tag.</summary>
+    private void OnMenuCommand(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
-        {
-            this.GetVisualDescendants().OfType<RepoTabView>().FirstOrDefault(v => v.IsEffectivelyVisible)?.FocusFind();
-            e.Handled = true;
-        }
+        if (sender is MenuItem { Tag: string id }) RunShortcut(id);
     }
 
     public Task<string[]?> PromptAsync(string title, string? message, IReadOnlyList<PromptField> fields, string confirmText) =>

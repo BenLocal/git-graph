@@ -3,10 +3,10 @@
              xmlns:vm="using:GitGraph.App.ViewModels"
              xmlns:v="using:GitGraph.App.Views"
              xmlns:ctl="using:GitGraph.App.Controls"
+             xmlns:svc="using:GitGraph.App.Services"
              x:Class="GitGraph.App.Views.RepoTabView"
              x:DataType="vm:RepoTabViewModel">
   <UserControl.KeyBindings>
-    <KeyBinding Gesture="F5" Command="{Binding RefreshCommand}" />
     <KeyBinding Gesture="Escape" Command="{Binding ClearCompareCommand}" />
   </UserControl.KeyBindings>
 
@@ -15,7 +15,8 @@
     <!-- Toolbar -->
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="16,10,12,8">
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" />
+        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                   ToolTip.Tip="{Binding Path}" />
         <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal" Spacing="6">
             <ctl:IconView Data="{StaticResource I.Worktree}" Width="12" Height="12" IsVisible="{Binding IsWorktree}"
@@ -54,7 +55,7 @@
                   ToolTip.Tip="Include remote-tracking branches in the graph" />
 
         <Panel Width="230" VerticalAlignment="Center">
-          <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="Find commits"
+          <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
                    ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous.">
             <TextBox.KeyBindings>
               <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" />
@@ -66,18 +67,18 @@
           </TextBox>
           <ctl:IconView Data="{StaticResource I.Search}" Width="14" Height="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
         </Panel>
-        <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="Previous match (Shift+Enter)">
+        <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="{Binding Tips[FindPrevious], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Shift+Enter in the find box'}">
           <ctl:IconView Data="{StaticResource I.ChevronUp}" />
         </Button>
-        <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="Next match (Enter)">
+        <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="{Binding Tips[FindNext], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Enter in the find box'}">
           <ctl:IconView Data="{StaticResource I.Chevron}" />
         </Button>
 
         <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
-        <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="Fetch from all remotes">
+        <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
           <ctl:IconView Data="{StaticResource I.Fetch}" />
         </Button>
-        <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="Refresh (F5)">
+        <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding Tips[Refresh], Source={x:Static svc:ShortcutService.Instance}}">
           <ctl:IconView Data="{StaticResource I.Refresh}" />
         </Button>
       </StackPanel>

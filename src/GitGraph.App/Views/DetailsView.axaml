@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:GitGraph.App.ViewModels"
              xmlns:ctl="using:GitGraph.App.Controls"
+             xmlns:svc="using:GitGraph.App.Services"
              x:Class="GitGraph.App.Views.DetailsView"
              x:DataType="vm:DetailsViewModel"
              Background="{DynamicResource SurfaceBrush}">
@@ -17,8 +18,24 @@
         <!-- The full commit message and its metadata -->
         <TabItem Header="Commit">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <StackPanel Margin="20,14,20,16" Spacing="10" MaxWidth="880" HorizontalAlignment="Left">
-              <SelectableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap" />
+            <StackPanel x:Name="MessagePage" Margin="20,14,20,16" Spacing="10" MaxWidth="880" HorizontalAlignment="Left" Background="Transparent">
+              <!-- Right-click anywhere in the message: copy what's selected, or the whole message. -->
+              <StackPanel.ContextMenu>
+                <ContextMenu x:Name="MessageMenu">
+                  <MenuItem x:Name="CopySelectionItem" Header="Copy selected text" Click="OnCopySelection" InputGesture="Ctrl+C" />
+                  <MenuItem Header="Copy message" Command="{Binding CopyMessageCommand}" />
+                  <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}"
+                            IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </ContextMenu>
+              </StackPanel.ContextMenu>
+              <Grid ColumnDefinitions="*,Auto">
+                <SelectableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap" />
+                <Button Grid.Column="1" Classes="ghost" Padding="5" Margin="12,-2,0,0" VerticalAlignment="Top"
+                        Command="{Binding CopyMessageCommand}" ToolTip.Tip="Copy message"
+                        IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <ctl:IconView Data="{StaticResource I.Copy}" Width="14" Height="14" />
+                </Button>
+              </Grid>
               <TextBlock Classes="muted" Text="{Binding RangeText}" TextWrapping="Wrap"
                          IsVisible="{Binding RangeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
@@ -69,7 +86,7 @@
                        ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileChangeViewModel">
-                    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
                           ToolTip.Tip="{Binding Tooltip}">
                       <Grid.ContextMenu>
                         <ContextMenu>
@@ -82,11 +99,13 @@
                       </Grid.ContextMenu>
                       <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
                                  Text="{Binding Status}" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" Margin="6,0,8,0" />
-                      <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Directory}" VerticalAlignment="Center"
-                                 TextTrimming="LeadingCharacterEllipsis" />
-                      <TextBlock Grid.Column="3" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11.5" />
-                      <TextBlock Grid.Column="4" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" />
+                      <!-- Name and folder share one line that trims at the end, so the counts always stay visible. -->
+                      <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding FileName}" />
+                        <Run Text="{Binding Directory}" FontSize="{StaticResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
+                      </TextBlock>
+                      <TextBlock Grid.Column="2" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11.5" />
+                      <TextBlock Grid.Column="3" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" />
                     </Grid>
                   </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -98,9 +117,11 @@
             <!-- Diff of the selected file -->
             <Grid x:Name="DiffArea" Grid.Column="2" RowDefinitions="Auto,*" Background="{DynamicResource CanvasBrush}">
               <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SurfaceBrush}" Padding="14,4,8,4">
+                <!-- A long path trims from the left, so the file name stays visible; the full path is in the tooltip. -->
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                  <TextBlock Classes="mono" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis"
-                             Text="{Binding SelectedFile.Change.Path, FallbackValue=''}" Background="Transparent">
+                  <TextBlock Grid.Column="1" Classes="mono" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis" Margin="4,0,12,0"
+                             Text="{Binding SelectedFile.Change.Path, FallbackValue=''}" Background="Transparent"
+                             ToolTip.Tip="{Binding SelectedFile.Change.Path, FallbackValue=''}">
                     <TextBlock.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
@@ -108,7 +129,7 @@
                       </ContextMenu>
                     </TextBlock.ContextMenu>
                   </TextBlock>
-                  <Button Grid.Column="1" Classes="ghost" Padding="4" Margin="4,0,0,0" HorizontalAlignment="Left"
+                  <Button Grid.Column="0" Classes="ghost" Padding="4" Margin="-6,0,0,0"
                           Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path" IsVisible="{Binding HasDiff}">
                     <ctl:IconView Data="{StaticResource I.Copy}" Width="13" Height="13" />
                   </Button>
@@ -155,13 +176,13 @@
     <!-- Panel actions on the right of the tab strip, as in VS Code. -->
     <StackPanel Orientation="Horizontal" Spacing="2" Height="34" Margin="0,0,8,0"
                 HorizontalAlignment="Right" VerticalAlignment="Top">
-      <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="Maximize panel size" IsVisible="{Binding !IsMaximized}">
+      <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="{Binding Tips[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" IsVisible="{Binding !IsMaximized}">
         <ctl:IconView Data="{StaticResource I.ChevronUp}" Width="14" Height="14" />
       </Button>
       <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="Restore panel size" IsVisible="{Binding IsMaximized}">
         <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" />
       </Button>
-      <Button Classes="ghost" Command="{Binding ClosePanelCommand}" ToolTip.Tip="Hide panel (Ctrl+J)">
+      <Button Classes="ghost" Command="{Binding ClosePanelCommand}" ToolTip.Tip="{Binding Tips[TogglePanel], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Hide panel. {0}'}">
         <ctl:IconView Data="{StaticResource I.Close}" Width="14" Height="14" />
       </Button>
     </StackPanel>

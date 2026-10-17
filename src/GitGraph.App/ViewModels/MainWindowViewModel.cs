@@ -16,6 +16,9 @@ public interface IAppHost
     bool ShowRemoteBranches { get; }
     bool SplitDiff { get; set; }
     bool ShowDetailsPanel { get; set; }
+    /// <summary>The remembered state of a folder tab; changes are kept by <see cref="SaveState"/>.</summary>
+    FolderViewState FolderView(string folder);
+    bool CompactFolders { get; }
     void ReportError(string message);
     void SaveState();
 }
@@ -31,6 +34,12 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         _store = store;
         _state = store.Load();
         Services.AvatarService.UseImages = _state.AvatarStyle != "Initials";
+        Services.ShortcutService.Instance.Load(_state.Keybindings);
+        Services.ShortcutService.Instance.Changed += () =>
+        {
+            _state.Keybindings = Services.ShortcutService.Instance.Overrides.ToDictionary();
+            SaveState();
+        };
         foreach (var w in _state.Workspaces) Workspaces.Add(new WorkspaceViewModel(w, this));
         _selectedWorkspace = Workspaces.FirstOrDefault(w => w.Config.Id == _state.ActiveWorkspaceId) ?? Workspaces[0];
         _selectedWorkspace.EnsureScanned();
@@ -63,6 +72,29 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
             _state.SplitDiff = value;
             SaveState();
         }
+    }
+
+    public bool CompactFolders
+    {
+        get => _state.CompactFolders;
+        set
+        {
+            if (_state.CompactFolders == value) return;
+            _state.CompactFolders = value;
+            OnPropertyChanged();
+            SaveState();
+            foreach (var tab in Workspaces.SelectMany(w => w.Tabs).OfType<FolderTabViewModel>()) tab.Rebuild();
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleCompactFolders() => CompactFolders = !CompactFolders;
+
+    public FolderViewState FolderView(string folder)
+    {
+        var key = System.IO.Path.TrimEndingDirectorySeparator(folder);
+        if (!_state.FolderViews.TryGetValue(key, out var view)) _state.FolderViews[key] = view = new FolderViewState();
+        return view;
     }
 
     public bool ShowDetailsPanel
@@ -145,7 +177,7 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     [RelayCommand]
     private void ToggleMaximizePanel()
     {
-        if (SelectedWorkspace.SelectedTab?.Details is not { } details) return;
+        if (SelectedWorkspace.SelectedRepoTab?.Details is not { } details) return;
         if (!ShowDetailsPanel)
         {
             ShowDetailsPanel = true;

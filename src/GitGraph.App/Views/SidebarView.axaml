@@ -55,19 +55,28 @@
             <ctl:IconView Data="{StaticResource I.FolderPlus}" Width="15" Height="15" />
           </Button>
         </Grid>
-        <ItemsControl ItemsSource="{Binding Folders}">
+        <!-- A single click previews the folder's files in a tab; a double-click keeps the tab. -->
+        <ItemsControl ItemsSource="{Binding FolderNodes}">
           <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="x:String">
-              <Grid ColumnDefinitions="Auto,*,Auto" Margin="6,0,0,0" Height="26" Background="Transparent" ToolTip.Tip="{Binding}">
-                <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
-                           Text="{Binding Converter={x:Static vm:Converters.FileName}}" />
-                <Button Grid.Column="2" Classes="ghost" Padding="3" ToolTip.Tip="Remove from workspace"
-                        Command="{Binding $parent[ItemsControl].((vm:WorkspaceViewModel)DataContext).RemoveFolderCommand}"
-                        CommandParameter="{Binding}">
-                  <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
-                </Button>
-              </Grid>
+            <DataTemplate x:DataType="vm:FolderNodeViewModel">
+              <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Path}">
+                <Button.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Open files" Command="{Binding OpenCommand}" />
+                    <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+                    <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
+                    <Separator />
+                    <MenuItem Header="Remove from workspace" Command="{Binding RemoveCommand}" />
+                  </ContextMenu>
+                </Button.ContextMenu>
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="name" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+                  <Button Grid.Column="2" Classes="ghost hover" Padding="3" ToolTip.Tip="Remove from workspace" Command="{Binding RemoveCommand}">
+                    <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
+                  </Button>
+                </Grid>
+              </Button>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

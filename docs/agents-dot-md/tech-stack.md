@@ -20,7 +20,8 @@ Structure and design trade-offs are in `architecture.md`.
 | Serialization | System.Text.Json | BCL | source generator |
 | Text diff | DiffPlex | 1.9.0 | line diff plus word diff inside modified lines (`Diff/TextDiff.cs`) |
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
-| Fonts | IBM Plex Sans / Mono | bundled in `Assets/Fonts` (OFL) | |
+| Fonts | IBM Plex Sans (UI); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
+| Code viewer | AvaloniaEdit + AvaloniaEdit.TextMate | 12.0.0 | read-only file view in folder tabs; Dark+/Light+ follow the theme |
 
 ## 3. Conventions
 

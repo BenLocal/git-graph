@@ -343,6 +343,12 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     [RelayCommand]
     private Task CopyHash() => CopyAsync(HashText, "Commit hash copied");
 
+    /// <summary>The whole message as written: subject, blank line, body (Markdown source, not the rendering).</summary>
+    [RelayCommand]
+    private Task CopyMessage() => CopyAsync(Body is null ? Heading : $"{Heading}\n\n{Body}", "Message copied");
+
+    public Task CopyTextAsync(string text) => CopyAsync(text, "Copied");
+
     private string FullPath(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(repo.Path, relative));
 
     private async Task CopyAsync(string? text, string note)

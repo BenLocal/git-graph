@@ -76,7 +76,12 @@ def make_atlas(projects):
            "Parsing the style JSON on every tile render was the slowest step in profiles.\n\n"
            "- Keep parsed sheets in an **LRU cache** keyed by URL\n"
            "- Drop entries when `style.json` changes\n\n"
-           "See https://example.com/atlas/issues/42 for the profile.", JONAS)
+           "See https://example.com/atlas/issues/42 for the profile.\n\n"
+           "Benchmarks on the sample city:\n"
+           "before: 41 ms per tile\n"
+           "after: 9 ms per tile\n\n"
+           "Reviewed-by: Mei Lin <mei@example.com>\n"
+           "Co-authored-by: Ana Souza <ana@example.com>", JONAS)
     commit(atlas, "CHANGELOG.md", "0.2.1", "2026-09-13T17:45", "Prepare 0.2.1 changelog", MEI)
     git(atlas, "checkout", "-q", "-b", "release/0.3")
     commit(atlas, "package.json", "0.3.0", "2026-09-14T09:00", "Bump version to 0.3.0", MEI)

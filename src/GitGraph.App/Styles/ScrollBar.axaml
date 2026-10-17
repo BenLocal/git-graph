@@ -1,0 +1,63 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    Scrollbars as in VS Code: a thin rounded slider on a transparent track, no arrow buttons.
+    Faint at rest, stronger while the pointer is over it, strongest while dragging.
+  -->
+  <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <Track Name="PART_Track"
+                 Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                 Value="{TemplateBinding Value, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}"
+                 Orientation="{TemplateBinding Orientation}" IsDirectionReversed="{TemplateBinding Orientation, Converter={x:Static ObjectConverters.Equal}, ConverterParameter={x:Static Orientation.Vertical}}">
+            <Track.DecreaseButton>
+              <RepeatButton Name="PART_PageUpButton" Classes="scrollpage" Focusable="False" />
+            </Track.DecreaseButton>
+            <Track.IncreaseButton>
+              <RepeatButton Name="PART_PageDownButton" Classes="scrollpage" Focusable="False" />
+            </Track.IncreaseButton>
+            <Thumb Name="thumb" />
+          </Track>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:vertical">
+      <Setter Property="Width" Value="10" />
+    </Style>
+    <Style Selector="^:horizontal">
+      <Setter Property="Height" Value="10" />
+    </Style>
+
+    <Style Selector="^ /template/ RepeatButton.scrollpage">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ Thumb#thumb">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" CornerRadius="5" Margin="2" />
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Background" Value="{DynamicResource ScrollThumbBrush}" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ Thumb#thumb">
+      <Setter Property="Background" Value="{DynamicResource ScrollThumbHoverBrush}" />
+    </Style>
+    <Style Selector="^ /template/ Thumb#thumb:pressed">
+      <Setter Property="Background" Value="{DynamicResource ScrollThumbActiveBrush}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

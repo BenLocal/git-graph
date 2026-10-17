@@ -35,6 +35,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 |---|---|---|
 | Top-level state | `MainWindowViewModel` | Workspace list, theme, global error bar; implements `IAppHost` |
 | Workspace | `WorkspaceViewModel` / `RepoNodeViewModel` / `WorktreeNodeViewModel` | Folders, discovered repositories and worktrees, open tabs |
+| Tabs | `TabViewModel` (base) | A tab is a repository (`RepoTabViewModel`) or a folder (`FolderTabViewModel`, tree + file viewer, state in `AppState.FolderViews`); saved in the workspace by `StateKey` (`folder:` prefix for folders) |
 | Repository tab | `RepoTabViewModel` / `CommitRowViewModel` | Load commits, refs and worktrees; build rows and badges; find, compare, context-menu commands; watch `.git` |
 | Details | `DetailsViewModel` | Two tabs: Commit (full message and metadata) and Changes (file list and per-file diff, unified or split) |
 | Views | `Views/*.axaml` | Bindings and a little keyboard and pointer handling only |
@@ -70,5 +71,6 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 ## 7. Extension points
 
 - New git operation: add a method to `GitRepository` → add a `[RelayCommand]` to `RepoTabViewModel` / `CommitRowViewModel` → add it to the context menu in `RepoTabView.axaml`. Use `IDialogService.PromptAsync` when input is needed.
+- New keyboard-shortcut command: add it to `ShortcutService.Commands` (default gesture matching VS Code if VS Code has the command) and its action to the table in `Views/MainWindow.Shortcuts.cs`. Show it in menus with `InputGesture="{Binding Keys[Id], Source={x:Static svc:ShortcutService.Instance}}"` and in tooltips with `Tips[Id]`; never hard-code a key in a tooltip or `KeyBinding`.
 - New icon: add a stroke geometry on the 24-unit grid to `Styles/Icons.axaml` and show it with `IconView`.
 - Not allowed: starting git with `new Process` in a view model; referencing Avalonia from Core; hard-coding colors in axaml.

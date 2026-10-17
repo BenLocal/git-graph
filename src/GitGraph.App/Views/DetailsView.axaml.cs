@@ -15,6 +15,7 @@ public partial class DetailsView : UserControl
     {
         InitializeComponent();
         FileList.DoubleTapped += OnFileDoubleTapped;
+        MessageMenu.Opening += (_, _) => CopySelectionItem.IsEnabled = SelectedMessageText() != null;
         FileList.KeyDown += (_, e) =>
         {
             if (e.Key != Key.Enter || DataContext is not DetailsViewModel vm) return;
@@ -36,6 +37,16 @@ public partial class DetailsView : UserControl
     {
         if (e.PropertyName == nameof(DetailsViewModel.Heading)) Motion.FadeIn(ContentRoot);
         else if (e.PropertyName == nameof(DetailsViewModel.DiffLines)) Motion.FadeIn(DiffArea);
+    }
+
+    /// <summary>Selection lives in one text block at a time; the menu copies whichever has some.</summary>
+    private string? SelectedMessageText() =>
+        MessagePage.GetVisualDescendants().OfType<SelectableTextBlock>()
+            .Select(t => t.SelectedText).FirstOrDefault(t => !string.IsNullOrEmpty(t));
+
+    private void OnCopySelection(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (SelectedMessageText() is { } text && _vm != null) _ = _vm.CopyTextAsync(text);
     }
 
     private void OnFileDoubleTapped(object? sender, TappedEventArgs e)

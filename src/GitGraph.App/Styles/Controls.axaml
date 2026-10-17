@@ -70,6 +70,42 @@
     </Style.Animations>
   </Style>
 
+  <!-- A keyboard shortcut drawn as key caps -->
+  <Style Selector="Border.keycap">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1,1,1,2" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="7,2" />
+  </Style>
+  <Style Selector="Border.keycap TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
+    <Setter Property="FontSize" Value="11.5" />
+  </Style>
+  <Style Selector="Border.keycap.large">
+    <Setter Property="Padding" Value="16,8" />
+  </Style>
+  <Style Selector="Border.keycap.large TextBlock">
+    <Setter Property="FontSize" Value="17" />
+  </Style>
+  <!-- A command whose shortcut differs from the default -->
+  <Style Selector="TextBlock.changed">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- The slider is easier to find while the pointer is over the area it scrolls, as in VS Code. -->
+  <Style Selector="ScrollViewer:pointerover /template/ ScrollBar">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ScrollViewer /template/ ScrollBar">
+    <Setter Property="Opacity" Value="0.6" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+
   <!-- Buttons -->
   <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.ghost /template/ ContentPresenter#PART_ContentPresenter, Button.nav /template/ ContentPresenter#PART_ContentPresenter, Button.fold /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Transitions">
@@ -187,6 +223,14 @@
   </Style>
   <Style Selector="ToggleButton.bar">
     <Setter Property="Padding" Value="5" />
+  </Style>
+
+  <!-- Row buttons that only show on hover, like the remove button on a sidebar folder -->
+  <Style Selector="Button.nav Button.hover">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="Button.nav:pointerover Button.hover">
+    <Setter Property="Opacity" Value="1" />
   </Style>
 
   <!-- Repository tabs: folder tabs on the frame; the selected one takes the sheet's colour and joins it. -->
@@ -460,6 +504,11 @@
 
   <!-- Diff lines -->
   <Style Selector="Grid.diffline TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
+    <Setter Property="FontSize" Value="{StaticResource FontSizeCode}" />
+    <Setter Property="LineHeight" Value="19" />
+  </Style>
+  <Style Selector="Grid.diffline SelectableTextBlock">
     <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
     <Setter Property="FontSize" Value="{StaticResource FontSizeCode}" />
     <Setter Property="LineHeight" Value="19" />

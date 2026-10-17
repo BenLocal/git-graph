@@ -14,7 +14,8 @@ namespace GitGraph.App.Views;
 /// GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
 /// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
-/// first, to exercise infinite scrolling; the row count is printed.
+/// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
+/// Keyboard Shortcuts window instead (any other value searches it).
 /// </summary>
 public partial class MainWindow
 {
@@ -26,7 +27,7 @@ public partial class MainWindow
         {
             if (DataContext is MainWindowViewModel vm &&
                 int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SELECT"), out var index) &&
-                vm.SelectedWorkspace.SelectedTab is { } tab && index < tab.Rows.Count)
+                vm.SelectedWorkspace.SelectedRepoTab is { } tab && index < tab.Rows.Count)
             {
                 tab.SelectedRow = tab.Rows[index];
                 if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_COMPARE"), out var other) && other < tab.Rows.Count)
@@ -51,13 +52,13 @@ public partial class MainWindow
                 }
                 list.Offset = list.Offset.WithY(list.Offset.Y - 200);
                 await Task.Delay(500);
-                if (DataContext is MainWindowViewModel m && m.SelectedWorkspace.SelectedTab is { } t)
+                if (DataContext is MainWindowViewModel m && m.SelectedWorkspace.SelectedRepoTab is { } t)
                     Console.WriteLine($"snapshot: {t.Rows.Count} rows, offset {list.Offset.Y:0}, extent {list.Extent.Height:0}");
             }
             Window target = this;
             var fullDiff = Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_FULLDIFF");
             if (fullDiff is "1" or "expanded" &&
-                DataContext is MainWindowViewModel main && main.SelectedWorkspace.SelectedTab is { } current)
+                DataContext is MainWindowViewModel main && main.SelectedWorkspace.SelectedRepoTab is { } current)
             {
                 await current.Details.OpenFullDiffCommand.ExecuteAsync(null);
                 await Task.Delay(1000);
@@ -67,6 +68,14 @@ public partial class MainWindow
                     diff.ExpandAllCommand.Execute(null);
                     await Task.Delay(500);
                 }
+            }
+            if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SHORTCUTS") is { Length: > 0 } filter)
+            {
+                RunShortcut("KeyboardShortcuts");
+                await Task.Delay(1000);
+                target = OwnedWindows.LastOrDefault() ?? this;
+                if (filter != "1" && target.DataContext is ShortcutsEditorViewModel editor) editor.Filter = filter;
+                await Task.Delay(300);
             }
             var size = new PixelSize((int)target.Bounds.Width, (int)target.Bounds.Height);
             using var bmp = new RenderTargetBitmap(size);

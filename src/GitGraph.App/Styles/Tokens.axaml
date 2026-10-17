@@ -5,13 +5,18 @@
     commits are stations on it. Everything around the graph stays in quiet slate so the lines carry the colour.
     The chrome (menu bar, sidebar, tab strip) sits on a darker frame; the open repository is one lit sheet in it.
   -->
-  <FontFamily x:Key="UiFont">avares://GitGraph/Assets/Fonts#IBM Plex Sans</FontFamily>
-  <FontFamily x:Key="CodeFont">avares://GitGraph/Assets/Fonts#IBM Plex Mono</FontFamily>
+  <!--
+    Code uses the same fonts as the user's Ghostty terminal (Ubuntu Sans Mono, Noto Sans CJK SC for Chinese,
+    DejaVu Sans Mono), falling back to the bundled IBM Plex Mono where those aren't installed.
+    The interface keeps IBM Plex Sans, with Noto Sans CJK SC for Chinese.
+  -->
+  <FontFamily x:Key="UiFont">avares://GitGraph/Assets/Fonts#IBM Plex Sans, Noto Sans CJK SC</FontFamily>
+  <FontFamily x:Key="CodeFont">Ubuntu Sans Mono, Noto Sans CJK SC, DejaVu Sans Mono, avares://GitGraph/Assets/Fonts#IBM Plex Mono</FontFamily>
 
   <x:Double x:Key="FontSizeSmall">11.5</x:Double>
   <x:Double x:Key="FontSizeBody">13</x:Double>
   <x:Double x:Key="FontSizeTitle">15</x:Double>
-  <x:Double x:Key="FontSizeCode">12.5</x:Double>
+  <x:Double x:Key="FontSizeCode">13</x:Double>
   <x:Double x:Key="RowHeight">26</x:Double>
 
   <ResourceDictionary.ThemeDictionaries>
@@ -37,6 +42,9 @@
       <Color x:Key="HunkBgColor">#222B3E</Color>
       <Color x:Key="HunkFgColor">#8EA2D4</Color>
       <Color x:Key="LinkColor">#7FA6F5</Color>
+      <Color x:Key="ScrollThumbColor">#30FFFFFF</Color>
+      <Color x:Key="ScrollThumbHoverColor">#55FFFFFF</Color>
+      <Color x:Key="ScrollThumbActiveColor">#80FFFFFF</Color>
       <Color x:Key="DangerColor">#F07167</Color>
 
       <Color x:Key="SystemAccentColor">#F2B33D</Color>
@@ -65,6 +73,9 @@
       <Color x:Key="HunkBgColor">#E8EEF8</Color>
       <Color x:Key="HunkFgColor">#4760A0</Color>
       <Color x:Key="LinkColor">#2F5FC4</Color>
+      <Color x:Key="ScrollThumbColor">#2A1C2330</Color>
+      <Color x:Key="ScrollThumbHoverColor">#501C2330</Color>
+      <Color x:Key="ScrollThumbActiveColor">#781C2330</Color>
       <Color x:Key="DangerColor">#C2382E</Color>
 
       <Color x:Key="SystemAccentColor">#B07206</Color>
@@ -93,5 +104,8 @@
   <SolidColorBrush x:Key="HunkBgBrush" Color="{DynamicResource HunkBgColor}" />
   <SolidColorBrush x:Key="HunkFgBrush" Color="{DynamicResource HunkFgColor}" />
   <SolidColorBrush x:Key="LinkBrush" Color="{DynamicResource LinkColor}" />
+  <SolidColorBrush x:Key="ScrollThumbBrush" Color="{DynamicResource ScrollThumbColor}" />
+  <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="{DynamicResource ScrollThumbHoverColor}" />
+  <SolidColorBrush x:Key="ScrollThumbActiveBrush" Color="{DynamicResource ScrollThumbActiveColor}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerColor}" />
 </ResourceDictionary>

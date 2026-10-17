@@ -31,6 +31,21 @@ public sealed class AppState
     public string AvatarStyle { get; set; } = "Robots";
     /// <summary>Fetch every repository in the open workspace every few minutes, like VS Code's git.autofetch.</summary>
     public bool AutoFetch { get; set; } = true;
+    /// <summary>Keyboard shortcuts the user changed, by command id; an empty value removes a shortcut.</summary>
+    public Dictionary<string, string> Keybindings { get; set; } = [];
+    /// <summary>Each folder tab's open subfolders and selected file, by folder path, so it reopens as it was left.</summary>
+    public Dictionary<string, FolderViewState> FolderViews { get; set; } = [];
+    /// <summary>Show a chain of single-subfolder folders (src/main/java/com/example) as one row, like VS Code's explorer.compactFolders.</summary>
+    public bool CompactFolders { get; set; } = true;
+}
+
+public sealed class FolderViewState
+{
+    /// <summary>Open subfolders, relative to the folder, with "/" separators.</summary>
+    public List<string> Expanded { get; set; } = [];
+    public string? Selected { get; set; }
+    /// <summary>The tree's width after the user dragged the divider; null for the default.</summary>
+    public double? TreeWidth { get; set; }
 }
 
 [JsonSerializable(typeof(AppState))]

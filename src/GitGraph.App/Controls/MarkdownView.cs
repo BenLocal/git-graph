@@ -136,14 +136,22 @@ public sealed class MarkdownView : StackPanel
                 into.Add(run);
                 break;
             }
+            case AutolinkInline { IsEmail: true } mail:
+                // Keep the brackets of "Name <email>", as in trailers like Co-authored-by.
+                into.Add(new Run("<"));
+                AddLink(into, mail.Url, "mailto:" + mail.Url, links);
+                into.Add(new Run(">"));
+                break;
             case AutolinkInline auto:
-                AddLink(into, auto.Url, auto.IsEmail ? "mailto:" + auto.Url : auto.Url, links);
+                AddLink(into, auto.Url, auto.Url, links);
                 break;
             case LinkInline { IsImage: false } link:
                 AddLink(into, string.Concat(link.Select(PlainText)) is { Length: > 0 } t ? t : link.Url ?? "", link.Url, links);
                 break;
-            case LineBreakInline br:
-                into.Add(br.IsHard ? new LineBreak() : new Run(" "));
+            case LineBreakInline:
+                // Every newline in a commit message is kept, as git log and GitHub's commit view show it:
+                // trailers and short lines would otherwise run together. Blank lines still separate paragraphs.
+                into.Add(new LineBreak());
                 break;
             case HtmlEntityInline entity:
                 into.Add(new Run(entity.Transcoded.ToString()));

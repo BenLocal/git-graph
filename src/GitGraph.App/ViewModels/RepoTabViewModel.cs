@@ -15,19 +15,12 @@ public sealed record BranchOption(string Label, string? RefName, bool IsRemote)
 }
 
 /// <summary>The graph, history and diff view for one working tree.</summary>
-public partial class RepoTabViewModel : ObservableObject, IDisposable
+public partial class RepoTabViewModel : TabViewModel
 {
     private const int PageSize = 400;
     private const string UncommittedHash = "*uncommitted*";
 
     private readonly WorkspaceViewModel _workspace;
-
-    /// <summary>
-    /// Opened by a single click: shown in italics and replaced by the next single-click open,
-    /// until a double-click (or "Keep open") pins it, as in VS Code.
-    /// </summary>
-    [ObservableProperty]
-    private bool _isPreview;
 
     // ---- Pull and push state, like the sync indicator in VS Code's status bar
 
@@ -48,8 +41,6 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     public bool CanPublish => Sync?.CanPublish == true;
     public bool IsInSync => ShowSync && !CanPublish && SyncCounts.Length == 0;
 
-    /// <summary>The workspace this tab belongs to, for the tab's own context menu.</summary>
-    public WorkspaceViewModel Workspace => _workspace;
     private readonly GitRepository _repo;
     private readonly List<FileSystemWatcher> _watchers = [];
     private readonly DispatcherTimer _debounce;
@@ -60,14 +51,12 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     private List<WorktreeInfo> _worktrees = [];
     private string? _commonDir;
 
-    public RepoTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host)
+    public RepoTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host) : base(path, workspace)
     {
-        Path = path;
         Host = host;
         _workspace = workspace;
         _repo = new GitRepository(path);
         _showRemotes = host.ShowRemoteBranches;
-        Title = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
         Details = new DetailsViewModel(_repo, host);
         _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _debounce.Tick += (_, _) =>
@@ -77,16 +66,13 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
         };
     }
 
-    public string Path { get; }
-    public string Title { get; }
     public IAppHost Host { get; }
     public DetailsViewModel Details { get; }
 
     [ObservableProperty]
     private string? _branchLabel;
 
-    [ObservableProperty]
-    private bool _isWorktree;
+    partial void OnBranchLabelChanged(string? value) => Subtitle = value;
 
     [ObservableProperty]
     private ObservableCollection<CommitRowViewModel> _rows = [];
@@ -129,7 +115,7 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
 
     public bool CanCompare => SelectedRow != null;
 
-    public void EnsureLoaded()
+    public override void EnsureLoaded()
     {
         if (_loaded) return;
         _loaded = true;
@@ -656,12 +642,12 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Cheap refresh for when the window regains focus: files may have been edited elsewhere.</summary>
-    public void OnActivated()
+    public override void OnActivated()
     {
         if (_loaded) _ = RefreshAsync();
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         _loadCts?.Cancel();
         _debounce.Stop();

@@ -23,6 +23,7 @@ public partial class SidebarView : UserControl
         {
             case RepoNodeViewModel repo: repo.PinCommand.Execute(null); break;
             case WorktreeNodeViewModel wt: wt.PinCommand.Execute(null); break;
+            case FolderNodeViewModel folder: folder.PinCommand.Execute(null); break;
             default: return;
         }
         e.Handled = true;
