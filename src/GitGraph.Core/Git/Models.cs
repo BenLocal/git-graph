@@ -67,6 +67,12 @@ public sealed record FileChange(ChangeKind Kind, string Path, string? OldPath, i
 /// </summary>
 public enum GitOperation { Merge, CherryPick }
 
+/// <summary>A file's state in the working tree, for colouring the file tree as VS Code does. Earlier members win for folders.</summary>
+public enum FileStatusKind { Conflict, Deleted, Modified, Renamed, Added, Untracked, Ignored }
+
+/// <summary>One entry of <c>git status</c>; <see cref="Path"/> ends with "/" for a whole untracked or ignored folder.</summary>
+public sealed record FileStatusEntry(string Path, FileStatusKind Kind);
+
 /// <summary>
 /// How the checked-out branch relates to its upstream: commits to push (<see cref="Ahead"/>) and to pull
 /// (<see cref="Behind"/>). <see cref="Upstream"/> is null when the branch isn't tracking anything yet.

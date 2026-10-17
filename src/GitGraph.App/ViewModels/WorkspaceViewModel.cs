@@ -39,6 +39,37 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public ObservableCollection<RepoNodeViewModel> Repos { get; } = [];
     /// <summary>The sidebar's folder rows; selecting one opens a folder tab.</summary>
     public ObservableCollection<FolderNodeViewModel> FolderNodes { get; } = [];
+
+    /// <summary>
+    /// Puts each linked worktree under the workspace folder that contains it (the innermost one), so the
+    /// Folders list reads as a tree. Worktrees outside every folder aren't listed there; their rows under
+    /// Repositories can browse their files or open them in VS Code.
+    /// </summary>
+    internal void RebuildWorktreeFolders()
+    {
+        var active = SelectedTab is FolderTabViewModel f ? f.Path : null;
+        foreach (var folder in FolderNodes) folder.Worktrees.Clear();
+        var sep = System.IO.Path.DirectorySeparatorChar;
+        foreach (var r in Repos)
+            foreach (var w in r.Worktrees.Where(w => !w.IsPrunable))
+            {
+                var node = new FolderNodeViewModel(w.Path, this, w.Branch) { IsActive = active != null && PathEquals(active, w.Path) };
+                var owner = FolderNodes
+                    .Where(fn => w.Path.StartsWith(System.IO.Path.TrimEndingDirectorySeparator(fn.Path) + sep, StringComparison.Ordinal))
+                    .MaxBy(fn => fn.Path.Length);
+                owner?.Worktrees.Add(node);
+            }
+        foreach (var folder in FolderNodes) folder.NotifyWorktreesChanged();
+    }
+
+    internal bool IsFolderCollapsed(string path) => Config.CollapsedFolders.Any(p => PathEquals(p, path));
+
+    internal void SetFolderCollapsed(string path, bool collapsed)
+    {
+        Config.CollapsedFolders.RemoveAll(p => PathEquals(p, path));
+        if (collapsed) Config.CollapsedFolders.Add(path);
+        _host.SaveState();
+    }
     public ObservableCollection<TabViewModel> Tabs { get; } = [];
 
     [ObservableProperty]
@@ -63,7 +94,8 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         Config.ActiveTab = value?.StateKey;
         var repoPath = value is RepoTabViewModel ? value.Path : null;
         foreach (var r in Repos) r.MarkActive(repoPath);
-        foreach (var f in FolderNodes) f.IsActive = value is FolderTabViewModel && PathEquals(f.Path, value.Path);
+        foreach (var f in FolderNodes.Concat(FolderNodes.SelectMany(n => n.Worktrees)))
+            f.IsActive = value is FolderTabViewModel && PathEquals(f.Path, value.Path);
         value?.EnsureLoaded();
         if (_tabsRestored) _host.SaveState();
     }
@@ -89,6 +121,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             Repos.Clear();
             foreach (var r in found)
                 Repos.Add(new RepoNodeViewModel(r, this) { IsExpanded = expanded.Count == 0 || expanded.Contains(r.MainPath) });
+            RebuildWorktreeFolders();
             RestoreTabs();
             _ = LoadSyncAsync();
             foreach (var r in Repos) r.MarkActive(SelectedTab?.Path);
@@ -365,7 +398,11 @@ public partial class RepoNodeViewModel : ObservableObject
 
     public async Task ReloadWorktreesAsync()
     {
-        try { SetWorktrees(await new GitRepository(MainPath).GetWorktreesAsync()); }
+        try
+        {
+            SetWorktrees(await new GitRepository(MainPath).GetWorktreesAsync());
+            _workspace.RebuildWorktreeFolders();
+        }
         catch (GitException e) { _workspace.Host.ReportError(e.Message); }
         MarkActive(_workspace.SelectedTab?.Path);
     }
@@ -375,6 +412,18 @@ public partial class RepoNodeViewModel : ObservableObject
 
     [RelayCommand]
     private void Pin() => _workspace.OpenTab(MainPath, pin: true);
+
+    /// <summary>The repository's files in a folder tab, wherever it lives.</summary>
+    [RelayCommand]
+    private void BrowseFiles() => _workspace.OpenFolderTab(MainPath, pin: true);
+
+    [RelayCommand]
+    private void OpenInVsCode()
+    {
+        if (ExternalTools.OpenInVsCode(MainPath) is { } error) _workspace.Host.ReportError(error);
+    }
+
+    internal WorkspaceViewModel Workspace => _workspace;
 
     [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;
@@ -421,6 +470,16 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
 
     [RelayCommand]
     private void Pin() => repo.OpenPath(Path, pin: true);
+
+    /// <summary>The worktree's files in a folder tab, even when it lives outside the workspace folders.</summary>
+    [RelayCommand]
+    private void BrowseFiles() => repo.Workspace.OpenFolderTab(Path, pin: true);
+
+    [RelayCommand]
+    private void OpenInVsCode()
+    {
+        if (ExternalTools.OpenInVsCode(Path) is { } error) repo.Workspace.Host.ReportError(error);
+    }
 
     [RelayCommand]
     private Task Remove() => repo.RemoveWorktreeAsync(this);
@@ -488,9 +547,27 @@ internal static class WorktreeActions
 }
 
 /// <summary>A folder row in the sidebar: a single click previews its files, a double-click keeps the tab.</summary>
-public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel workspace) : ObservableObject
+/// <param name="worktreeBranch">Set for a linked worktree listed among the folders; it can't be removed from there.</param>
+public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel workspace, string? worktreeBranch = null) : ObservableObject
 {
     public string Path { get; } = path;
+    public bool IsWorktree { get; } = worktreeBranch != null;
+    public bool IsFolder => !IsWorktree;
+    public string? Branch { get; } = worktreeBranch;
+
+    /// <summary>Linked worktrees inside this folder, shown nested under it.</summary>
+    public ObservableCollection<FolderNodeViewModel> Worktrees { get; } = [];
+    public bool HasWorktrees => Worktrees.Count > 0;
+
+    [ObservableProperty]
+    private bool _isExpanded = !workspace.IsFolderCollapsed(path);
+
+    partial void OnIsExpandedChanged(bool value) => Workspace.SetFolderCollapsed(Path, !value);
+
+    [RelayCommand]
+    private void ToggleExpanded() => IsExpanded = !IsExpanded;
+
+    internal void NotifyWorktreesChanged() => OnPropertyChanged(nameof(HasWorktrees));
     public string Name { get; } = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
     public WorkspaceViewModel Workspace { get; } = workspace;
 

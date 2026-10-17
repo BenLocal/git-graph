@@ -15,7 +15,7 @@ namespace GitGraph.App.Views;
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
 /// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
-/// Keyboard Shortcuts window instead (any other value searches it).
+/// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_DELAY=seconds waits longer before rendering.
 /// </summary>
 public partial class MainWindow
 {
@@ -32,6 +32,11 @@ public partial class MainWindow
                 tab.SelectedRow = tab.Rows[index];
                 if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_COMPARE"), out var other) && other < tab.Rows.Count)
                     tab.SetCompare(tab.Rows[other]);
+                if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_STATS") == "1")
+                {
+                    tab.ShowStats = true;
+                    await Task.Delay(1500);
+                }
                 if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_TAB"), out var details))
                     tab.Details.SelectedTabIndex = details;
                 switch (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_PANEL"))
@@ -77,11 +82,13 @@ public partial class MainWindow
                 if (filter != "1" && target.DataContext is ShortcutsEditorViewModel editor) editor.Filter = filter;
                 await Task.Delay(300);
             }
-            var size = new PixelSize((int)target.Bounds.Width, (int)target.Bounds.Height);
-            using var bmp = new RenderTargetBitmap(size);
+            // 1x by default; GITGRAPH_SNAPSHOT_SCALE=2 renders at a HiDPI scale to check sharpness.
+            var scale = double.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SCALE"), out var forced) ? forced : 1;
+            var size = new PixelSize((int)(target.Bounds.Width * scale), (int)(target.Bounds.Height * scale));
+            using var bmp = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
             bmp.Render(target);
             bmp.Save(path);
             Close();
-        }, TimeSpan.FromSeconds(3));
+        }, TimeSpan.FromSeconds(double.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_DELAY"), out var wait) ? wait : 3));
     }
 }

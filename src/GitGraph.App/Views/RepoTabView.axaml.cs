@@ -81,9 +81,17 @@ public partial class RepoTabView : UserControl
     {
         base.OnDataContextChanged(e);
         // A different tab has its own scroll position; don't carry this one over.
-        if (_tab != null) _tab.PropertyChanged -= OnTabChanged;
+        if (_tab != null)
+        {
+            _tab.PropertyChanged -= OnTabChanged;
+            _tab.HeadFocused -= CenterRow;
+        }
         _tab = DataContext as RepoTabViewModel;
-        if (_tab != null) _tab.PropertyChanged += OnTabChanged;
+        if (_tab != null)
+        {
+            _tab.PropertyChanged += OnTabChanged;
+            _tab.HeadFocused += CenterRow;
+        }
         _lastOffset = default;
         if (_details != null) _details.PropertyChanged -= OnDetailsChanged;
         _details = (DataContext as RepoTabViewModel)?.Details;
@@ -114,6 +122,21 @@ public partial class RepoTabView : UserControl
     private void OnMainChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainWindowViewModel.ShowDetailsPanel)) _details?.SyncPanel();
+    }
+
+    /// <summary>Brings a row to the middle of the list, for Go to HEAD.</summary>
+    private void CenterRow(CommitRowViewModel row)
+    {
+        CommitList.ScrollIntoView(row);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (CommitList.Scroll is not ScrollViewer sv) return;
+            var index = _tab?.Rows.IndexOf(row) ?? -1;
+            if (index < 0) return;
+            var rowHeight = (double)this.FindResource("RowHeight")!;
+            var target = index * rowHeight - (sv.Viewport.Height - rowHeight) / 2;
+            sv.Offset = sv.Offset.WithY(Math.Clamp(target, 0, Math.Max(0, sv.Extent.Height - sv.Viewport.Height)));
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnTabChanged(object? sender, PropertyChangedEventArgs e)

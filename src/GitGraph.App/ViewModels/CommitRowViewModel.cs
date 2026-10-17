@@ -100,11 +100,16 @@ public partial class RefBadgeViewModel : ObservableObject
     public bool IsTag => Kind == BadgeKind.Tag;
     public bool IsWorktree => Kind == BadgeKind.Worktree;
     public bool IsBranch => Kind is BadgeKind.Local or BadgeKind.Remote;
+
+    /// <summary>Remotes whose branch of the same name points here too, shown inside this label.</summary>
+    public List<string> Remotes { get; } = [];
+    public bool HasRemotes => Remotes.Count > 0;
     public bool CanDelete => Kind is BadgeKind.Local or BadgeKind.Tag && !IsCurrent;
 
     public string Tooltip => Kind switch
     {
         BadgeKind.Local when IsCurrent => $"{Text}, checked out here",
+        BadgeKind.Local when Remotes.Count > 0 => $"Branch {Text}, the same commit as {string.Join(" and ", Remotes.Select(r => $"{r}/{Text}"))}",
         BadgeKind.Local when Ref?.Upstream is { } up => $"Branch {Text}, tracking {up}",
         BadgeKind.Local => $"Branch {Text}",
         BadgeKind.Remote => $"Remote branch {Text}",

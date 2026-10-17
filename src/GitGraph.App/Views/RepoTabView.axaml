@@ -39,6 +39,10 @@
             <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
           </StackPanel>
         </Button>
+        <Button Classes="ghost" Padding="5" Command="{Binding GoToHeadCommand}" Margin="-4,0,0,0"
+                ToolTip.Tip="{Binding Tips[GoToHead], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}: select the checked-out commit'}">
+          <ctl:IconView Data="{StaticResource I.Target}" Width="15" Height="15" />
+        </Button>
         <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
       </StackPanel>
 
@@ -75,6 +79,10 @@
         </Button>
 
         <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
+        <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
+                      ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
+          <ctl:IconView Data="{StaticResource I.Chart}" />
+        </ToggleButton>
         <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
           <ctl:IconView Data="{StaticResource I.Fetch}" />
         </Button>
@@ -150,9 +158,31 @@
                             <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
                           </ContextMenu>
                         </Border.ContextMenu>
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                          <ctl:IconView Data="{StaticResource I.Worktree}" Width="11" Height="11" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
-                          <TextBlock Text="{Binding Text}" />
+                        <StackPanel Orientation="Horizontal">
+                          <Border Classes="refblock">
+                            <Panel>
+                              <ctl:IconView Data="{StaticResource I.Branch}" IsVisible="{Binding IsLocal}" />
+                              <ctl:IconView Data="{StaticResource I.Cloud}" IsVisible="{Binding IsRemote}" />
+                              <ctl:IconView Data="{StaticResource I.Tag}" IsVisible="{Binding IsTag}" />
+                              <ctl:IconView Data="{StaticResource I.Worktree}" IsVisible="{Binding IsWorktree}" />
+                            </Panel>
+                          </Border>
+                          <TextBlock Classes="name" Text="{Binding Text}" Margin="5,0,5,0" />
+                          <!-- Remotes with the same branch on this commit: "main │ origin" -->
+                          <ItemsControl ItemsSource="{Binding Remotes}" IsVisible="{Binding HasRemotes}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="x:String">
+                                <Border Classes="remote">
+                                  <TextBlock Text="{Binding}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
                         </StackPanel>
                       </Border>
                     </DataTemplate>
@@ -188,5 +218,9 @@
     <GridSplitter x:Name="DetailsSplitter" Grid.Row="3" Height="1" ResizeDirection="Rows" />
 
     <v:DetailsView x:Name="DetailsPane" Grid.Row="4" DataContext="{Binding Details}" />
+
+    <!-- Contributors, in place of the graph and details while switched on -->
+    <v:StatsView Grid.Row="1" Grid.RowSpan="4" DataContext="{Binding Stats}" ZIndex="1"
+                 IsVisible="{Binding $parent[UserControl].((vm:RepoTabViewModel)DataContext).ShowStats, FallbackValue=False}" />
   </Grid>
 </UserControl>

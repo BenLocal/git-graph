@@ -4,6 +4,7 @@ using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitGraph.App.Services;
+using GitGraph.Core.Git;
 using GitGraph.Core.Workspaces;
 
 namespace GitGraph.App.ViewModels;
@@ -77,6 +78,78 @@ public sealed partial class FolderTabViewModel : TabViewModel
         _loaded = true;
         Root.IsExpanded = true;
         RestoreState();
+        _ = LoadStatusAsync();
+    }
+
+    // ---- Git state of files, for colouring the tree as VS Code's explorer does
+
+    /// <summary>One repository's view of its files: changed files, and whole untracked or ignored folders.</summary>
+    private sealed record RepoStatus(string Root, Dictionary<string, FileStatusKind> Files, List<(string Prefix, FileStatusKind Kind)> Dirs);
+
+    private List<RepoStatus> _repoStatus = [];
+    private Dictionary<string, FileStatusKind> _folderStatus = [];
+    private CancellationTokenSource? _statusCts;
+
+    /// <summary>
+    /// Reads <c>git status</c> for the repository this folder is in, and every repository inside it, then
+    /// recolours the loaded part of the tree. Folders take the state of the most important change below them.
+    /// </summary>
+    private async Task LoadStatusAsync()
+    {
+        _statusCts?.Cancel();
+        var cts = _statusCts = new CancellationTokenSource();
+        var repos = new List<RepoStatus>();
+        var folders = new Dictionary<string, FileStatusKind>(PathComparer);
+        try
+        {
+            var roots = new HashSet<string>(PathComparer);
+            if (await GitRepository.FindTopLevelAsync(Path, cts.Token) is { } top) roots.Add(top);
+            foreach (var wt in await Task.Run(() => RepoDiscovery.FindWorkingTrees(Path).ToList(), cts.Token)) roots.Add(wt);
+
+            foreach (var root in roots)
+            {
+                var status = new RepoStatus(root, new Dictionary<string, FileStatusKind>(PathComparer), []);
+                foreach (var e in await new GitRepository(root).GetStatusEntriesAsync(cts.Token))
+                {
+                    var isDir = e.Path.EndsWith('/');
+                    var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, e.Path.TrimEnd('/')));
+                    if (isDir) status.Dirs.Add((full + System.IO.Path.DirectorySeparatorChar, e.Kind));
+                    else status.Files[full] = e.Kind;
+                    // Ignored paths don't colour their folders; everything else does, up to the tab's folder.
+                    if (e.Kind == FileStatusKind.Ignored) continue;
+                    for (var dir = isDir ? full : System.IO.Path.GetDirectoryName(full);
+                         dir != null && dir.Length >= Path.Length && dir.StartsWith(Path, StringComparison.Ordinal);
+                         dir = System.IO.Path.GetDirectoryName(dir))
+                        if (!folders.TryGetValue(dir, out var k) || e.Kind < k) folders[dir] = e.Kind;
+                }
+                repos.Add(status);
+            }
+        }
+        catch (Exception e) when (e is GitException or IOException or OperationCanceledException or UnauthorizedAccessException)
+        {
+            if (cts.IsCancellationRequested) return;
+        }
+        if (cts.IsCancellationRequested) return;
+        // Innermost first: a repository inside another one decides for its own files, as in VS Code.
+        _repoStatus = repos.OrderByDescending(r => r.Root.Length).ToList();
+        _folderStatus = folders;
+        Root.ApplyStatus();
+    }
+
+    private static StringComparer PathComparer => OperatingSystem.IsLinux() ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+
+    internal FileStatusKind? StatusFor(FileNodeViewModel node)
+    {
+        if (node.IsPlaceholder) return null;
+        var sep = System.IO.Path.DirectorySeparatorChar;
+        var repo = _repoStatus.FirstOrDefault(r =>
+            PathComparer.Equals(node.FullPath, r.Root) || node.FullPath.StartsWith(r.Root + sep, StringComparison.Ordinal));
+        if (repo is null) return null;
+        var withSeparator = node.FullPath + sep;
+        foreach (var (prefix, kind) in repo.Dirs)
+            if (withSeparator.StartsWith(prefix, StringComparison.Ordinal)) return kind;
+        if (!node.IsDirectory) return repo.Files.TryGetValue(node.FullPath, out var f) ? f : null;
+        return _folderStatus.TryGetValue(node.FullPath, out var d) ? d : null;
     }
 
     /// <summary>Reopens the remembered subfolders (parents first) and the selected file.</summary>
@@ -234,6 +307,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
     private void RefreshTree()
     {
         Root.Reload();
+        _ = LoadStatusAsync();
         if (SelectedNode is { IsDirectory: false } file) _ = LoadFileAsync(file);
     }
 
@@ -315,6 +389,51 @@ public sealed partial class FileNodeViewModel : ObservableObject
     [ObservableProperty]
     private bool _isExpanded;
 
+    /// <summary>Its git state; null when unchanged or outside a repository.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsModified), nameof(IsAdded), nameof(IsUntracked), nameof(IsDeleted), nameof(IsConflict),
+        nameof(IsIgnored), nameof(StatusLetter), nameof(HasMark), nameof(StatusTooltip))]
+    private FileStatusKind? _status;
+
+    public bool IsModified => Status is FileStatusKind.Modified or FileStatusKind.Renamed;
+    public bool IsAdded => Status == FileStatusKind.Added;
+    public bool IsUntracked => Status == FileStatusKind.Untracked;
+    public bool IsDeleted => Status == FileStatusKind.Deleted;
+    public bool IsConflict => Status == FileStatusKind.Conflict;
+    public bool IsIgnored => Status == FileStatusKind.Ignored;
+
+    /// <summary>The letter VS Code shows after a changed file; a folder with changes inside gets a dot.</summary>
+    public string? StatusLetter => Status switch
+    {
+        null or FileStatusKind.Ignored => null,
+        _ when IsDirectory => "●",
+        FileStatusKind.Modified => "M",
+        FileStatusKind.Added => "A",
+        FileStatusKind.Deleted => "D",
+        FileStatusKind.Renamed => "R",
+        FileStatusKind.Untracked => "U",
+        FileStatusKind.Conflict => "!",
+        _ => null,
+    };
+
+    public bool HasMark => StatusLetter != null;
+
+    public string StatusTooltip => Status switch
+    {
+        null => RelativePath,
+        FileStatusKind.Ignored => $"{RelativePath} (ignored by git)",
+        _ when IsDirectory => $"{RelativePath} (contains changes)",
+        var k => $"{RelativePath} ({k.ToString()!.ToLowerInvariant()})",
+    };
+
+    /// <summary>Takes this node's state from the latest status, and its loaded children's too.</summary>
+    internal void ApplyStatus()
+    {
+        if (_owner is null || IsPlaceholder) return;
+        Status = RelativePath.Length == 0 ? null : _owner.StatusFor(this);
+        foreach (var c in Children) c.ApplyStatus();
+    }
+
     /// <summary>
     /// Bound to the tree row, and the only link between tree and selection: a remembered selection then
     /// shows even though it was set before the rows existed.
@@ -338,7 +457,11 @@ public sealed partial class FileNodeViewModel : ObservableObject
         if (!IsDirectory || _childrenLoaded) return;
         _childrenLoaded = true;
         Children.Clear();
-        foreach (var child in ReadChildren()) Children.Add(child);
+        foreach (var child in ReadChildren())
+        {
+            child.ApplyStatus();
+            Children.Add(child);
+        }
     }
 
     /// <summary>

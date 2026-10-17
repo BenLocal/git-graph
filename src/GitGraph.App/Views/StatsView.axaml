@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:ctl="using:GitGraph.App.Controls"
+             x:Class="GitGraph.App.Views.StatsView"
+             x:DataType="vm:RepoStatsViewModel"
+             Background="{DynamicResource CanvasBrush}">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,18,24,28" Spacing="18" MaxWidth="1180">
+      <!-- What is counted, and how much -->
+      <Grid ColumnDefinitions="*,Auto,Auto">
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <TextBlock Classes="title" Text="{Binding Branch, StringFormat='Contributions to {0}, excluding merge commits', FallbackValue='Contributions, excluding merge commits'}" />
+          <TextBlock Classes="muted" Text="{Binding Summary}" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </StackPanel>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding Periods}" SelectedItem="{Binding Period}" MinWidth="150" Margin="0,0,8,0"
+                  VerticalAlignment="Center" ToolTip.Tip="Which period to count" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Classes="muted small" Text="Sort by" VerticalAlignment="Center" />
+          <ComboBox ItemsSource="{Binding Sorts}" SelectedItem="{Binding Sort}" MinWidth="120" />
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Classes="muted" Text="Reading the history…" IsVisible="{Binding IsLoading}" />
+      <TextBlock Classes="muted" Text="{Binding Message}" TextWrapping="Wrap"
+                 IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+      <!-- Activity by day, then by week, for everyone -->
+      <Border Classes="statcard" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="section" Text="Activity" />
+          <ctl:ContributionHeatmap Days="{Binding DailyCommits}" From="{Binding HeatmapFrom}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+      <Border Classes="statcard" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="section" Text="Commits per week" />
+          <ctl:ActivityChart Height="140" ShowGrid="True" Values="{Binding WeeklyCommits}" Weeks="{Binding Weeks}" />
+        </StackPanel>
+      </Border>
+
+      <!-- One card per person, two to a row -->
+      <ItemsControl ItemsSource="{Binding Contributors}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <UniformGrid Columns="2" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ContributorCardViewModel">
+            <Border Classes="statcard" Margin="0,0,14,14">
+              <StackPanel Spacing="10">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                  <ctl:Avatar Email="{Binding Email}" Name="{Binding Name}" Width="36" Height="36" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="1">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="muted small" Text="{Binding Email}" TextTrimming="CharacterEllipsis" />
+                  </StackPanel>
+                  <TextBlock Grid.Column="2" Classes="muted" Text="{Binding Rank}" VerticalAlignment="Top" />
+                </Grid>
+
+                <WrapPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding CommitsText}" FontWeight="Medium" Margin="0,0,14,0" />
+                  <TextBlock Classes="add mono" Text="{Binding AdditionsText}" Margin="0,0,14,0" VerticalAlignment="Center" IsVisible="{Binding HasLines}" />
+                  <TextBlock Classes="del mono" Text="{Binding DeletionsText}" VerticalAlignment="Center" IsVisible="{Binding HasLines}" />
+                  <TextBlock Classes="muted small" Text="counting lines…" VerticalAlignment="Center" IsVisible="{Binding IsCountingLines}" />
+                </WrapPanel>
+
+                <!-- Share of all commits in the period -->
+                <Grid ColumnDefinitions="*,Auto">
+                  <ProgressBar Classes="share" Minimum="0" Maximum="1" Value="{Binding Share}" Foreground="{Binding Brush}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding ShareText}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                </Grid>
+
+                <ctl:ActivityChart Height="56" Values="{Binding Weekly}" Stroke="{Binding Brush}"
+                                   Maximum="{Binding $parent[ItemsControl].((vm:RepoStatsViewModel)DataContext).PersonMaximum}" />
+                <TextBlock Classes="muted small" Text="{Binding Active, StringFormat='Active {0}'}" />
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Classes="muted" Text="{Binding MoreNote}" IsVisible="{Binding MoreNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,8 +1,71 @@
 namespace GitGraph.Core.Git;
 
 /// <summary>Pure parsers for git's machine-readable output. Kept separate from process code so they can be unit tested.</summary>
-public static class GitParsers
+public static partial class GitParsers
 {
+    /// <summary>
+    /// Parses <c>git status --porcelain=v1 -z</c>: "XY path", with renames followed by their old path.
+    /// The index side (X) and the work tree side (Y) together give one state per file.
+    /// </summary>
+    public static List<FileStatusEntry> ParseStatus(string output)
+    {
+        var result = new List<FileStatusEntry>();
+        var parts = output.Split('\0');
+        for (var i = 0; i < parts.Length; i++)
+        {
+            var e = parts[i];
+            if (e.Length < 4) continue;
+            char x = e[0], y = e[1];
+            var path = e[3..];
+            var kind = (x, y) switch
+            {
+                ('?', '?') => FileStatusKind.Untracked,
+                ('!', '!') => FileStatusKind.Ignored,
+                ('U', _) or (_, 'U') or ('A', 'A') or ('D', 'D') => FileStatusKind.Conflict,
+                ('R', _) or ('C', _) => FileStatusKind.Renamed,
+                (_, 'D') or ('D', _) => FileStatusKind.Deleted,
+                ('A', _) => FileStatusKind.Added,
+                _ => FileStatusKind.Modified,
+            };
+            if (x is 'R' or 'C') i++; // skip the old path of a rename or copy
+            result.Add(new FileStatusEntry(path, kind));
+        }
+        return result;
+    }
+
+    /// <summary>Per-commit header for contributor stats; with --shortstat, a summary line follows each header.</summary>
+    public const string StatFormat = "%x1e%H%x00%aN%x00%aE%x00%at";
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(\d+) insertion")]
+    private static partial System.Text.RegularExpressions.Regex Insertions();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(\d+) deletion")]
+    private static partial System.Text.RegularExpressions.Regex Deletions();
+
+    /// <summary>
+    /// Parses <c>git log --no-merges --format=StatFormat [--shortstat]</c>. Without --shortstat the line counts
+    /// stay null; with it, a commit that changed only binary files counts zero lines, as on GitHub.
+    /// </summary>
+    public static List<Stats.CommitStat> ParseStats(string output, bool withLines)
+    {
+        var result = new List<Stats.CommitStat>();
+        foreach (var chunk in output.Split('\x1e', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var nl = chunk.IndexOf('\n');
+            var head = (nl < 0 ? chunk : chunk[..nl]).Split('\0');
+            if (head.Length < 4 || !long.TryParse(head[3].Trim(), out var unix)) continue;
+            int? adds = null, dels = null;
+            if (withLines)
+            {
+                var rest = nl < 0 ? "" : chunk[(nl + 1)..];
+                adds = Insertions().Match(rest) is { Success: true } a ? int.Parse(a.Groups[1].Value) : 0;
+                dels = Deletions().Match(rest) is { Success: true } d ? int.Parse(d.Groups[1].Value) : 0;
+            }
+            result.Add(new Stats.CommitStat(head[0], head[1], head[2], DateTimeOffset.FromUnixTimeSeconds(unix).ToLocalTime(), adds, dels));
+        }
+        return result;
+    }
+
     public const char RecordSep = '\x1e';
     public const char FieldSep = '\0';
 

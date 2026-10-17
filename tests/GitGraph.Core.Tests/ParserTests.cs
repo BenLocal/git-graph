@@ -147,6 +147,42 @@ public class ParserTests
     }
 
     [Fact]
+    public void Stats_parse_shortstat_and_group_people_by_email_and_week()
+    {
+        static string Head(string hash, string name, string email, DateTimeOffset when) =>
+            $"\x1e{hash}\0{name}\0{email}\0{when.ToUnixTimeSeconds()}\n";
+        var output = Head("a1", "Ana", "ana@x.com", new DateTimeOffset(2026, 9, 2, 12, 0, 0, TimeSpan.Zero)) + "\n 2 files changed, 3 insertions(+), 1 deletion(-)\n"
+                   + Head("b2", "Mei", "MEI@x.com", new DateTimeOffset(2026, 9, 9, 12, 0, 0, TimeSpan.Zero)) + "\n 1 file changed, 10 insertions(+)\n"
+                   + Head("c3", "Mei Lin", "mei@x.com", new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero)) + "\n 1 file changed, 1 insertion(+), 2 deletions(-)\n"
+                   + Head("d4", "Ana", "ana@x.com", new DateTimeOffset(2026, 9, 11, 12, 0, 0, TimeSpan.Zero)) + "\n 1 file changed\n";
+        var commits = GitParsers.ParseStats(output, withLines: true);
+        Assert.Equal(4, commits.Count);
+        Assert.Equal(("a1", 3, 1), (commits[0].Hash, commits[0].Additions, commits[0].Deletions));
+        Assert.Equal((0, 0), (commits[3].Additions, commits[3].Deletions)); // binary-only change: no lines
+        Assert.Null(GitParsers.ParseStats(output, withLines: false)[0].Additions);
+
+        var report = Stats.ContributorStats.Build(commits, since: null, now: new DateTimeOffset(2026, 9, 20, 0, 0, 0, TimeSpan.Zero));
+        Assert.Equal(4, report.TotalCommits);
+        var mei = report.Contributors.Single(c => c.Email.StartsWith("mei", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(("Mei Lin", 2, 11, 2), (mei.Name, mei.Commits, mei.Additions, mei.Deletions)); // same email, latest name
+        Assert.Equal(report.Weeks.Count, mei.WeeklyCommits.Count);
+        Assert.Equal(2, mei.WeeklyCommits.Sum());
+        Assert.All(report.Weeks, w => Assert.Equal(DayOfWeek.Sunday, w.DayOfWeek));
+    }
+
+    [Fact]
+    public void Status_entries_map_to_states()
+    {
+        var output = " M src/a.cs\0A  b.cs\0R  new.cs\0old.cs\0?? tmp/\0!! bin/\0UU c.cs\0 D gone.cs\0";
+        var entries = GitParsers.ParseStatus(output);
+        Assert.Equal(
+            [("src/a.cs", FileStatusKind.Modified), ("b.cs", FileStatusKind.Added), ("new.cs", FileStatusKind.Renamed),
+             ("tmp/", FileStatusKind.Untracked), ("bin/", FileStatusKind.Ignored), ("c.cs", FileStatusKind.Conflict),
+             ("gone.cs", FileStatusKind.Deleted)],
+            entries.Select(e => (e.Path, e.Kind)));
+    }
+
+    [Fact]
     public void TextDiff_reports_binary_content()
     {
         Assert.True(TextDiff.Build("a\0b", "a").IsBinary);

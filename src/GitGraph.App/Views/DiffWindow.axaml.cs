@@ -11,7 +11,11 @@ public partial class DiffWindow : Window
     public DiffWindow()
     {
         InitializeComponent();
-        Opened += (_, _) => Motion.FadeIn(Content as Control);
+        Opened += (_, _) =>
+        {
+            Services.WaylandAppId.Apply(this);
+            Motion.FadeIn(Content as Control);
+        };
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

@@ -14,6 +14,8 @@ public sealed class WorkspaceConfig
     public string? ActiveTab { get; set; }
     /// <summary>The tab opened by a single click, replaced by the next one until it is kept open.</summary>
     public string? PreviewTab { get; set; }
+    /// <summary>Sidebar folders whose worktree list is folded away.</summary>
+    public List<string> CollapsedFolders { get; set; } = [];
 }
 
 public sealed class AppState

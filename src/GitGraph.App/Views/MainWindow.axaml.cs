@@ -23,6 +23,7 @@ public partial class MainWindow : Window, IDialogService
             (DataContext as MainWindowViewModel)?.SelectedWorkspace.SelectedTab?.OnActivated();
         };
         InitShortcuts();
+        Opened += (_, _) => WaylandAppId.Apply(this);
         TabStrip.AddHandler(PointerWheelChangedEvent, OnTabStripWheel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
         TabStrip.SelectionChanged += (_, _) =>
         {

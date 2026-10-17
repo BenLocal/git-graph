@@ -38,6 +38,8 @@ public partial class MainWindow
             ["FindNext"] = () => Tab?.FindNextCommand.Execute(null),
             ["FindPrevious"] = () => Tab?.FindPreviousCommand.Execute(null),
             ["Refresh"] = () => Tab?.RefreshCommand.Execute(null),
+            ["GoToHead"] = () => Tab?.GoToHeadCommand.Execute(null),
+            ["ToggleContributors"] = () => Tab?.ToggleStatsCommand.Execute(null),
             ["Fetch"] = () => Tab?.FetchCommand.Execute(null),
             ["Pull"] = () => Tab?.PullCommand.Execute(null),
             ["Push"] = () => Tab?.PushCommand.Execute(null),

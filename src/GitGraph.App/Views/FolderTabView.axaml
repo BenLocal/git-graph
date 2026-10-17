@@ -16,6 +16,30 @@
     <SolidColorBrush x:Key="TreeViewItemForegroundSelectedPointerOver" Color="{DynamicResource TextColor}" />
   </UserControl.Resources>
   <UserControl.Styles>
+    <!-- Git state of files and folders, coloured like VS Code's explorer -->
+    <Style Selector="Grid.gitstate TextBlock.mark">
+      <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Grid.gitstate.modified TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource GitModifiedBrush}" />
+    </Style>
+    <Style Selector="Grid.gitstate.added TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource GitAddedBrush}" />
+    </Style>
+    <Style Selector="Grid.gitstate.untracked TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource GitUntrackedBrush}" />
+    </Style>
+    <Style Selector="Grid.gitstate.deleted TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource GitDeletedBrush}" />
+    </Style>
+    <Style Selector="Grid.gitstate.conflict TextBlock">
+      <Setter Property="Foreground" Value="{DynamicResource GitConflictBrush}" />
+    </Style>
+    <Style Selector="Grid.gitstate.ignored">
+      <Setter Property="Opacity" Value="0.5" />
+    </Style>
     <!-- Open folders follow the view model, which remembers them for next time. -->
     <Style Selector="TreeView.files TreeViewItem" x:DataType="vm:FileNodeViewModel">
       <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
@@ -51,7 +75,10 @@
                   ScrollViewer.HorizontalScrollBarVisibility="Disabled" Padding="4,0,12,8">
           <TreeView.ItemTemplate>
             <TreeDataTemplate x:DataType="vm:FileNodeViewModel" ItemsSource="{Binding Children}">
-              <Grid ColumnDefinitions="Auto,*" Background="Transparent" ToolTip.Tip="{Binding RelativePath}">
+              <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent" ToolTip.Tip="{Binding StatusTooltip}"
+                    Classes="gitstate" Classes.modified="{Binding IsModified}" Classes.added="{Binding IsAdded}"
+                    Classes.untracked="{Binding IsUntracked}" Classes.deleted="{Binding IsDeleted}"
+                    Classes.conflict="{Binding IsConflict}" Classes.ignored="{Binding IsIgnored}">
                 <Grid.ContextMenu>
                   <ContextMenu>
                     <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
@@ -63,7 +90,9 @@
                   <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}" />
                   <ctl:IconView Data="{StaticResource I.File}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsFile}" />
                 </Panel>
-                <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Classes="name" Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <!-- M, A, U, R, D or ! after a changed file, a dot after a folder with changes, as in VS Code -->
+                <TextBlock Grid.Column="2" Classes="mark" Text="{Binding StatusLetter}" IsVisible="{Binding HasMark}" Margin="8,0,2,0" VerticalAlignment="Center" />
               </Grid>
             </TreeDataTemplate>
           </TreeView.ItemTemplate>

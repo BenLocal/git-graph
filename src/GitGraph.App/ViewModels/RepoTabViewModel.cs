@@ -58,6 +58,7 @@ public partial class RepoTabViewModel : TabViewModel
         _repo = new GitRepository(path);
         _showRemotes = host.ShowRemoteBranches;
         Details = new DetailsViewModel(_repo, host);
+        Stats = new RepoStatsViewModel(_repo);
         _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _debounce.Tick += (_, _) =>
         {
@@ -68,6 +69,44 @@ public partial class RepoTabViewModel : TabViewModel
 
     public IAppHost Host { get; }
     public DetailsViewModel Details { get; }
+
+    /// <summary>Who contributed, shown in place of the graph while <see cref="ShowStats"/> is on.</summary>
+    public RepoStatsViewModel Stats { get; }
+
+    [ObservableProperty]
+    private bool _showStats;
+
+    private string? _statsHead;
+
+    partial void OnShowStatsChanged(bool value)
+    {
+        if (value) _ = Stats.EnsureLoadedAsync(_headBranch);
+    }
+
+    [RelayCommand]
+    private void ToggleStats() => ShowStats = !ShowStats;
+
+    /// <summary>Selects the checked-out commit, loading more history if it isn't on screen yet.</summary>
+    [RelayCommand]
+    private async Task GoToHead()
+    {
+        ShowStats = false;
+        for (var page = 0; page < 10; page++)
+        {
+            if (Rows.FirstOrDefault(r => r.IsHead) is { } head)
+            {
+                SelectedRow = head;
+                HeadFocused?.Invoke(head);
+                return;
+            }
+            if (!HasMore) break;
+            await LoadMore();
+        }
+        Host.ReportError("HEAD isn't in the loaded history. Choose \"All branches\" or the current branch to find it.");
+    }
+
+    /// <summary>Asks the view to bring HEAD's row into the middle of the list.</summary>
+    public event Action<CommitRowViewModel>? HeadFocused;
 
     [ObservableProperty]
     private string? _branchLabel;
@@ -185,6 +224,13 @@ public partial class RepoTabViewModel : TabViewModel
             _worktrees = wtTask.Result;
             _headBranch = head.Branch;
             Sync = syncTask.Result;
+            // Contributor numbers only change when HEAD moves; reading them is a full log, so not on every refresh.
+            if (head.Hash != _statsHead)
+            {
+                _statsHead = head.Hash;
+                Stats.Invalidate();
+                if (ShowStats) _ = Stats.EnsureLoadedAsync(head.Branch);
+            }
             _workspace.UpdateSync(Path, Sync);
             BranchLabel = head.Branch ?? (head.Hash is { } h ? $"detached at {h[..7]}" : "no commits yet");
             UpdateBranchOptions(refsTask.Result);
@@ -237,10 +283,22 @@ public partial class RepoTabViewModel : TabViewModel
             var gr = graph[g++];
             maxLanes = Math.Max(maxLanes, gr.LaneCount);
             var row = new CommitRowViewModel(this, c, gr, c.Hash == head.Hash, false);
-            foreach (var r in refsByTarget[c.Hash].OrderBy(r => r.Kind).ThenByDescending(r => r.IsHead))
+            // As in vscode-git-graph, a local branch and its remote copies on the same commit share one label
+            // ("main │ origin"); remote branches without a local one get their own.
+            var atCommit = refsByTarget[c.Hash].OrderBy(r => r.Kind).ThenByDescending(r => r.IsHead).ToList();
+            var merged = new HashSet<GitRef>();
+            foreach (var r in atCommit)
             {
+                if (merged.Contains(r)) continue;
                 var kind = r.Kind switch { RefKind.LocalBranch => BadgeKind.Local, RefKind.RemoteBranch => BadgeKind.Remote, _ => BadgeKind.Tag };
-                row.Badges.Add(new RefBadgeViewModel(this, kind, r.Name, gr.NodeColor, r, r.IsHead && r.Name == head.Branch));
+                var badge = new RefBadgeViewModel(this, kind, r.Name, gr.NodeColor, r, r.IsHead && r.Name == head.Branch);
+                if (kind == BadgeKind.Local)
+                    foreach (var remote in atCommit.Where(x => x.Kind == RefKind.RemoteBranch && x.Remote is { } rn && x.Name == $"{rn}/{r.Name}"))
+                    {
+                        badge.Remotes.Add(remote.Remote!);
+                        merged.Add(remote);
+                    }
+                row.Badges.Add(badge);
             }
             foreach (var w in otherWorktrees[c.Hash])
                 row.Badges.Add(new RefBadgeViewModel(this, BadgeKind.Worktree, System.IO.Path.GetFileName(w.Path), gr.NodeColor, null, false));

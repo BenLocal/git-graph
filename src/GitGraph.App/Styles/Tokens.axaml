@@ -43,6 +43,13 @@
       <Color x:Key="HunkFgColor">#8EA2D4</Color>
       <Color x:Key="LinkColor">#7FA6F5</Color>
       <Color x:Key="ScrollThumbColor">#30FFFFFF</Color>
+      <Color x:Key="BadgeFillColor">#14FFFFFF</Color>
+      <!-- VS Code's git decoration colours (Dark+) -->
+      <Color x:Key="GitModifiedColor">#E2C08D</Color>
+      <Color x:Key="GitAddedColor">#81B88B</Color>
+      <Color x:Key="GitUntrackedColor">#73C991</Color>
+      <Color x:Key="GitDeletedColor">#C74E39</Color>
+      <Color x:Key="GitConflictColor">#E4676B</Color>
       <Color x:Key="ScrollThumbHoverColor">#55FFFFFF</Color>
       <Color x:Key="ScrollThumbActiveColor">#80FFFFFF</Color>
       <Color x:Key="DangerColor">#F07167</Color>
@@ -74,6 +81,13 @@
       <Color x:Key="HunkFgColor">#4760A0</Color>
       <Color x:Key="LinkColor">#2F5FC4</Color>
       <Color x:Key="ScrollThumbColor">#2A1C2330</Color>
+      <Color x:Key="BadgeFillColor">#0A1C2330</Color>
+      <!-- VS Code's git decoration colours (Light+) -->
+      <Color x:Key="GitModifiedColor">#895503</Color>
+      <Color x:Key="GitAddedColor">#587C0C</Color>
+      <Color x:Key="GitUntrackedColor">#007100</Color>
+      <Color x:Key="GitDeletedColor">#AD0707</Color>
+      <Color x:Key="GitConflictColor">#AD0707</Color>
       <Color x:Key="ScrollThumbHoverColor">#501C2330</Color>
       <Color x:Key="ScrollThumbActiveColor">#781C2330</Color>
       <Color x:Key="DangerColor">#C2382E</Color>
@@ -104,6 +118,12 @@
   <SolidColorBrush x:Key="HunkBgBrush" Color="{DynamicResource HunkBgColor}" />
   <SolidColorBrush x:Key="HunkFgBrush" Color="{DynamicResource HunkFgColor}" />
   <SolidColorBrush x:Key="LinkBrush" Color="{DynamicResource LinkColor}" />
+  <SolidColorBrush x:Key="GitModifiedBrush" Color="{DynamicResource GitModifiedColor}" />
+  <SolidColorBrush x:Key="GitAddedBrush" Color="{DynamicResource GitAddedColor}" />
+  <SolidColorBrush x:Key="GitUntrackedBrush" Color="{DynamicResource GitUntrackedColor}" />
+  <SolidColorBrush x:Key="GitDeletedBrush" Color="{DynamicResource GitDeletedColor}" />
+  <SolidColorBrush x:Key="GitConflictBrush" Color="{DynamicResource GitConflictColor}" />
+  <SolidColorBrush x:Key="BadgeFillBrush" Color="{DynamicResource BadgeFillColor}" />
   <SolidColorBrush x:Key="ScrollThumbBrush" Color="{DynamicResource ScrollThumbColor}" />
   <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="{DynamicResource ScrollThumbHoverColor}" />
   <SolidColorBrush x:Key="ScrollThumbActiveBrush" Color="{DynamicResource ScrollThumbActiveColor}" />

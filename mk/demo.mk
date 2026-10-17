@@ -9,6 +9,7 @@ TAB      ?=
 PANEL    ?=
 SIDEBAR  ?=
 FULLDIFF ?=
+STATS    ?=
 
 .PHONY: demo demo-run snapshot
 
@@ -18,7 +19,7 @@ demo: ## Create demo repositories and state (DEMO_DIR=.demo, THEME=Dark|Light|Sy
 demo-run: demo ## Run the app against the demo state
 	GITGRAPH_STATE=$(abspath $(DEMO_DIR))/state.json $(DOTNET) run --project $(APP) -c $(CONFIG)
 
-snapshot: demo ## Render the demo window to a PNG (SHOT=path, SELECT=row, COMPARE=row, TAB=0|1, PANEL=max|hidden, SIDEBAR=0, FULLDIFF=1|expanded)
+snapshot: demo ## Render the demo window to a PNG (SHOT=path, SELECT=row, COMPARE=row, TAB=0|1, PANEL=max|hidden, SIDEBAR=0, FULLDIFF=1|expanded, STATS=1)
 	GITGRAPH_STATE=$(abspath $(DEMO_DIR))/state.json \
 	GITGRAPH_SNAPSHOT=$(abspath $(SHOT)) \
 	GITGRAPH_SNAPSHOT_SELECT=$(SELECT) \
@@ -27,5 +28,6 @@ snapshot: demo ## Render the demo window to a PNG (SHOT=path, SELECT=row, COMPAR
 	GITGRAPH_SNAPSHOT_PANEL=$(PANEL) \
 	GITGRAPH_SNAPSHOT_SIDEBAR=$(SIDEBAR) \
 	GITGRAPH_SNAPSHOT_FULLDIFF=$(FULLDIFF) \
+	GITGRAPH_SNAPSHOT_STATS=$(STATS) \
 	$(DOTNET) run --project $(APP) -c $(CONFIG)
 	@echo "snapshot: $(SHOT)"

@@ -5,6 +5,35 @@
              x:Class="GitGraph.App.Views.SidebarView"
              x:DataType="vm:MainWindowViewModel"
              Background="{DynamicResource FrameBrush}">
+  <UserControl.Resources>
+    <DataTemplate x:Key="FolderRowTemplate" x:DataType="vm:FolderNodeViewModel">
+      <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Path}">
+        <Button.ContextMenu>
+          <ContextMenu>
+            <MenuItem Header="Open files" Command="{Binding OpenCommand}" />
+            <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+            <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
+            <Separator IsVisible="{Binding IsFolder}" />
+            <MenuItem Header="Remove from workspace" Command="{Binding RemoveCommand}" IsVisible="{Binding IsFolder}" />
+          </ContextMenu>
+        </Button.ContextMenu>
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <Panel VerticalAlignment="Center">
+            <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" IsVisible="{Binding IsFolder}" />
+            <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" IsVisible="{Binding IsWorktree}" />
+          </Panel>
+          <TextBlock Grid.Column="1" Classes="name" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
+          <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center"
+                     MaxWidth="110" TextTrimming="CharacterEllipsis" />
+          <Button Grid.Column="2" Classes="ghost hover" Padding="3" ToolTip.Tip="Remove from workspace" Command="{Binding RemoveCommand}"
+                  IsVisible="{Binding IsFolder}">
+            <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
+          </Button>
+        </Grid>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+
   <DockPanel>
     <!-- Workspace switcher -->
     <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="12,12,8,6">
@@ -55,28 +84,26 @@
             <ctl:IconView Data="{StaticResource I.FolderPlus}" Width="15" Height="15" />
           </Button>
         </Grid>
-        <!-- A single click previews the folder's files in a tab; a double-click keeps the tab. -->
+        <!--
+          Workspace folders, each with the linked worktrees inside it nested underneath (like the worktrees of a
+          repository below). Worktrees elsewhere are reached from the Repositories section's context menu.
+          A single click previews a folder's files in a tab; a double-click keeps the tab.
+        -->
         <ItemsControl ItemsSource="{Binding FolderNodes}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FolderNodeViewModel">
-              <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Path}">
-                <Button.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Open files" Command="{Binding OpenCommand}" />
-                    <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
-                    <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
-                    <Separator />
-                    <MenuItem Header="Remove from workspace" Command="{Binding RemoveCommand}" />
-                  </ContextMenu>
-                </Button.ContextMenu>
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <ctl:IconView Data="{StaticResource I.Folder}" Width="14" Height="14" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="1" Classes="name" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
-                  <Button Grid.Column="2" Classes="ghost hover" Padding="3" ToolTip.Tip="Remove from workspace" Command="{Binding RemoveCommand}">
-                    <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
+              <StackPanel Spacing="1">
+                <Grid ColumnDefinitions="18,*">
+                  <Button Classes="ghost" Padding="1" Width="18" Height="18" IsVisible="{Binding HasWorktrees}"
+                          Command="{Binding ToggleExpandedCommand}" ToolTip.Tip="Show or hide worktrees">
+                    <ctl:IconView Classes="chevron" Classes.collapsed="{Binding !IsExpanded}" Data="{StaticResource I.Chevron}" Width="14" Height="14" />
                   </Button>
+                  <ContentControl Grid.Column="1" Content="{Binding}" ContentTemplate="{StaticResource FolderRowTemplate}" />
                 </Grid>
-              </Button>
+                <Border Classes="nest" IsVisible="{Binding IsExpanded}">
+                  <ItemsControl ItemsSource="{Binding Worktrees}" ItemTemplate="{StaticResource FolderRowTemplate}" />
+                </Border>
+              </StackPanel>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
@@ -110,6 +137,9 @@
                     <Button.ContextMenu>
                       <ContextMenu>
                         <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+                        <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
+                        <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+                        <Separator />
                         <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
                         <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
                       </ContextMenu>
@@ -133,6 +163,9 @@
                         <Button.ContextMenu>
                           <ContextMenu>
                             <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+                            <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
+                            <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+                            <Separator />
                             <MenuItem Header="Remove worktree…" Command="{Binding RemoveCommand}" />
                           </ContextMenu>
                         </Button.ContextMenu>

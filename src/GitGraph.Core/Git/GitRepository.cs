@@ -205,6 +205,27 @@ public sealed class GitRepository(string path)
 
     public Task FetchAsync(CancellationToken ct = default) => Git(ct, "fetch", "--all", "--prune");
 
+    /// <summary>Changed, untracked and ignored paths, relative to the top level. Untracked and ignored folders come as "dir/".</summary>
+    public async Task<List<FileStatusEntry>> GetStatusEntriesAsync(CancellationToken ct = default)
+    {
+        var r = await GitRunner.RunRawAsync(Path, ["status", "--porcelain=v1", "-z", "--untracked-files=normal", "--ignored=matching"], ct);
+        return r.ExitCode == 0 ? GitParsers.ParseStatus(r.StdOut) : [];
+    }
+
+    /// <summary>
+    /// Non-merge commits reachable from HEAD, leaving out those reachable from <paramref name="exclude"/>.
+    /// Without <paramref name="withLines"/> this is quick; counting lines makes git diff every commit, which
+    /// takes seconds on a large history. Empty for a repository with no commits.
+    /// </summary>
+    public async Task<List<Stats.CommitStat>> GetCommitStatsAsync(bool withLines, IEnumerable<string>? exclude = null, CancellationToken ct = default)
+    {
+        var args = new List<string> { "log", "HEAD", "--no-merges", "--use-mailmap", $"--format={GitParsers.StatFormat}" };
+        if (withLines) args.AddRange(["--shortstat", "--no-renames"]);
+        if (exclude != null) args.AddRange(exclude.Select(h => "^" + h));
+        var r = await GitRunner.RunRawAsync(Path, args, ct);
+        return r.ExitCode == 0 ? await Task.Run(() => GitParsers.ParseStats(r.StdOut, withLines), ct) : [];
+    }
+
     public async Task<SyncStatus> GetSyncStatusAsync(CancellationToken ct = default)
     {
         var branchTask = GitRunner.RunRawAsync(Path, ["symbolic-ref", "-q", "--short", "HEAD"], ct);

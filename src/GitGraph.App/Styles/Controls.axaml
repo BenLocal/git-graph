@@ -106,6 +106,21 @@
     </Setter>
   </Style>
 
+  <!-- Contributor cards and the overall chart -->
+  <Style Selector="Border.statcard">
+    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="16,14" />
+  </Style>
+  <Style Selector="ProgressBar.share">
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="Height" Value="6" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+
   <!-- Buttons -->
   <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.ghost /template/ ContentPresenter#PART_ContentPresenter, Button.nav /template/ ContentPresenter#PART_ContentPresenter, Button.fold /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Transitions">
@@ -223,6 +238,14 @@
   </Style>
   <Style Selector="ToggleButton.bar">
     <Setter Property="Padding" Value="5" />
+  </Style>
+
+  <!-- Rows nested under a sidebar row (a folder's worktrees), with a faint guide line on the left -->
+  <Style Selector="Border.nest">
+    <Setter Property="Margin" Value="26,0,0,2" />
+    <Setter Property="Padding" Value="6,0,0,0" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
   </Style>
 
   <!-- Row buttons that only show on hover, like the remove button on a sidebar folder -->
@@ -419,50 +442,52 @@
   </Style>
 
   <!-- Ref badges: route plates in the lane's colour -->
+  <!--
+    Ref labels: filled with the commit's lane colour, dark text and icon on it (a branch, tag or cloud icon
+    first), a local branch and its remote copies in one label ("main │ origin"), the checked-out branch bold.
+    Worktree labels are neutral: they mark a checkout, not a ref.
+  -->
   <Style Selector="Border.badge">
-    <Setter Property="CornerRadius" Value="3" />
-    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="CornerRadius" Value="5" />
     <Setter Property="Height" Value="18" />
-    <Setter Property="BorderThickness" Value="1.5" />
-    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{ReflectionBinding LaneBrush}" />
+    <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="Border.badge TextBlock">
-    <Setter Property="FontSize" Value="11.5" />
-    <Setter Property="VerticalAlignment" Value="Center" />
-  </Style>
-  <Style Selector="Border.badge.local">
-    <Setter Property="Background" Value="{ReflectionBinding LaneBrush}" />
-    <Setter Property="BorderBrush" Value="{ReflectionBinding LaneBrush}" />
-  </Style>
-  <Style Selector="Border.badge.remote">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{ReflectionBinding LaneBrush}" />
-  </Style>
-  <Style Selector="Border.badge.local TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />
+    <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />
   </Style>
-  <Style Selector="Border.badge.current">
-    <Setter Property="BorderBrush" Value="{DynamicResource SignalBrush}" />
+  <Style Selector="Border.badge.current TextBlock.name">
+    <Setter Property="FontWeight" Value="Bold" />
   </Style>
-  <Style Selector="Border.badge.current TextBlock">
-    <Setter Property="FontWeight" Value="SemiBold" />
+  <Style Selector="Border.badge Border.refblock">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Padding" Value="4,2,0,2" />
   </Style>
-  <Style Selector="Border.badge.remote TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  <Style Selector="Border.badge Border.refblock ctl|IconView">
+    <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />
+    <Setter Property="StrokeThickness" Value="2.4" />
   </Style>
-  <Style Selector="Border.badge.tag">
-    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+  <Style Selector="Border.badge Border.remote">
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+    <Setter Property="BorderBrush" Value="#59000000" />
+    <Setter Property="Padding" Value="5,0" />
   </Style>
-  <Style Selector="Border.badge.tag TextBlock">
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  <Style Selector="Border.badge Border.remote TextBlock">
+    <Setter Property="FontStyle" Value="Italic" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Opacity" Value="0.8" />
   </Style>
   <Style Selector="Border.badge.wt">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
   </Style>
   <Style Selector="Border.badge.wt TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Border.badge.wt Border.refblock ctl|IconView">
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
   </Style>
 

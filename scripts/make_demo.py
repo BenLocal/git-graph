@@ -110,6 +110,8 @@ def add_remote(atlas, out):
     git(out, "init", "-q", "--bare", "-b", "main", str(remote))
     git(atlas, "remote", "add", "origin", str(remote))
     git(atlas, "push", "-q", "origin", "main~1:refs/heads/main")
+    # Pushed as they are, so their labels show the local branch and origin together.
+    git(atlas, "push", "-q", "origin", "release/0.3", "feature/search")
     git(atlas, "fetch", "-q", "origin")
     git(atlas, "branch", "-q", "--set-upstream-to=origin/main", "main")
 

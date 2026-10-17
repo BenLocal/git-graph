@@ -25,6 +25,8 @@ public sealed class ShortcutService
         new("FindNext", "Repository", "Next match", "F3"),
         new("FindPrevious", "Repository", "Previous match", "Shift+F3"),
         new("Refresh", "Repository", "Refresh", "F5"),
+        new("GoToHead", "Repository", "Go to HEAD", null),
+        new("ToggleContributors", "Repository", "Show contributors or the graph", null),
         new("Fetch", "Repository", "Fetch from all remotes", null),
         new("Pull", "Repository", "Pull", null),
         new("Push", "Repository", "Push", null),
