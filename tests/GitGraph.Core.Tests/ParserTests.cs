@@ -132,6 +132,21 @@ public class ParserTests
     }
 
     [Fact]
+    public void TextDiff_sections_fold_long_unchanged_stretches()
+    {
+        var lines = Enumerable.Range(1, 30).Select(i => $"line {i}").ToList();
+        var oldText = string.Join('\n', lines);
+        lines[14] = "changed 15";
+        var diff = TextDiff.Build(oldText, string.Join('\n', lines));
+
+        Assert.Equal(30, diff.AllRows.Count);
+        // Rows 0-10 fold, 11-17 show (the change at 14 with 3 rows each side), 18-29 fold.
+        Assert.Equal([(0, 11, true), (11, 7, false), (18, 12, true)], TextDiff.Sections(diff.AllRows));
+        // Unchanged stretches shorter than minFold stay shown.
+        Assert.Equal([(0, 30, false)], TextDiff.Sections(diff.AllRows, context: 3, minFold: 20));
+    }
+
+    [Fact]
     public void TextDiff_reports_binary_content()
     {
         Assert.True(TextDiff.Build("a\0b", "a").IsBinary);

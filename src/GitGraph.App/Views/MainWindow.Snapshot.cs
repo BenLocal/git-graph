@@ -11,7 +11,8 @@ namespace GitGraph.App.Views;
 /// GITGRAPH_SNAPSHOT_SELECT=n selects the n-th row first, GITGRAPH_SNAPSHOT_COMPARE=m compares it with row m,
 /// GITGRAPH_SNAPSHOT_TAB=0|1 picks the Commit or Changes tab of the details pane,
 /// GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
-/// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead.
+/// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
+/// (=expanded also opens every fold in it).
 /// </summary>
 public partial class MainWindow
 {
@@ -39,12 +40,18 @@ public partial class MainWindow
                 await Task.Delay(1500);
             }
             Window target = this;
-            if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_FULLDIFF") == "1" &&
+            var fullDiff = Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_FULLDIFF");
+            if (fullDiff is "1" or "expanded" &&
                 DataContext is MainWindowViewModel main && main.SelectedWorkspace.SelectedTab is { } current)
             {
                 await current.Details.OpenFullDiffCommand.ExecuteAsync(null);
                 await Task.Delay(1000);
                 target = OwnedWindows.LastOrDefault() ?? this;
+                if (fullDiff == "expanded" && target.DataContext is FullDiffViewModel diff)
+                {
+                    diff.ExpandAllCommand.Execute(null);
+                    await Task.Delay(500);
+                }
             }
             var size = new PixelSize((int)target.Bounds.Width, (int)target.Bounds.Height);
             using var bmp = new RenderTargetBitmap(size);

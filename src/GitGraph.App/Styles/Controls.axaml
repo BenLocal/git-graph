@@ -329,6 +329,21 @@
     <Setter Property="Foreground" Value="{DynamicResource DelFgBrush}" />
   </Style>
 
+  <!-- Folded unchanged lines in the full-screen diff -->
+  <Style Selector="Button.fold">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Background" Value="{DynamicResource HunkBgBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource HunkFgBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="20,4" />
+  </Style>
+  <Style Selector="Button.fold:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+
   <!-- Diff lines -->
   <Style Selector="Grid.diffline TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />

@@ -49,7 +49,8 @@ def init(repo, name, email):
 def make_atlas(projects):
     atlas = projects / "atlas"
     init(atlas, "Mei Lin", "mei@example.com")
-    commit(atlas, "README.md", "# Atlas", "2026-09-01T09:00", "Initial project layout", MEI)
+    readme = "# Atlas\n" + "\n".join("- Note %d about the map viewer" % i for i in range(1, 41))
+    commit(atlas, "README.md", readme, "2026-09-01T09:00", "Initial project layout", MEI)
     commit(atlas, "src/app.ts", "export {}", "2026-09-02T10:00", "Add application entry point", MEI)
     git(atlas, "tag", "v0.1.0")
 
@@ -87,6 +88,10 @@ def make_atlas(projects):
     app.write_text(app.read_text(encoding="utf-8").replace("routing\n", "hash routing with fallback\n")
                    + "export const debug = true;\n", encoding="utf-8")
     (atlas / "TODO.md").write_text("notes\n", encoding="utf-8")
+    # A long file with one change in the middle, so the full-screen diff has stretches to fold.
+    readme_path = atlas / "README.md"
+    readme_path.write_text(readme_path.read_text(encoding="utf-8")
+                           .replace("Note 20 about", "Note 20, rewritten, about"), encoding="utf-8")
     return atlas
 
 

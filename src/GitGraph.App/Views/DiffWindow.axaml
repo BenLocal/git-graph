@@ -22,9 +22,26 @@
           <TextBlock Classes="muted small" Text="{Binding OldPath, StringFormat='Renamed from {0}'}" IsVisible="{Binding HasOldPath}" />
           <TextBlock Classes="muted small" Text="{Binding Range}" />
         </StackPanel>
-        <Button Grid.Column="1" Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)" VerticalAlignment="Top">
-          <ctl:IconView Data="{StaticResource I.Close}" />
-        </Button>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+          <Button Classes="ghost text" Command="{Binding ExpandAllCommand}" IsVisible="{Binding HasFolds}"
+                  ToolTip.Tip="Show every unchanged line">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" VerticalAlignment="Center" />
+              <TextBlock Classes="small" Text="Expand all" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost text" Command="{Binding CollapseAllCommand}" IsVisible="{Binding HasFolds}"
+                  ToolTip.Tip="Fold unchanged lines again">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ctl:IconView Data="{StaticResource I.ChevronUp}" Width="14" Height="14" VerticalAlignment="Center" />
+              <TextBlock Classes="small" Text="Collapse all" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+          <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" IsVisible="{Binding HasFolds}" />
+          <Button Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)">
+            <ctl:IconView Data="{StaticResource I.Close}" />
+          </Button>
+        </StackPanel>
       </Grid>
     </Border>
 
@@ -36,7 +53,24 @@
     </Grid>
 
     <TextBlock Grid.Row="2" Classes="muted" Text="{Binding Message}" Margin="20" IsVisible="{Binding HasMessage}" />
-    <ListBox Grid.Row="2" Classes="dense plain" ItemsSource="{Binding Rows}" IsVisible="{Binding !HasMessage}"
-             ItemTemplate="{StaticResource SplitRowTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+    <ListBox Grid.Row="2" Classes="dense plain" ItemsSource="{Binding Items}" IsVisible="{Binding !HasMessage}"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListBox.DataTemplates>
+        <DataTemplate DataType="vm:SplitRowViewModel">
+          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SplitRowTemplate}" />
+        </DataTemplate>
+        <!-- A folded stretch of unchanged lines; click to open or close it. -->
+        <DataTemplate DataType="vm:FoldViewModel">
+          <Button Classes="fold" Command="{Binding $parent[Window].((vm:FullDiffViewModel)DataContext).ToggleFoldCommand}"
+                  CommandParameter="{Binding}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding !IsExpanded}" />
+              <ctl:IconView Data="{StaticResource I.ChevronUp}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding IsExpanded}" />
+              <TextBlock Classes="small" Text="{Binding Label}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
+        </DataTemplate>
+      </ListBox.DataTemplates>
+    </ListBox>
   </Grid>
 </Window>

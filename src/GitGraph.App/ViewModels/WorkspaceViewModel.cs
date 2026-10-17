@@ -20,6 +20,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         _host = host;
         _name = config.Name;
         foreach (var f in config.Folders) Folders.Add(f);
+        Tabs.CollectionChanged += (_, _) => CloseTabsToRightCommand.NotifyCanExecuteChanged();
     }
 
     public WorkspaceConfig Config { get; }
@@ -123,6 +124,32 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         Tabs.RemoveAt(index);
         if (SelectedTab == tab || SelectedTab is null)
             SelectedTab = Tabs.Count == 0 ? null : Tabs[Math.Min(index, Tabs.Count - 1)];
+        PersistTabs();
+    }
+
+    [RelayCommand(CanExecute = nameof(HasTabsToRight))]
+    private void CloseTabsToRight(RepoTabViewModel tab)
+    {
+        var index = Tabs.IndexOf(tab);
+        if (index < 0) return;
+        CloseTabs(Tabs.Skip(index + 1).ToList(), keep: tab);
+    }
+
+    private bool HasTabsToRight(RepoTabViewModel? tab) => tab != null && Tabs.IndexOf(tab) is var i && i >= 0 && i < Tabs.Count - 1;
+
+    [RelayCommand]
+    private void CloseAllTabs() => CloseTabs(Tabs.ToList(), keep: null);
+
+    private void CloseTabs(List<RepoTabViewModel> closing, RepoTabViewModel? keep)
+    {
+        if (closing.Count == 0) return;
+        foreach (var t in closing)
+        {
+            t.Dispose();
+            Tabs.Remove(t);
+        }
+        // If the active tab was closed, activate the tab the menu was opened on, as VS Code does.
+        if (SelectedTab is null || closing.Contains(SelectedTab)) SelectedTab = keep ?? Tabs.LastOrDefault();
         PersistTabs();
     }
 

@@ -88,7 +88,14 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:RepoTabViewModel">
-              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}">
+              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent">
+                <Grid.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="Close" Command="{Binding Workspace.CloseTabCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Close tabs to the right" Command="{Binding Workspace.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
+                  </ContextMenu>
+                </Grid.ContextMenu>
                 <StackPanel Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="36">
                   <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
                   <TextBlock Classes="name" Text="{Binding Title}" VerticalAlignment="Center" />

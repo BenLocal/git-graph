@@ -21,6 +21,9 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     private const string UncommittedHash = "*uncommitted*";
 
     private readonly WorkspaceViewModel _workspace;
+
+    /// <summary>The workspace this tab belongs to, for the tab's own context menu.</summary>
+    public WorkspaceViewModel Workspace => _workspace;
     private readonly GitRepository _repo;
     private readonly List<FileSystemWatcher> _watchers = [];
     private readonly DispatcherTimer _debounce;

@@ -20,6 +20,8 @@ public sealed class FileDiff
 {
     public required IReadOnlyList<DiffLine> Lines { get; init; }
     public required IReadOnlyList<SplitDiffRow> SplitRows { get; init; }
+    /// <summary>Every row of the file side by side, unchanged ones included, with no hunk headers.</summary>
+    public IReadOnlyList<SplitDiffRow> AllRows { get; init; } = [];
     public bool IsBinary { get; init; }
     public int Additions { get; init; }
     public int Deletions { get; init; }
@@ -87,7 +89,14 @@ public static class TextDiff
             lines.AddRange(pendingAdds);
         }
 
-        return new FileDiff { Lines = lines, SplitRows = split, Additions = adds, Deletions = dels };
+        return new FileDiff
+        {
+            Lines = lines,
+            SplitRows = split,
+            AllRows = rows.Select(r => new SplitDiffRow(r.Old, r.New, false)).ToList(),
+            Additions = adds,
+            Deletions = dels,
+        };
     }
 
     /// <summary>The newline that ends the last line would otherwise show up as an extra empty line.</summary>
@@ -107,6 +116,35 @@ public static class TextDiff
                 .ToList();
         }
         return new DiffLine(kind, oldPiece?.Position, newPiece?.Position, text, segments);
+    }
+
+    /// <summary>
+    /// Splits <see cref="FileDiff.AllRows"/> into shown and foldable stretches: changes with <paramref name="context"/>
+    /// rows around them stay shown, and unchanged stretches of at least <paramref name="minFold"/> rows can be folded.
+    /// </summary>
+    public static List<(int Start, int Count, bool Foldable)> Sections(IReadOnlyList<SplitDiffRow> rows, int context = 3, int minFold = 4)
+    {
+        var shown = new bool[rows.Count];
+        for (var i = 0; i < rows.Count; i++)
+        {
+            if (rows[i].Left?.Kind == DiffLineKind.Context) continue;
+            for (var j = Math.Max(0, i - context); j <= Math.Min(rows.Count - 1, i + context); j++) shown[j] = true;
+        }
+        var sections = new List<(int Start, int Count, bool Foldable)>();
+        var start = 0;
+        for (var i = 1; i <= rows.Count; i++)
+        {
+            if (i < rows.Count && shown[i] == shown[start]) continue;
+            var count = i - start;
+            var foldable = !shown[start] && count >= minFold;
+            // A short unchanged stretch isn't worth a fold; show it with its neighbours.
+            if (sections.Count > 0 && !sections[^1].Foldable && !foldable)
+                sections[^1] = (sections[^1].Start, sections[^1].Count + count, false);
+            else
+                sections.Add((start, count, foldable));
+            start = i;
+        }
+        return sections;
     }
 
     /// <summary>Row ranges [start, end) that contain changes plus their surrounding context, merged when they touch.</summary>

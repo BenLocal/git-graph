@@ -73,6 +73,19 @@ def add_shortcut(entry):
     print("shortcut: %s" % shortcut)
 
 
+def remove_shortcut():
+    """Removes the desktop shortcut if it is ours, whichever prefix it was installed from."""
+    shortcut = desktop_shortcut()
+    if shortcut is None or not shortcut.is_file():
+        return
+    text = shortcut.read_text(encoding="utf-8", errors="replace")
+    if "Name=Git Graph" in text and "/opt/%s/" % APP_ID in text:
+        shortcut.unlink()
+        print("removed shortcut %s" % shortcut)
+    else:
+        print("note: kept %s, it doesn't look like a Git Graph shortcut" % shortcut)
+
+
 def refresh_icon_cache(prefix):
     # Optional: without a cache GTK scans the folders itself.
     tool = shutil.which("gtk-update-icon-cache")
@@ -142,10 +155,7 @@ def uninstall(prefix):
             f.unlink()
     if platform.system() == "Linux":
         refresh_desktop_db(prefix)
-        # Only remove a shortcut that points at this prefix's install.
-        shortcut = desktop_shortcut()
-        if shortcut and shortcut.is_file() and str(p["app"] / EXE) in shortcut.read_text(encoding="utf-8"):
-            shortcut.unlink()
+        remove_shortcut()
     print("removed %s" % p["app"])
     return 0
 
