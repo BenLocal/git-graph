@@ -1,0 +1,47 @@
+# Code checklist (mandatory self-check)
+
+> Hard rules to check item by item after writing or changing code; add new items to this file.
+
+Each item gives the rule, a counter-example and the correct form. Sources, in order of weight: pitfalls actually hit > comments that keep coming up in review > verbal agreements. Softer advice belongs in `coding-guidelines.md`.
+
+## 1. Build and tests pass before handing over
+
+`dotnet build GitGraph.slnx` has no errors and `dotnet test GitGraph.slnx` passes. For UI changes, also take a snapshot as described in `tech-stack.md` and look at it.
+
+- Wrong: build only the App project and report done without running the tests.
+- Right: run both commands and report the result as it is; if something fails, include the output.
+
+## 2. Core stays UI-free; git features land in Core first, with tests
+
+- Wrong: `Process.Start("git", ...)` in a view model, or an Avalonia type referenced from Core.
+- Right: add the method to `GitRepository` and the parser to `GitParsers`, test it in `GitGraph.Core.Tests` against a temporary repository, then call it from the view model.
+
+## 3. Parse only machine-readable git output
+
+- Wrong: parsing `git log --oneline` or default `git status` output, which breaks on file names with spaces or non-ASCII characters.
+- Right: separate fields with `%x00` / `%x1e` in `--format`, use `-z` for file lists, and pass arguments one by one instead of building a command string.
+
+## 4. Async loads must not let stale results overwrite newer state
+
+- Wrong: `var d = await repo.Get...(ct); Heading = d.Message;`. The user has already selected another commit and the old result writes the heading back (this happened in compare mode).
+- Right: cancel the previous CTS before a new request; after every `await`, check `ct.IsCancellationRequested` before setting properties; swallow `OperationCanceledException` and send `GitException` to `host.ReportError`.
+
+## 5. Avalonia styles and bindings
+
+- One control type per style selector (`Grid.diffline.add, Border.cell.add` triggers AVLN2000).
+- Properties that a style should control (`Background`, `BorderBrush` and so on) must not get a local value in the template, because local values beat styles (this broke badge colors and the compare-row highlight).
+- With compiled bindings, a style setter that binds to the data context uses `{ReflectionBinding}`.
+- Colors come only from resources in `Tokens.axaml`, defined for both dark and light. No hard-coded hex colors.
+- Use `PlaceholderText`, not the obsolete `Watermark`.
+
+## 6. Confirm destructive git operations
+
+Deleting a branch, tag or worktree, or any forced operation, goes through `IDialogService.ConfirmAsync` first. Unmerged branches and worktrees with changes get a second, explicit force confirmation; never default to `-D` / `--force`.
+
+## 7. No secrets in the repository
+
+Tokens and passwords never go into committed files or commit messages. Review `git diff --cached` before committing.
+
+## 8. No second library for the same job
+
+MVVM is CommunityToolkit.Mvvm, JSON is System.Text.Json, git goes through the CLI. Before adding a NuGet package, explain why the existing ones aren't enough.

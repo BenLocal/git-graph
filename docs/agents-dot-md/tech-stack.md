@@ -1,0 +1,54 @@
+# Tech stack and conventions
+
+> Stack, build and verification commands, and how to check the UI visually; read before writing code and extend the existing patterns.
+
+Structure and design trade-offs are in `architecture.md`.
+
+## 1. Overview
+
+- What it is: an Avalonia desktop git history viewer modelled on the VS Code extension vscode-git-graph: commit graph, history, diffs, worktrees, multiple workspaces.
+- Layout: `GitGraph.slnx` with three projects: `src/GitGraph.Core`, `src/GitGraph.App`, `tests/GitGraph.Core.Tests`.
+- Remote: https://github.com/BenLocal/git-graph (private).
+
+## 2. Stack
+
+| Area | Choice | Version | Notes |
+|---|---|---|---|
+| Runtime | .NET | net10.0 (SDK 10.0.401) | `Nullable=enable` in every project |
+| UI | Avalonia + Themes.Fluent | 12.1.3 | `AvaloniaUseCompiledBindingsByDefault` is on |
+| MVVM | CommunityToolkit.Mvvm | 8.4.2 | `[ObservableProperty]` fields + `[RelayCommand]` |
+| Serialization | System.Text.Json | BCL | source generator |
+| Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
+| Fonts | IBM Plex Sans / Mono | bundled in `Assets/Fonts` (OFL) | |
+
+## 3. Conventions
+
+- git is only called through `GitRunner` (`RunAsync` throws `GitException` on an unexpected exit code; `RunRawAsync` leaves the exit code to the caller), always with a `CancellationToken`.
+- Async loads follow the pattern "cancel the old CTS; after each await, check `ct.IsCancellationRequested` before setting properties", so an old request can't overwrite a newer selection (see `DetailsViewModel.LoadAsync`).
+- With compiled bindings, style setters that bind to the data context use `{ReflectionBinding}`. Properties a style should control must not get a local value in the template, because local values take precedence over styles.
+- One control type per Avalonia style selector; multi-type selectors like `Grid.x, Border.x` trigger AVLN2000.
+- Colors and fonts come only from resources in `Styles/Tokens.axaml`. A new color that differs between dark and light needs an entry in both ThemeDictionaries.
+- Code comments are in English, matching the existing code.
+
+## 4. Build and verification
+
+```bash
+make build      # expect 0 errors; one known warning about obsolete Bitmap.Save
+make test       # expect all tests to pass
+make run
+```
+
+For UI changes, check a snapshot. On GNOME Wayland `grim` doesn't work, so use the app's built-in snapshot switch:
+
+```bash
+make snapshot SELECT=3 COMPARE=6 THEME=Light SHOT=.demo/light.png
+```
+
+This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and three seconds after loading the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). It only captures the main window, not dialogs.
+
+New make targets go in a topic file under `mk/` with a `## description` comment so `make help` lists them; scripts they call go in `scripts/`.
+
+## 5. Other conventions
+
+- Commit identity: `benshi <807629978@qq.com>` (repository-local git config).
+- Before adding a NuGet package, confirm the existing dependencies can't do the job; don't add a second MVVM, JSON or git library.
