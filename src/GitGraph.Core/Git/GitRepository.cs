@@ -155,6 +155,38 @@ public sealed class GitRepository(string path)
 
     public Task DeleteTagAsync(string name, CancellationToken ct = default) => Git(ct, "tag", "-d", name);
 
+    /// <summary>Merges <paramref name="target"/> into the checked-out branch, with git's default message.</summary>
+    public Task MergeAsync(string target, bool noFastForward, bool squash, CancellationToken ct = default)
+    {
+        var args = new List<string> { "merge", "--no-edit" };
+        if (squash) args.Add("--squash");
+        else if (noFastForward) args.Add("--no-ff");
+        args.Add(target);
+        return GitRunner.RunAsync(Path, args, ct);
+    }
+
+    /// <summary>Applies one commit on top of HEAD. A merge commit is taken relative to its first parent.</summary>
+    public Task CherryPickAsync(string hash, bool isMerge, bool recordOrigin, bool noCommit, CancellationToken ct = default)
+    {
+        var args = new List<string> { "cherry-pick" };
+        if (isMerge) args.AddRange(["-m", "1"]);
+        if (recordOrigin) args.Add("-x");
+        if (noCommit) args.Add("--no-commit");
+        args.Add(hash);
+        return GitRunner.RunAsync(Path, args, ct);
+    }
+
+    /// <summary>Whether a merge or cherry-pick stopped part-way, for example on conflicts.</summary>
+    public async Task<bool> IsInProgressAsync(GitOperation op, CancellationToken ct = default)
+    {
+        var gitDir = await GetGitDirAsync(ct);
+        var marker = op == GitOperation.Merge ? "MERGE_HEAD" : "CHERRY_PICK_HEAD";
+        return gitDir != null && File.Exists(System.IO.Path.Combine(gitDir, marker));
+    }
+
+    public Task AbortAsync(GitOperation op, CancellationToken ct = default) =>
+        Git(ct, op == GitOperation.Merge ? "merge" : "cherry-pick", "--abort");
+
     /// <param name="newBranch">When set, creates this branch at <paramref name="commitish"/> and checks it out in the new worktree.</param>
     public Task AddWorktreeAsync(string worktreePath, string commitish, string? newBranch, bool detach, CancellationToken ct = default)
     {
@@ -172,4 +204,46 @@ public sealed class GitRepository(string path)
     public Task PruneWorktreesAsync(CancellationToken ct = default) => Git(ct, "worktree", "prune");
 
     public Task FetchAsync(CancellationToken ct = default) => Git(ct, "fetch", "--all", "--prune");
+
+    public async Task<SyncStatus> GetSyncStatusAsync(CancellationToken ct = default)
+    {
+        var branchTask = GitRunner.RunRawAsync(Path, ["symbolic-ref", "-q", "--short", "HEAD"], ct);
+        var upstreamTask = GitRunner.RunRawAsync(Path, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], ct);
+        var remotesTask = GitRunner.RunRawAsync(Path, ["remote"], ct);
+        await Task.WhenAll(branchTask, upstreamTask, remotesTask);
+
+        var branch = branchTask.Result.ExitCode == 0 ? branchTask.Result.StdOut.Trim() : null;
+        var upstream = upstreamTask.Result.ExitCode == 0 ? upstreamTask.Result.StdOut.Trim() : null;
+        var remotes = remotesTask.Result.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        int ahead = 0, behind = 0;
+        if (branch != null && upstream != null)
+        {
+            var counts = await GitRunner.RunRawAsync(Path, ["rev-list", "--left-right", "--count", "HEAD...@{upstream}"], ct);
+            var parts = counts.StdOut.Split('\t', StringSplitOptions.TrimEntries);
+            if (counts.ExitCode == 0 && parts.Length == 2)
+            {
+                int.TryParse(parts[0], out ahead);
+                int.TryParse(parts[1], out behind);
+            }
+        }
+        return new SyncStatus(branch, upstream, ahead, behind, remotes);
+    }
+
+    /// <summary>
+    /// Pulls into the checked-out branch the way git is configured to (pull.rebase / pull.ff). Without either
+    /// setting, git refuses to reconcile diverged branches, so this falls back to a merge, git's old default.
+    /// </summary>
+    public async Task PullAsync(CancellationToken ct = default)
+    {
+        var rebase = await GitRunner.RunRawAsync(Path, ["config", "--get", "pull.rebase"], ct);
+        var ff = await GitRunner.RunRawAsync(Path, ["config", "--get", "pull.ff"], ct);
+        var configured = rebase.ExitCode == 0 || ff.ExitCode == 0;
+        await (configured ? Git(ct, "pull", "--no-edit") : Git(ct, "pull", "--no-edit", "--no-rebase"));
+    }
+
+    public Task PushAsync(CancellationToken ct = default) => Git(ct, "push");
+
+    /// <summary>Pushes a branch that has no upstream yet and starts tracking it, like VS Code's "Publish Branch".</summary>
+    public Task PublishAsync(string remote, string branch, CancellationToken ct = default) =>
+        Git(ct, "push", "--set-upstream", remote, branch);
 }

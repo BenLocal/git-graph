@@ -72,7 +72,11 @@ def make_atlas(projects):
     commit(atlas, "src/search.ts", "search", "2026-09-10T09:00", "Search places by name", ANA)
     commit(atlas, "src/search.ts", "fuzzy", "2026-09-12T14:00", "Rank search results with fuzzy matching", ANA)
     git(atlas, "checkout", "-q", "main")
-    commit(atlas, "src/app.ts", "perf", "2026-09-11T11:11", "Cache parsed style sheets", JONAS)
+    commit(atlas, "src/app.ts", "perf", "2026-09-11T11:11", "Cache parsed style sheets\n\n"
+           "Parsing the style JSON on every tile render was the slowest step in profiles.\n\n"
+           "- Keep parsed sheets in an **LRU cache** keyed by URL\n"
+           "- Drop entries when `style.json` changes\n\n"
+           "See https://example.com/atlas/issues/42 for the profile.", JONAS)
     commit(atlas, "CHANGELOG.md", "0.2.1", "2026-09-13T17:45", "Prepare 0.2.1 changelog", MEI)
     git(atlas, "checkout", "-q", "-b", "release/0.3")
     commit(atlas, "package.json", "0.3.0", "2026-09-14T09:00", "Bump version to 0.3.0", MEI)
@@ -93,6 +97,26 @@ def make_atlas(projects):
     readme_path.write_text(readme_path.read_text(encoding="utf-8")
                            .replace("Note 20 about", "Note 20, rewritten, about"), encoding="utf-8")
     return atlas
+
+
+def add_remote(atlas, out):
+    """An origin that is one commit behind main and has one commit main lacks, so the toolbar shows ↓1 ↑1."""
+    remote = out / "remote" / "atlas.git"
+    git(out, "init", "-q", "--bare", "-b", "main", str(remote))
+    git(atlas, "remote", "add", "origin", str(remote))
+    git(atlas, "push", "-q", "origin", "main~1:refs/heads/main")
+    git(atlas, "fetch", "-q", "origin")
+    git(atlas, "branch", "-q", "--set-upstream-to=origin/main", "main")
+
+    clone = out / "remote" / "clone"
+    git(out, "clone", "-q", str(remote), str(clone))
+    git(clone, "config", "user.name", "Ana Souza")
+    git(clone, "config", "user.email", "ana@example.com")
+    git(clone, "config", "commit.gpgsign", "false")
+    commit(clone, "docs/tiles.md", "tile cache notes", "2026-09-13T20:10", "Document the tile cache", ANA)
+    git(clone, "push", "-q")
+    shutil.rmtree(clone)
+    git(atlas, "fetch", "-q", "origin")
 
 
 def make_beacon(projects):
@@ -116,7 +140,10 @@ def main():
         shutil.rmtree(projects)
     projects.mkdir(parents=True)
 
+    if (out / "remote").exists():
+        shutil.rmtree(out / "remote")
     atlas = make_atlas(projects)
+    add_remote(atlas, out)
     beacon = make_beacon(projects)
 
     state = {

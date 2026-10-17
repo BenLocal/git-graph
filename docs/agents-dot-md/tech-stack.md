@@ -29,6 +29,7 @@ Structure and design trade-offs are in `architecture.md`.
 - With compiled bindings, style setters that bind to the data context use `{ReflectionBinding}`. Properties a style should control must not get a local value in the template, because local values take precedence over styles.
 - One control type per Avalonia style selector; multi-type selectors like `Grid.x, Border.x` trigger AVLN2000.
 - Colors and fonts come only from resources in `Styles/Tokens.axaml`. A new color that differs between dark and light needs an entry in both ThemeDictionaries.
+- Animations: style transitions (`BrushTransition`, `TransformOperationsTransition`) of 100–200 ms, or `Motion.FadeIn` from code. Never loop an animation or animate layout sizes; check `Motion.Enabled` in new code-driven animations.
 - Code comments are in English, matching the existing code.
 
 ## 4. Build and verification

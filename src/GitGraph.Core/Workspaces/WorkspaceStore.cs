@@ -12,6 +12,8 @@ public sealed class WorkspaceConfig
     /// <summary>Working-tree paths open as tabs, in tab order.</summary>
     public List<string> OpenTabs { get; set; } = [];
     public string? ActiveTab { get; set; }
+    /// <summary>The tab opened by a single click, replaced by the next one until it is kept open.</summary>
+    public string? PreviewTab { get; set; }
 }
 
 public sealed class AppState
@@ -25,6 +27,10 @@ public sealed class AppState
     /// <summary>Whether the commit details panel under the graph is open.</summary>
     public bool ShowDetailsPanel { get; set; } = true;
     public bool ShowSidebar { get; set; } = true;
+    /// <summary>"Robots": GitHub pictures and Gravatar, with robots for people without one. "Initials": drawn locally, nothing sent.</summary>
+    public string AvatarStyle { get; set; } = "Robots";
+    /// <summary>Fetch every repository in the open workspace every few minutes, like VS Code's git.autofetch.</summary>
+    public bool AutoFetch { get; set; } = true;
 }
 
 [JsonSerializable(typeof(AppState))]

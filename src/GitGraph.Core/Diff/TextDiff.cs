@@ -112,7 +112,8 @@ public static class TextDiff
         {
             segments = piece.SubPieces
                 .Where(s => s.Type != ChangeType.Imaginary && !string.IsNullOrEmpty(s.Text))
-                .Select(s => new DiffSegment(s.Text!.Replace("\t", tab), s.Type != ChangeType.Unchanged))
+                // A changed run of only whitespace reads as noise, so it isn't marked.
+                .Select(s => new DiffSegment(s.Text!.Replace("\t", tab), s.Type != ChangeType.Unchanged && !string.IsNullOrWhiteSpace(s.Text)))
                 .ToList();
         }
         return new DiffLine(kind, oldPiece?.Position, newPiece?.Position, text, segments);

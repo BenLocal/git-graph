@@ -65,6 +65,18 @@ public sealed record FileChange(ChangeKind Kind, string Path, string? OldPath, i
 /// <summary>
 /// What a change list or diff compares. <see cref="To"/> null means the working tree.
 /// </summary>
+public enum GitOperation { Merge, CherryPick }
+
+/// <summary>
+/// How the checked-out branch relates to its upstream: commits to push (<see cref="Ahead"/>) and to pull
+/// (<see cref="Behind"/>). <see cref="Upstream"/> is null when the branch isn't tracking anything yet.
+/// </summary>
+public sealed record SyncStatus(string? Branch, string? Upstream, int Ahead, int Behind, IReadOnlyList<string> Remotes)
+{
+    public bool HasRemote => Remotes.Count > 0;
+    public bool CanPublish => Branch != null && Upstream is null && HasRemote;
+}
+
 public sealed record DiffTarget(string From, string? To)
 {
     public bool IsWorkingTree => To is null;

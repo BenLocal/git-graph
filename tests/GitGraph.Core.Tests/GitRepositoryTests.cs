@@ -71,6 +71,68 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Merge_fast_forwards_or_creates_a_merge_commit()
+    {
+        Git("checkout", "-q", "-b", "topic");
+        Commit("c.txt", "topic\n", "topic work");
+        Git("checkout", "-q", "main");
+        var repo = new GitRepository(_repo);
+
+        await repo.MergeAsync("topic", noFastForward: true, squash: false);
+
+        var parents = (await GitRunner.RunAsync(_repo, ["rev-list", "--parents", "-n", "1", "HEAD"])).Trim().Split(' ');
+        Assert.Equal(3, parents.Length); // the merge commit and its two parents
+    }
+
+    [Fact]
+    public async Task Cherry_pick_conflict_is_detected_and_aborted()
+    {
+        // Branch from "first" and change the same line that "second" changed on main.
+        Git("checkout", "-q", "-b", "other", "main~2");
+        Commit("a.txt", "one\nclash\n", "clashing change");
+        var clash = (await GitRunner.RunAsync(_repo, ["rev-parse", "HEAD"])).Trim();
+        Git("checkout", "-q", "main");
+        var repo = new GitRepository(_repo);
+
+        await Assert.ThrowsAsync<GitException>(() => repo.CherryPickAsync(clash, isMerge: false, recordOrigin: false, noCommit: false));
+        Assert.True(await repo.IsInProgressAsync(GitOperation.CherryPick));
+
+        await repo.AbortAsync(GitOperation.CherryPick);
+        Assert.False(await repo.IsInProgressAsync(GitOperation.CherryPick));
+        Assert.Equal(0, await repo.CountUncommittedAsync());
+    }
+
+    [Fact]
+    public async Task Sync_status_counts_commits_to_push_and_pull()
+    {
+        var remote = Path.Combine(_root, "remote.git");
+        Git("init", "-q", "--bare", "-b", "main", remote);
+        Git("remote", "add", "origin", remote);
+        var repo = new GitRepository(_repo);
+
+        var unpublished = await repo.GetSyncStatusAsync();
+        Assert.True(unpublished.CanPublish);
+        await repo.PublishAsync("origin", "main");
+
+        // One commit only here (to push), one only on the remote (to pull).
+        var clone = Path.Combine(_root, "clone");
+        Git("clone", "-q", remote, clone);
+        GitRunner.RunAsync(clone, ["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "theirs"])
+            .GetAwaiter().GetResult();
+        GitRunner.RunAsync(clone, ["push", "-q"]).GetAwaiter().GetResult();
+        Commit("d.txt", "mine\n", "mine");
+        await repo.FetchAsync();
+
+        var status = await repo.GetSyncStatusAsync();
+        Assert.Equal(("main", "origin/main", 1, 1), (status.Branch, status.Upstream, status.Ahead, status.Behind));
+
+        await repo.PullAsync();
+        await repo.PushAsync();
+        var synced = await repo.GetSyncStatusAsync();
+        Assert.Equal((0, 0), (synced.Ahead, synced.Behind));
+    }
+
+    [Fact]
     public async Task Working_tree_changes_include_untracked_files()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "changed\n");

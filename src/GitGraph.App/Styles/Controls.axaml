@@ -35,7 +35,49 @@
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
   </Style>
 
+  <!-- Disclosure chevrons point down when open and rotate when they change. -->
+  <Style Selector="ctl|IconView.chevron">
+    <Setter Property="RenderTransform" Value="rotate(0deg)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="ctl|IconView.chevron.collapsed">
+    <Setter Property="RenderTransform" Value="rotate(-90deg)" />
+  </Style>
+  <Style Selector="ctl|IconView.chevron.flipped">
+    <Setter Property="RenderTransform" Value="rotate(180deg)" />
+  </Style>
+
+  <!-- Pull/push counts: the signal colour, because they say "your branch has moved" -->
+  <Style Selector="TextBlock.sync">
+    <Setter Property="Foreground" Value="{DynamicResource SignalBrush}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <!-- The sync icon turns while a pull or push runs, and only then. -->
+  <Style Selector="ctl|IconView.sync.spinning">
+    <Style.Animations>
+      <Animation Duration="0:0:1" IterationCount="INFINITE">
+        <KeyFrame Cue="0%">
+          <Setter Property="RotateTransform.Angle" Value="0" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="RotateTransform.Angle" Value="360" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
   <!-- Buttons -->
+  <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.ghost /template/ ContentPresenter#PART_ContentPresenter, Button.nav /template/ ContentPresenter#PART_ContentPresenter, Button.fold /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+  </Style>
   <Style Selector="Button.ghost, ToggleButton.ghost">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -93,7 +135,7 @@
 
   <!-- Inputs -->
   <Style Selector="TextBox, ComboBox">
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
   </Style>
   <Style Selector="TextBox.find">
@@ -124,10 +166,19 @@
 
   <!-- Menu bar -->
   <Style Selector="Border.menubar">
-    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
-    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Background" Value="{DynamicResource FrameBrush}" />
     <Setter Property="Height" Value="32" />
+  </Style>
+
+  <!-- The sheet that holds the open repository, lit above the frame -->
+  <Style Selector="Border.sheet">
+    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Margin" Value="8,0,8,8" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="BoxShadow" Value="0 6 24 0 #38000000" />
   </Style>
   <Style Selector="Border.menubar Menu > MenuItem">
     <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
@@ -138,18 +189,24 @@
     <Setter Property="Padding" Value="5" />
   </Style>
 
-  <!-- Repository tabs -->
+  <!-- Repository tabs: folder tabs on the frame; the selected one takes the sheet's colour and joins it. -->
   <Style Selector="ListBox.tabs">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Padding" Value="0" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem">
     <Setter Property="Padding" Value="0" />
-    <Setter Property="Margin" Value="0" />
+    <Setter Property="Margin" Value="0,0,2,0" />
     <Setter Property="MinHeight" Value="0" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="8,8,0,0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
@@ -157,17 +214,38 @@
   <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
   </Style>
+  <!-- The signal bar on top of the selected tab grows out from its centre. -->
   <Style Selector="ListBox.tabs ListBoxItem Border.tabline">
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource SignalBrush}" />
+    <Setter Property="Margin" Value="10,0" />
+    <Setter Property="CornerRadius" Value="0,0,2,2" />
+    <Setter Property="RenderTransform" Value="scaleX(0)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected Border.tabline">
-    <Setter Property="Background" Value="{DynamicResource SignalBrush}" />
+    <Setter Property="RenderTransform" Value="scaleX(1)" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem TextBlock.name">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem TextBlock.name.preview">
+    <Setter Property="FontStyle" Value="Italic" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected TextBlock.name">
     <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem Button.close">
     <Setter Property="Opacity" Value="0" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected Button.close, ListBox.tabs ListBoxItem:pointerover Button.close">
     <Setter Property="Opacity" Value="1" />
@@ -215,6 +293,28 @@
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
 
+  <!-- A short confirmation that rises in and fades out on its own. -->
+  <Style Selector="Border.toast">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="10,6" />
+    <Setter Property="BoxShadow" Value="0 4 14 0 #33000000" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="RenderTransform" Value="translateY(6px)" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.toast.show">
+    <Setter Property="Opacity" Value="1" />
+    <Setter Property="RenderTransform" Value="translateY(0px)" />
+  </Style>
+
   <!-- Dense lists: commit graph, file changes, diff -->
   <Style Selector="ListBox.dense">
     <Setter Property="Background" Value="Transparent" />
@@ -224,6 +324,20 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="ListBox.dense ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.1" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!-- Rounded, inset selection for the commit and file lists. -->
+  <Style Selector="ListBox.pills ListBoxItem">
+    <Setter Property="Margin" Value="6,0" />
+  </Style>
+  <Style Selector="ListBox.pills ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="CornerRadius" Value="6" />
   </Style>
   <Style Selector="ListBox.dense ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />

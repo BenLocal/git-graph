@@ -23,6 +23,26 @@ public partial class MainWindow : Window, IDialogService
             (DataContext as MainWindowViewModel)?.SelectedWorkspace.SelectedTab?.OnActivated();
         };
         KeyDown += OnWindowKeyDown;
+        TabStrip.AddHandler(PointerWheelChangedEvent, OnTabStripWheel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        TabStrip.SelectionChanged += (_, _) =>
+        {
+            if (TabStrip.SelectedItem is { } tab) TabStrip.ScrollIntoView(tab);
+        };
+    }
+
+    // Double-clicking a preview tab keeps it open.
+    private void OnTabDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if ((sender as Control)?.DataContext is RepoTabViewModel tab) tab.Workspace.PinTabCommand.Execute(tab);
+    }
+
+    /// <summary>The tab strip has no visible scrollbar, so a vertical wheel scrolls it sideways.</summary>
+    private void OnTabStripWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (TabStrip.Scroll is not ScrollViewer sv) return;
+        var delta = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? e.Delta.X : e.Delta.Y;
+        sv.Offset = sv.Offset.WithX(Math.Clamp(sv.Offset.X - delta * 60, 0, Math.Max(0, sv.Extent.Width - sv.Viewport.Width)));
+        e.Handled = true;
     }
 
     protected override void OnDataContextChanged(EventArgs e)

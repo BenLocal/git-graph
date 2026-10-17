@@ -64,7 +64,8 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 - **Diff with DiffPlex instead of parsing `git diff`**: both file versions come from git and DiffPlex computes the diff in-process, which gives word-level highlights inside modified lines. Change lists and +/− counts still come from git (`--numstat`), so rename detection and binary detection match git. Line-ending-only changes show as no text changes.
 - **Self-contained graph rows**: each row records its own segments and doesn't depend on its neighbours being rendered, which allows list virtualization. Lanes keep a fixed column and free slots are reused; gaps are not compacted the way vscode-git-graph does.
 - **Worktrees grouped by `--git-common-dir`**: multiple working trees of one repository hang under a single repository node in the sidebar.
-- **Visual concept: transit map**: lane colors are the only strong color; the rest of the UI is quiet slate. The amber Signal color only means "where you are" (HEAD, selection, active tab). Tokens live in `Styles/Tokens.axaml`; don't hard-code colors in views.
+- **Visual concept: transit map**: lane colors are the only strong color; the rest of the UI is quiet slate. The amber Signal color only means "where you are" (HEAD, selection, active tab). Tokens live in `Styles/Tokens.axaml`; don't hard-code colors in views. The chrome (menu bar, sidebar, folder tabs) sits on a darker `Frame`; the open repository is one rounded sheet (`Border.sheet`) in it. Radii follow hierarchy: sheet 10, inputs 8, list pills 6, badges 3.
+- **Motion answers actions**: hover washes and chevrons ease, the tab's signal bar grows in, the details pane and diff fade when their content is replaced (`Controls/Motion.cs`). The only unprompted motion is a one-time ripple around the HEAD station when a repository loads. All of it is short and redraws little; `GITGRAPH_REDUCED_MOTION=1` turns the code-driven animations off.
 
 ## 7. Extension points
 

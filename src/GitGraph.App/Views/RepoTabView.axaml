@@ -23,6 +23,21 @@
             <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
           </StackPanel>
         </Border>
+        <!-- Pull/push state: counts to pull and push, a plain sync icon when up to date, or Publish for a new branch. -->
+        <Button Classes="ghost syncbutton" Command="{Binding SyncNowCommand}" IsVisible="{Binding ShowSync}" ToolTip.Tip="{Binding SyncTooltip}"
+                Padding="6,3" Margin="-6,0,0,0">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <ctl:IconView Classes="sync" Classes.spinning="{Binding IsSyncing}" Data="{StaticResource I.Sync}" Width="14" Height="14"
+                          VerticalAlignment="Center" IsVisible="{Binding !CanPublish}">
+              <ctl:IconView.RenderTransform>
+                <RotateTransform />
+              </ctl:IconView.RenderTransform>
+            </ctl:IconView>
+            <ctl:IconView Data="{StaticResource I.Publish}" Width="14" Height="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+            <TextBlock Classes="sync small" Text="{Binding SyncCounts}" VerticalAlignment="Center" IsVisible="{Binding !IsInSync}" />
+            <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+          </StackPanel>
+        </Button>
         <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
       </StackPanel>
 
@@ -69,8 +84,9 @@
     </Grid>
 
     <!-- Column headings -->
-    <Border x:Name="Headings" Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,1" Background="{DynamicResource SurfaceBrush}">
-      <Grid ColumnDefinitions="Auto,*,140,150,84" Height="26">
+    <Border x:Name="Headings" Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1">
+      <!-- Inset like the rows' selection pills so the columns line up. -->
+      <Grid ColumnDefinitions="Auto,*,140,150,84" Height="26" Margin="6,0">
         <TextBlock Classes="section" Width="{Binding GraphWidth}" Padding="10,0,0,0" Text="Graph" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Classes="section" Margin="4,0" Text="Description" VerticalAlignment="Center" />
         <TextBlock Grid.Column="2" Classes="section" Text="Date" VerticalAlignment="Center" />
@@ -81,7 +97,7 @@
 
     <!-- The graph -->
     <Panel x:Name="Graph" Grid.Row="2">
-      <ListBox x:Name="CommitList" Classes="dense" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
+      <ListBox x:Name="CommitList" Classes="dense pills" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CommitRowViewModel">
@@ -97,6 +113,9 @@
                   <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding !IsUncommitted}" />
                   <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding !IsUncommitted}" />
                   <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <Separator IsVisible="{Binding CanApply}" />
+                  <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
+                  <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
                   <Separator />
                   <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding !IsUncommitted}" />
                   <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding !IsUncommitted}" />
@@ -122,6 +141,7 @@
                         <Border.ContextMenu>
                           <ContextMenu>
                             <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
+                            <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanMerge}" />
                             <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
                             <MenuItem Header="Open worktree" Command="{Binding OpenWorktreeCommand}" IsVisible="{Binding IsWorktree}" />
                             <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
@@ -142,8 +162,10 @@
               </DockPanel>
 
               <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding DateText}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="3" Classes="muted small" Text="{Binding Author}" VerticalAlignment="Center"
-                         TextTrimming="CharacterEllipsis" Margin="0,0,10,0" />
+              <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,10,0">
+                <ctl:Avatar Email="{Binding AuthorEmail}" Name="{Binding Author}" Width="18" Height="18" VerticalAlignment="Center" />
+                <TextBlock Classes="muted small" Text="{Binding Author}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="118" />
+              </StackPanel>
               <TextBlock Grid.Column="4" Classes="mono muted" Text="{Binding ShortHash}" VerticalAlignment="Center" />
             </Grid>
           </DataTemplate>
@@ -160,9 +182,6 @@
               CornerRadius="6" IsVisible="{Binding LoadError, Converter={x:Static ObjectConverters.IsNotNull}}">
         <SelectableTextBlock Text="{Binding LoadError, StringFormat='Could not read this repository: {0}'}" TextWrapping="Wrap" />
       </Border>
-
-      <Button Classes="secondary" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12"
-              IsVisible="{Binding HasMore}" Command="{Binding LoadMoreCommand}" Content="Load more commits" />
     </Panel>
 
     <GridSplitter x:Name="DetailsSplitter" Grid.Row="3" Height="1" ResizeDirection="Rows" />

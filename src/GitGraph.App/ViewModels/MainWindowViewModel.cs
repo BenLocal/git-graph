@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Styling;
@@ -29,10 +30,12 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     {
         _store = store;
         _state = store.Load();
+        Services.AvatarService.UseImages = _state.AvatarStyle != "Initials";
         foreach (var w in _state.Workspaces) Workspaces.Add(new WorkspaceViewModel(w, this));
         _selectedWorkspace = Workspaces.FirstOrDefault(w => w.Config.Id == _state.ActiveWorkspaceId) ?? Workspaces[0];
         _selectedWorkspace.EnsureScanned();
         ApplyTheme();
+        StartAutoFetch();
     }
 
     public ObservableCollection<WorkspaceViewModel> Workspaces { get; } = [];
@@ -89,6 +92,51 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
 
     [RelayCommand]
     private void ToggleSidebar() => ShowSidebar = !ShowSidebar;
+
+    /// <summary>Robots (GitHub pictures and Gravatar) or initials; switching redraws the avatars on screen.</summary>
+    public bool AvatarRobots => _state.AvatarStyle != "Initials";
+    public bool AvatarInitials => _state.AvatarStyle == "Initials";
+
+    [RelayCommand]
+    private void SetAvatarStyle(string style)
+    {
+        if (_state.AvatarStyle == style) return;
+        _state.AvatarStyle = style;
+        Services.AvatarService.UseImages = AvatarRobots;
+        OnPropertyChanged(nameof(AvatarRobots));
+        OnPropertyChanged(nameof(AvatarInitials));
+        SaveState();
+    }
+
+    public static readonly TimeSpan AutoFetchInterval = TimeSpan.FromMinutes(3);
+    private DispatcherTimer? _autoFetch;
+
+    public bool AutoFetch
+    {
+        get => _state.AutoFetch;
+        set
+        {
+            if (_state.AutoFetch == value) return;
+            _state.AutoFetch = value;
+            OnPropertyChanged();
+            SaveState();
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleAutoFetch() => AutoFetch = !AutoFetch;
+
+    /// <summary>First fetch shortly after start, then every few minutes, for the workspace on screen.</summary>
+    private void StartAutoFetch()
+    {
+        _autoFetch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
+        _autoFetch.Tick += async (_, _) =>
+        {
+            _autoFetch.Interval = AutoFetchInterval;
+            if (AutoFetch) await SelectedWorkspace.AutoFetchAsync();
+        };
+        _autoFetch.Start();
+    }
 
     [RelayCommand]
     private void TogglePanel() => ShowDetailsPanel = !ShowDetailsPanel;

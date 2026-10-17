@@ -22,6 +22,32 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
 
     private readonly WorkspaceViewModel _workspace;
 
+    /// <summary>
+    /// Opened by a single click: shown in italics and replaced by the next single-click open,
+    /// until a double-click (or "Keep open") pins it, as in VS Code.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isPreview;
+
+    // ---- Pull and push state, like the sync indicator in VS Code's status bar
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncCounts), nameof(SyncTooltip), nameof(ShowSync), nameof(CanPublish), nameof(IsInSync))]
+    private SyncStatus? _sync;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncTooltip))]
+    private DateTimeOffset? _lastFetched;
+
+    [ObservableProperty]
+    private bool _isSyncing;
+
+    public string SyncCounts => SyncText.Counts(Sync);
+    public string SyncTooltip => SyncText.Describe(Sync, LastFetched);
+    public bool ShowSync => Sync is { HasRemote: true, Branch: not null };
+    public bool CanPublish => Sync?.CanPublish == true;
+    public bool IsInSync => ShowSync && !CanPublish && SyncCounts.Length == 0;
+
     /// <summary>The workspace this tab belongs to, for the tab's own context menu.</summary>
     public WorkspaceViewModel Workspace => _workspace;
     private readonly GitRepository _repo;
@@ -165,11 +191,15 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
             var wtTask = _repo.GetWorktreesAsync(ct);
             var countTask = _repo.CountUncommittedAsync(ct);
             var commitsTask = _repo.GetCommitsAsync(_maxCount, filter, ShowRemotes, ct);
-            await Task.WhenAll(headTask, refsTask, wtTask, countTask, commitsTask);
+            var syncTask = _repo.GetSyncStatusAsync(ct);
+            await Task.WhenAll(headTask, refsTask, wtTask, countTask, commitsTask, syncTask);
             if (ct.IsCancellationRequested) return;
 
             var head = headTask.Result;
             _worktrees = wtTask.Result;
+            _headBranch = head.Branch;
+            Sync = syncTask.Result;
+            _workspace.UpdateSync(Path, Sync);
             BranchLabel = head.Branch ?? (head.Hash is { } h ? $"detached at {h[..7]}" : "no commits yet");
             UpdateBranchOptions(refsTask.Result);
             Build(commitsTask.Result, refsTask.Result, head, countTask.Result);
@@ -233,7 +263,8 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
 
         var selectedHash = SelectedRow?.Hash;
         var compareHash = CompareRow?.Hash;
-        GraphWidth = GraphCell.WidthFor(Math.Min(maxLanes, 24));
+        // At least wide enough for the "Graph" column heading.
+        GraphWidth = Math.Max(GraphCell.WidthFor(Math.Min(maxLanes, 24)), 52);
         Rows = rows;
         HasMore = commits.Count >= _maxCount;
         IsEmpty = rows.Count == 0;
@@ -353,6 +384,73 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
 
     // ---- Commands from rows and badges --------------------------------------------------------
 
+    private string? _headBranch;
+
+    /// <summary>What a merge or cherry-pick lands on, for dialog text.</summary>
+    private string CurrentLabel => _headBranch ?? "the detached HEAD";
+
+    public async Task MergeAsync(string target, string label)
+    {
+        var res = await Host.Dialogs.PromptAsync("Merge", $"Merge {label} into {CurrentLabel}.",
+            [
+                new PromptField("Always create a merge commit, even when a fast-forward is possible", "false", IsCheckbox: true),
+                new PromptField("Squash the changes into the working tree without committing", "false", IsCheckbox: true),
+            ],
+            "Merge");
+        if (res is null) return;
+        await RunOperationAsync(GitOperation.Merge, () => _repo.MergeAsync(target, res[0] == "true", res[1] == "true"));
+    }
+
+    public async Task CherryPickAsync(CommitRowViewModel row)
+    {
+        if (row.IsUncommitted) return;
+        var message = row.Commit.IsMerge
+            ? $"Apply the changes of merge {row.ShortHash} \"{row.Subject}\" onto {CurrentLabel}, relative to its first parent."
+            : $"Apply {row.ShortHash} \"{row.Subject}\" onto {CurrentLabel}.";
+        var res = await Host.Dialogs.PromptAsync("Cherry-pick", message,
+            [
+                new PromptField("Add \"cherry picked from commit …\" to the message", "false", IsCheckbox: true),
+                new PromptField("Apply the changes without committing", "false", IsCheckbox: true),
+            ],
+            "Cherry-pick");
+        if (res is null) return;
+        await RunOperationAsync(GitOperation.CherryPick,
+            () => _repo.CherryPickAsync(row.Hash, row.Commit.IsMerge, res[0] == "true", res[1] == "true"));
+    }
+
+    /// <summary>Runs a merge or cherry-pick; if it stops on conflicts, offers to abort it.</summary>
+    private async Task RunOperationAsync(GitOperation op, Func<Task> action)
+    {
+        var name = op == GitOperation.Merge ? "merge" : "cherry-pick";
+        try
+        {
+            await action();
+        }
+        catch (GitException e)
+        {
+            if (await _repo.IsInProgressAsync(op))
+            {
+                var abort = await Host.Dialogs.ConfirmAsync($"The {name} stopped on conflicts",
+                    $"Resolve the conflicted files in your editor and commit to finish, or abort the {name} to go back to where you were.\n\n{Trim(e.Message)}",
+                    $"Abort {name}", destructive: true);
+                if (abort)
+                {
+                    try { await _repo.AbortAsync(op); }
+                    catch (GitException e2) { Host.ReportError(e2.Message); }
+                }
+            }
+            else Host.ReportError(e.Message);
+        }
+        await RefreshAsync();
+        await _workspace.RefreshRepoAsync(Path);
+    }
+
+    private static string Trim(string message)
+    {
+        var lines = message.Split('\n');
+        return lines.Length <= 8 ? message : string.Join('\n', lines.Take(8)) + "\n…";
+    }
+
     private async Task RunAsync(Func<Task> action)
     {
         try
@@ -364,7 +462,61 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    private Task Fetch() => RunAsync(() => _repo.FetchAsync());
+    private async Task Fetch()
+    {
+        await RunAsync(() => _repo.FetchAsync());
+        LastFetched = DateTimeOffset.Now;
+    }
+
+    /// <summary>The periodic fetch: quiet, because a network hiccup isn't worth an error bar.</summary>
+    public async Task AutoFetchAsync()
+    {
+        try { await _repo.FetchAsync(); }
+        catch (GitException) { return; }
+        LastFetched = DateTimeOffset.Now;
+        await RefreshAsync();
+    }
+
+    /// <summary>The sync indicator: publish a branch with no upstream, otherwise pull then push.</summary>
+    [RelayCommand]
+    private async Task SyncNow()
+    {
+        if (Sync is not { Branch: { } branch } s || IsSyncing) return;
+        if (s.CanPublish)
+        {
+            if (!await Host.Dialogs.ConfirmAsync("Publish branch", $"Push {branch} to {s.Remotes[0]} and track it there?", "Publish"))
+                return;
+            await RunSyncAsync(() => _repo.PublishAsync(s.Remotes[0], branch));
+            return;
+        }
+        if (s.Upstream is null) return;
+        if (!await Host.Dialogs.ConfirmAsync("Sync",
+                $"Pull {(s.Behind > 0 ? $"{s.Behind} commit(s)" : "any new commits")} from {s.Upstream} into {branch}, then push {(s.Ahead > 0 ? $"{s.Ahead} commit(s)" : "anything new")}.",
+                "Sync"))
+            return;
+        await RunSyncAsync(async () =>
+        {
+            await _repo.PullAsync();
+            await _repo.PushAsync();
+        });
+    }
+
+    [RelayCommand]
+    private Task Pull() => RunSyncAsync(() => _repo.PullAsync());
+
+    [RelayCommand]
+    private Task Push() => Sync?.CanPublish == true && Sync.Branch is { } b
+        ? RunSyncAsync(() => _repo.PublishAsync(Sync.Remotes[0], b))
+        : RunSyncAsync(() => _repo.PushAsync());
+
+    private async Task RunSyncAsync(Func<Task> action)
+    {
+        IsSyncing = true;
+        try { await RunAsync(action); }
+        finally { IsSyncing = false; }
+        LastFetched = DateTimeOffset.Now;
+        await _workspace.RefreshRepoAsync(Path);
+    }
 
     public async Task CheckoutCommitAsync(CommitRowViewModel row)
     {
@@ -459,7 +611,7 @@ public partial class RepoTabViewModel : ObservableObject, IDisposable
     public void OpenWorktreeByName(string name)
     {
         var wt = _worktrees.FirstOrDefault(w => System.IO.Path.GetFileName(w.Path) == name);
-        if (wt != null) _workspace.OpenTab(wt.Path);
+        if (wt != null) _workspace.OpenTab(wt.Path, pin: true);
     }
 
     // ---- File watching -----------------------------------------------------------------------

@@ -30,6 +30,7 @@ public partial class CommitRowViewModel : ObservableObject
     public string ShortHash => IsUncommitted ? "" : Commit.ShortHash;
     public string Subject => Commit.Subject;
     public string Author => IsUncommitted ? "" : Commit.AuthorName;
+    public string? AuthorEmail => IsUncommitted ? null : Commit.AuthorEmail;
     public string DateText => IsUncommitted ? "" : Commit.AuthorDate.ToString("yyyy-MM-dd HH:mm");
     public string Tooltip => IsUncommitted ? Subject : $"{Commit.Hash}\n{Commit.AuthorName} <{Commit.AuthorEmail}>";
     public bool HasBadges => Badges.Count > 0;
@@ -61,6 +62,15 @@ public partial class CommitRowViewModel : ObservableObject
 
     [RelayCommand]
     private void CompareWithSelected() => _owner.SetCompare(this);
+
+    [RelayCommand]
+    private Task Merge() => _owner.MergeAsync(Commit.Hash, $"{Commit.ShortHash} \"{Commit.Subject}\"");
+
+    [RelayCommand]
+    private Task CherryPick() => _owner.CherryPickAsync(this);
+
+    /// <summary>Merging or picking HEAD onto itself does nothing, so those menu items hide there.</summary>
+    public bool CanApply => !IsUncommitted && !IsHead;
 }
 
 public enum BadgeKind { Local, Remote, Tag, Worktree }
@@ -104,6 +114,11 @@ public partial class RefBadgeViewModel : ObservableObject
 
     [RelayCommand]
     private Task Checkout() => _owner.CheckoutRefAsync(this);
+
+    [RelayCommand]
+    private Task Merge() => _owner.MergeAsync(Ref!.Name, Text);
+
+    public bool CanMerge => IsBranch && !IsCurrent;
 
     [RelayCommand]
     private Task Delete() => _owner.DeleteRefAsync(this);

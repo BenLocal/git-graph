@@ -3,6 +3,7 @@
   <!--
     Design tokens. The graph is drawn like a transit map: each lane is a line with its own colour,
     commits are stations on it. Everything around the graph stays in quiet slate so the lines carry the colour.
+    The chrome (menu bar, sidebar, tab strip) sits on a darker frame; the open repository is one lit sheet in it.
   -->
   <FontFamily x:Key="UiFont">avares://GitGraph/Assets/Fonts#IBM Plex Sans</FontFamily>
   <FontFamily x:Key="CodeFont">avares://GitGraph/Assets/Fonts#IBM Plex Mono</FontFamily>
@@ -16,10 +17,11 @@
   <ResourceDictionary.ThemeDictionaries>
     <!-- Night map -->
     <ResourceDictionary x:Key="Dark">
+      <Color x:Key="FrameColor">#11151C</Color>
       <Color x:Key="CanvasColor">#171C26</Color>
-      <Color x:Key="SurfaceColor">#1E2430</Color>
-      <Color x:Key="RaisedColor">#272F3D</Color>
-      <Color x:Key="RuleColor">#313A4A</Color>
+      <Color x:Key="SurfaceColor">#1C222D</Color>
+      <Color x:Key="RaisedColor">#262E3B</Color>
+      <Color x:Key="RuleColor">#29313F</Color>
       <Color x:Key="TextColor">#E4E8EF</Color>
       <Color x:Key="MutedColor">#8B95A7</Color>
       <Color x:Key="SignalColor">#F2B33D</Color>
@@ -34,6 +36,7 @@
       <Color x:Key="DelFgColor">#F08A86</Color>
       <Color x:Key="HunkBgColor">#222B3E</Color>
       <Color x:Key="HunkFgColor">#8EA2D4</Color>
+      <Color x:Key="LinkColor">#7FA6F5</Color>
       <Color x:Key="DangerColor">#F07167</Color>
 
       <Color x:Key="SystemAccentColor">#F2B33D</Color>
@@ -42,10 +45,11 @@
     </ResourceDictionary>
     <!-- Day map -->
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="CanvasColor">#F3F5F8</Color>
-      <Color x:Key="SurfaceColor">#FFFFFF</Color>
-      <Color x:Key="RaisedColor">#E7EBF1</Color>
-      <Color x:Key="RuleColor">#D5DBE4</Color>
+      <Color x:Key="FrameColor">#E4E8EE</Color>
+      <Color x:Key="CanvasColor">#FFFFFF</Color>
+      <Color x:Key="SurfaceColor">#F7F8FA</Color>
+      <Color x:Key="RaisedColor">#ECEFF4</Color>
+      <Color x:Key="RuleColor">#DFE4EB</Color>
       <Color x:Key="TextColor">#1C2330</Color>
       <Color x:Key="MutedColor">#5D697C</Color>
       <Color x:Key="SignalColor">#B07206</Color>
@@ -60,6 +64,7 @@
       <Color x:Key="DelFgColor">#B13A32</Color>
       <Color x:Key="HunkBgColor">#E8EEF8</Color>
       <Color x:Key="HunkFgColor">#4760A0</Color>
+      <Color x:Key="LinkColor">#2F5FC4</Color>
       <Color x:Key="DangerColor">#C2382E</Color>
 
       <Color x:Key="SystemAccentColor">#B07206</Color>
@@ -68,6 +73,7 @@
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
+  <SolidColorBrush x:Key="FrameBrush" Color="{DynamicResource FrameColor}" />
   <SolidColorBrush x:Key="CanvasBrush" Color="{DynamicResource CanvasColor}" />
   <SolidColorBrush x:Key="SurfaceBrush" Color="{DynamicResource SurfaceColor}" />
   <SolidColorBrush x:Key="RaisedBrush" Color="{DynamicResource RaisedColor}" />
@@ -86,5 +92,6 @@
   <SolidColorBrush x:Key="DelFgBrush" Color="{DynamicResource DelFgColor}" />
   <SolidColorBrush x:Key="HunkBgBrush" Color="{DynamicResource HunkBgColor}" />
   <SolidColorBrush x:Key="HunkFgBrush" Color="{DynamicResource HunkFgColor}" />
+  <SolidColorBrush x:Key="LinkBrush" Color="{DynamicResource LinkColor}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerColor}" />
 </ResourceDictionary>

@@ -4,11 +4,14 @@ A desktop git history viewer built with Avalonia and modelled on the
 [Git Graph](https://github.com/mhutchie/vscode-git-graph) extension for VS Code.
 
 - **Commit graph**: every branch, remote branch and tag on a colored lane, with uncommitted changes as a dashed row on top.
-- **History**: filter by branch, show or hide remotes, find commits by message, author, hash or branch name, and load more on demand.
+- **History**: filter by branch, show or hide remotes, find commits by message, author, hash or branch name, and scroll down to load older commits.
 - **Diffs**: files changed by a commit, the working tree, or between any two commits (Ctrl+click the second one). Diffs are computed with [DiffPlex](https://github.com/mmanela/diffplex), with changed words highlighted inside modified lines. View them unified or side by side, or double-click a file (or right-click it) to open the whole file side by side in a full window, where unchanged stretches fold and can be opened or closed.
+- **Graph actions**: right-click a commit or branch to merge it into the current branch or cherry-pick it; if either stops on conflicts you can abort it from the prompt. Copy a commit's hash, or a changed file's path, from the context menus or the copy buttons.
+- **Commit messages**: the body renders as Markdown, and links open in the browser. Author avatars come from GitHub for GitHub noreply addresses and from Gravatar otherwise (robohash for people without one), cached for a week; or choose initials under View → Author avatars, which sends nothing. Avatar requests use the proxy from the environment, or GNOME's system proxy when the app is started from the desktop.
+- **Pull and push**: like VS Code's status bar, the toolbar and sidebar show commits to pull (↓) and push (↑) against each branch's upstream. Click it to sync (pull, then push) or to publish a branch that has no upstream; Pull and Push are also in the Repository menu. Every repository in the open workspace is fetched quietly every 3 minutes (turn it off under View).
 - **Worktrees**: each repository lists its linked worktrees in the sidebar. Add one from any commit or branch, open it in its own tab, or remove it. Commits checked out in another worktree are marked in the graph.
 - **Workspaces**: named sets of folders. Repositories inside them, up to three levels deep, are found automatically. Each workspace keeps its own open tabs.
-- **Layout**: as in VS Code, a menu bar (File, View, Repository) with sidebar (Ctrl+B) and commit details panel (Ctrl+J) toggles on its right; the panel can also be maximized over the graph.
+- **Layout**: as in VS Code, a menu bar (File, View, Repository) with sidebar (Ctrl+B) and commit details panel (Ctrl+J) toggles on its right; the panel can also be maximized over the graph. As in VS Code, a single click in the sidebar opens a preview tab (in italics) that the next one replaces; double-click it, or the tab, to keep it open.
 
 ## Run
 
@@ -17,7 +20,7 @@ dotnet run --project src/GitGraph.App
 ```
 
 Needs the .NET 10 SDK and `git` on `PATH`. State is saved to `~/.config/GitGraph/state.json`
-(`%APPDATA%\GitGraph\state.json` on Windows). Set `GITGRAPH_STATE` to use a different file.
+(`%APPDATA%\GitGraph\state.json` on Windows). Set `GITGRAPH_STATE` to use a different file, and `GITGRAPH_REDUCED_MOTION=1` to turn off animations.
 
 ## Layout
 

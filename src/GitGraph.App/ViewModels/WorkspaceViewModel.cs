@@ -78,6 +78,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             foreach (var r in found)
                 Repos.Add(new RepoNodeViewModel(r, this) { IsExpanded = expanded.Count == 0 || expanded.Contains(r.MainPath) });
             RestoreTabs();
+            _ = LoadSyncAsync();
             foreach (var r in Repos) r.MarkActive(SelectedTab?.Path);
         }
         catch (OperationCanceledException) { }
@@ -97,22 +98,44 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         if (_tabsRestored) return;
         _tabsRestored = true;
         foreach (var path in Config.OpenTabs.Where(Directory.Exists))
-            Tabs.Add(new RepoTabViewModel(path, this, _host));
+            Tabs.Add(new RepoTabViewModel(path, this, _host) { IsPreview = PathEquals(path, Config.PreviewTab ?? "") });
         SelectedTab = Tabs.FirstOrDefault(t => t.Path == Config.ActiveTab) ?? Tabs.FirstOrDefault();
         // Nothing open yet: show the first repository so the window is never empty when there is something to show.
         if (SelectedTab is null && Repos.Count > 0) OpenTab(Repos[0].MainPath);
     }
 
-    public void OpenTab(string path)
+    /// <summary>
+    /// Shows a repository. A single click opens it as the preview tab, taking the place of the
+    /// previous preview; <paramref name="pin"/> (a double-click or an explicit action) keeps it open.
+    /// </summary>
+    public void OpenTab(string path, bool pin = false)
     {
         var tab = Tabs.FirstOrDefault(t => PathEquals(t.Path, path));
         if (tab is null)
         {
-            tab = new RepoTabViewModel(path, this, _host);
-            Tabs.Add(tab);
-            PersistTabs();
+            tab = new RepoTabViewModel(path, this, _host) { IsPreview = !pin };
+            var preview = pin ? null : Tabs.FirstOrDefault(t => t.IsPreview);
+            if (preview != null)
+            {
+                var index = Tabs.IndexOf(preview);
+                preview.Dispose();
+                Tabs[index] = tab;
+            }
+            else
+                Tabs.Add(tab);
         }
+        else if (pin)
+            tab.IsPreview = false;
         SelectedTab = tab;
+        PersistTabs();
+    }
+
+    [RelayCommand]
+    private void PinTab(RepoTabViewModel tab)
+    {
+        if (!tab.IsPreview) return;
+        tab.IsPreview = false;
+        PersistTabs();
     }
 
     [RelayCommand]
@@ -156,6 +179,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     private void PersistTabs()
     {
         Config.OpenTabs = Tabs.Select(t => t.Path).ToList();
+        Config.PreviewTab = Tabs.FirstOrDefault(t => t.IsPreview)?.Path;
         _host.SaveState();
     }
 
@@ -191,6 +215,56 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         else await ScanAsync();
     }
 
+    /// <summary>Shows a working tree's pull/push counts on its sidebar row.</summary>
+    public void UpdateSync(string path, SyncStatus status)
+    {
+        foreach (var r in Repos)
+        {
+            if (PathEquals(r.MainPath, path)) r.Sync = status;
+            foreach (var w in r.Worktrees)
+                if (PathEquals(w.Path, path)) w.Sync = status;
+        }
+    }
+
+    /// <summary>Reads every repository's pull/push counts without touching the network.</summary>
+    private async Task LoadSyncAsync()
+    {
+        foreach (var r in Repos.ToList())
+            foreach (var path in new[] { r.MainPath }.Concat(r.Worktrees.Select(w => w.Path)))
+            {
+                try { UpdateSync(path, await new GitRepository(path).GetSyncStatusAsync()); }
+                catch (Exception e) when (e is GitException or IOException or InvalidOperationException) { }
+            }
+    }
+
+    private bool _fetching;
+
+    /// <summary>
+    /// The periodic fetch, like VS Code's git.autofetch: every repository in the workspace is fetched
+    /// once (worktrees share refs), quietly, then the counts and open tabs catch up.
+    /// </summary>
+    public async Task AutoFetchAsync()
+    {
+        if (_fetching) return;
+        _fetching = true;
+        try
+        {
+            foreach (var r in Repos.ToList())
+            {
+                var tab = Tabs.FirstOrDefault(t => r.Contains(t.Path));
+                if (tab != null) await tab.AutoFetchAsync();
+                else
+                {
+                    try { await new GitRepository(r.MainPath).FetchAsync(); }
+                    catch (GitException) { }
+                }
+                foreach (var t in Tabs.Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshAsync();
+            }
+            await LoadSyncAsync();
+        }
+        finally { _fetching = false; }
+    }
+
     internal static bool PathEquals(string a, string b) =>
         string.Equals(System.IO.Path.TrimEndingDirectorySeparator(a), System.IO.Path.TrimEndingDirectorySeparator(b),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
@@ -222,7 +296,15 @@ public partial class RepoNodeViewModel : ObservableObject
     private bool _isExpanded = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncCounts))]
     private string? _branch;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncCounts), nameof(SyncTooltip))]
+    private SyncStatus? _sync;
+
+    public string SyncCounts => SyncText.Counts(Sync);
+    public string? SyncTooltip => Sync is null ? null : SyncText.Describe(Sync, null, clickable: false);
 
     [ObservableProperty]
     private bool _isActive;
@@ -259,6 +341,9 @@ public partial class RepoNodeViewModel : ObservableObject
     private void Open() => _workspace.OpenTab(MainPath);
 
     [RelayCommand]
+    private void Pin() => _workspace.OpenTab(MainPath, pin: true);
+
+    [RelayCommand]
     private void ToggleExpanded() => IsExpanded = !IsExpanded;
 
     [RelayCommand]
@@ -277,7 +362,7 @@ public partial class RepoNodeViewModel : ObservableObject
 
     internal Task RemoveWorktreeAsync(WorktreeNodeViewModel wt) => WorktreeActions.RemoveAsync(_workspace, MainPath, wt.Path, wt.Name);
 
-    internal void OpenPath(string path) => _workspace.OpenTab(path);
+    internal void OpenPath(string path, bool pin = false) => _workspace.OpenTab(path, pin);
 }
 
 public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel repo) : ObservableObject
@@ -292,8 +377,17 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
     [ObservableProperty]
     private bool _isActive;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncCounts))]
+    private SyncStatus? _sync;
+
+    public string SyncCounts => SyncText.Counts(Sync);
+
     [RelayCommand]
     private void Open() => repo.OpenPath(Path);
+
+    [RelayCommand]
+    private void Pin() => repo.OpenPath(Path, pin: true);
 
     [RelayCommand]
     private Task Remove() => repo.RemoveWorktreeAsync(this);
@@ -327,7 +421,7 @@ internal static class WorktreeActions
             await new GitRepository(repoPath).AddWorktreeAsync(r[0].Trim(), isBranch && newBranch is null ? suggestedBranch! : commitish,
                 newBranch, detach: !isBranch && newBranch is null);
             await ws.RefreshRepoAsync(repoPath);
-            ws.OpenTab(r[0].Trim());
+            ws.OpenTab(r[0].Trim(), pin: true);
         }
         catch (GitException e) { ws.Host.ReportError(e.Message); }
     }

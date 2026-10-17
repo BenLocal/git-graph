@@ -1,5 +1,9 @@
+using System.Runtime.CompilerServices;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Styling;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using GitGraph.Core.Graph;
@@ -21,9 +25,44 @@ public sealed class GraphCell : Control
     public static readonly StyledProperty<bool> IsHeadProperty =
         AvaloniaProperty.Register<GraphCell, bool>(nameof(IsHead));
 
+    /// <summary>0–1 progress of the one-time "you are here" ripple around the HEAD station.</summary>
+    public static readonly StyledProperty<double> RippleProperty =
+        AvaloniaProperty.Register<GraphCell, double>(nameof(Ripple), 1);
+
     static GraphCell()
     {
-        AffectsRender<GraphCell>(RowProperty, IsHeadProperty);
+        AffectsRender<GraphCell>(RowProperty, IsHeadProperty, RippleProperty);
+    }
+
+    public double Ripple
+    {
+        get => GetValue(RippleProperty);
+        set => SetValue(RippleProperty, value);
+    }
+
+    // Rows rebuild on every load, so each load ripples once; scrolling a row back into view doesn't.
+    private static readonly ConditionalWeakTable<GraphRow, object> Rippled = new();
+
+    private static readonly Animation RippleAnimation = new()
+    {
+        Duration = TimeSpan.FromMilliseconds(900),
+        Easing = new CubicEaseOut(),
+        Children =
+        {
+            new KeyFrame { Cue = new Cue(0), Setters = { new Setter(RippleProperty, 0.0) } },
+            new KeyFrame { Cue = new Cue(1), Setters = { new Setter(RippleProperty, 1.0) } },
+        },
+    };
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if ((change.Property == RowProperty || change.Property == IsHeadProperty) && IsHead && Row is { } row
+            && Motion.Enabled && !Rippled.TryGetValue(row, out _))
+        {
+            Rippled.Add(row, this);
+            _ = RippleAnimation.RunAsync(this);
+        }
     }
 
     public GraphRow? Row
@@ -86,7 +125,15 @@ public sealed class GraphCell : Control
         }
         else if (IsHead)
         {
-            ctx.DrawEllipse(null, new Pen(Resource("SignalBrush", Brushes.Orange), 2), c, 7.5, 7.5);
+            var signal = Resource("SignalBrush", Brushes.Orange);
+            if (Ripple < 1)
+            {
+                // A ring that spreads out from the halo and fades, once per load.
+                var r = 7.5 + 9 * Ripple;
+                using (ctx.PushOpacity(1 - Ripple))
+                    ctx.DrawEllipse(null, new Pen(signal, 1.5), c, r, r);
+            }
+            ctx.DrawEllipse(null, new Pen(signal, 2), c, 7.5, 7.5);
             ctx.DrawEllipse(lane, null, c, 4.5, 4.5);
         }
         else if (row.IsMerge)

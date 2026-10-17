@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GitGraph.App.ViewModels;
@@ -12,7 +13,8 @@ namespace GitGraph.App.Views;
 /// GITGRAPH_SNAPSHOT_TAB=0|1 picks the Commit or Changes tab of the details pane,
 /// GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
-/// (=expanded also opens every fold in it).
+/// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
+/// first, to exercise infinite scrolling; the row count is printed.
 /// </summary>
 public partial class MainWindow
 {
@@ -38,6 +40,19 @@ public partial class MainWindow
                 }
                 if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SIDEBAR") == "0") vm.ShowSidebar = false;
                 await Task.Delay(1500);
+            }
+            if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SCROLL"), out var scrolls)
+                && this.GetVisualDescendants().OfType<ListBox>().FirstOrDefault(l => l.Name == "CommitList") is { Scroll: ScrollViewer list })
+            {
+                for (var i = 0; i < scrolls; i++)
+                {
+                    list.ScrollToEnd();
+                    await Task.Delay(1500);
+                }
+                list.Offset = list.Offset.WithY(list.Offset.Y - 200);
+                await Task.Delay(500);
+                if (DataContext is MainWindowViewModel m && m.SelectedWorkspace.SelectedTab is { } t)
+                    Console.WriteLine($"snapshot: {t.Rows.Count} rows, offset {list.Offset.Y:0}, extent {list.Extent.Height:0}");
             }
             Window target = this;
             var fullDiff = Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_FULLDIFF");

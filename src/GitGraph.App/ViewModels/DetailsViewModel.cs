@@ -31,6 +31,13 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     [ObservableProperty]
     private string? _authorText;
 
+    /// <summary>Drives the author's avatar.</summary>
+    [ObservableProperty]
+    private string? _authorEmail;
+
+    [ObservableProperty]
+    private string? _authorName;
+
     [ObservableProperty]
     private string? _dateText;
 
@@ -145,6 +152,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Body = null;
         HashText = c.Hash;
         AuthorText = $"{c.AuthorName} <{c.AuthorEmail}>";
+        AuthorEmail = c.AuthorEmail;
+        AuthorName = c.AuthorName;
         DateText = c.AuthorDate.ToString("yyyy-MM-dd HH:mm:ss zzz");
         CommitterText = null;
         ParentsText = null;
@@ -160,6 +169,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             if (string.IsNullOrWhiteSpace(Body)) Body = null;
             HashText = d.Hash;
             AuthorText = $"{d.AuthorName} <{d.AuthorEmail}>";
+            AuthorEmail = d.AuthorEmail;
+            AuthorName = d.AuthorName;
             DateText = d.AuthorDate.ToString("yyyy-MM-dd HH:mm:ss zzz");
             CommitterText = d.CommitterName != d.AuthorName || d.CommitterEmail != d.AuthorEmail
                 ? $"Committed by {d.CommitterName} on {d.CommitDate:yyyy-MM-dd HH:mm}"
@@ -182,6 +193,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Body = null;
         HashText = null;
         AuthorText = null;
+        AuthorEmail = null;
         DateText = null;
         CommitterText = null;
         ParentsText = "Working tree and index compared with HEAD";
@@ -199,6 +211,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Body = null;
         HashText = null;
         AuthorText = null;
+        AuthorEmail = null;
         DateText = null;
         CommitterText = null;
         ParentsText = null;
@@ -224,7 +237,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             if (ct.IsCancellationRequested) return;
 
             Files.Clear();
-            foreach (var c in changes) Files.Add(new FileChangeViewModel(c));
+            foreach (var c in changes) Files.Add(new FileChangeViewModel(c, this));
             FileCount = changes.Count;
             var adds = changes.Sum(c => c.Additions ?? 0);
             var dels = changes.Sum(c => c.Deletions ?? 0);
@@ -299,12 +312,48 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             var diff = _shown is { } s && s.Target == target && s.File == file.Change
                 ? s.Diff
                 : await ComputeDiffAsync(target, file.Change, CancellationToken.None);
-            host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, EmptyMessage(diff, file.Change)));
+            host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, EmptyMessage(diff, file.Change),
+                host.Dialogs, FullPath(file.Change.Path)));
         }
         catch (Exception e) when (e is GitException or IOException)
         {
             host.ReportError($"Could not load the diff of {file.Change.Path}: {e.Message}");
         }
+    }
+
+    // ---- Copying -----------------------------------------------------------------------------
+
+    /// <summary>Confirms a copy in a small note that fades out on its own.</summary>
+    [ObservableProperty]
+    private string? _copiedNote;
+
+    [ObservableProperty]
+    private bool _isCopiedNoteVisible;
+
+    private int _copyCount;
+
+    [RelayCommand]
+    private Task CopyPath(FileChangeViewModel? file) =>
+        CopyAsync((file ?? SelectedFile)?.Change.Path, "Path copied");
+
+    [RelayCommand]
+    private Task CopyFullPath(FileChangeViewModel? file) =>
+        CopyAsync((file ?? SelectedFile)?.Change.Path is { } p ? FullPath(p) : null, "Full path copied");
+
+    [RelayCommand]
+    private Task CopyHash() => CopyAsync(HashText, "Commit hash copied");
+
+    private string FullPath(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(repo.Path, relative));
+
+    private async Task CopyAsync(string? text, string note)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        await host.Dialogs.CopyTextAsync(text);
+        CopiedNote = note;
+        IsCopiedNoteVisible = true;
+        var count = ++_copyCount;
+        await Task.Delay(1600);
+        if (count == _copyCount) IsCopiedNoteVisible = false;
     }
 
     private static string RangeLabel(DiffTarget t)
@@ -322,9 +371,11 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     }
 }
 
-public sealed class FileChangeViewModel(FileChange change)
+public sealed class FileChangeViewModel(FileChange change, DetailsViewModel owner)
 {
     public FileChange Change { get; } = change;
+    /// <summary>For the file's context menu, which sits outside the list's visual tree.</summary>
+    public DetailsViewModel Owner { get; } = owner;
     public string FileName { get; } = System.IO.Path.GetFileName(change.Path);
     public string Directory { get; } = System.IO.Path.GetDirectoryName(change.Path)?.Replace('\\', '/') ?? "";
     public bool HasDirectory => Directory.Length > 0;
@@ -381,8 +432,13 @@ public sealed class SplitRowViewModel
 /// </summary>
 public sealed partial class FullDiffViewModel : ObservableObject
 {
-    public FullDiffViewModel(FileChange file, string range, FileDiff diff, string? message)
+    private readonly Services.IDialogService _dialogs;
+    private readonly string _fullPath;
+
+    public FullDiffViewModel(FileChange file, string range, FileDiff diff, string? message, Services.IDialogService dialogs, string fullPath)
     {
+        _dialogs = dialogs;
+        _fullPath = fullPath;
         Path = file.Path;
         OldPath = file.OldPath;
         Range = range;
@@ -417,6 +473,24 @@ public sealed partial class FullDiffViewModel : ObservableObject
 
     /// <summary>Diff rows and fold rows in display order; opening a fold inserts its rows after it.</summary>
     public ObservableCollection<object> Items { get; } = [];
+
+    [ObservableProperty]
+    private bool _isCopied;
+
+    [RelayCommand]
+    private Task CopyPath() => CopyAsync(Path);
+
+    [RelayCommand]
+    private Task CopyFullPath() => CopyAsync(_fullPath);
+
+    private async Task CopyAsync(string text)
+    {
+        await _dialogs.CopyTextAsync(text);
+        // The copy button shows a check mark for a moment.
+        IsCopied = true;
+        await Task.Delay(1400);
+        IsCopied = false;
+    }
 
     [RelayCommand]
     private void ToggleFold(FoldViewModel fold) => SetExpanded(fold, !fold.IsExpanded);

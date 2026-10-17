@@ -8,7 +8,8 @@
         Title="Git Graph"
         Icon="/Assets/Icons/gitgraph-256.png"
         Width="1440" Height="900" MinWidth="900" MinHeight="560"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource FrameBrush}">
 
   <Window.KeyBindings>
     <KeyBinding Gesture="Ctrl+B" Command="{Binding ToggleSidebarCommand}" />
@@ -35,6 +36,16 @@
           <MenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}"
                     Command="{Binding TogglePanelCommand}" InputGesture="Ctrl+J" />
           <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" />
+          <MenuItem Header="Author avatars">
+            <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
+                      Command="{Binding SetAvatarStyleCommand}" CommandParameter="Robots"
+                      ToolTip.Tip="GitHub's picture for GitHub addresses, otherwise Gravatar, with a robot for people who don't have one" />
+            <MenuItem Header="Initials" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarInitials, Mode=OneWay}"
+                      Command="{Binding SetAvatarStyleCommand}" CommandParameter="Initials"
+                      ToolTip.Tip="Drawn here from the author's name; nothing is sent to Gravatar or GitHub" />
+          </MenuItem>
+          <MenuItem Header="Fetch automatically every 3 minutes" ToggleType="CheckBox" IsChecked="{Binding AutoFetch, Mode=OneWay}"
+                    Command="{Binding ToggleAutoFetchCommand}" />
           <Separator />
           <MenuItem Header="{Binding ThemeLabel, StringFormat='Theme: {0}'}" Command="{Binding CycleThemeCommand}" />
         </MenuItem>
@@ -42,6 +53,9 @@
           <MenuItem Header="Find commits" Click="OnFind" InputGesture="Ctrl+F" />
           <MenuItem Header="Refresh" Command="{Binding SelectedWorkspace.SelectedTab.RefreshCommand}" InputGesture="F5" />
           <MenuItem Header="Fetch from all remotes" Command="{Binding SelectedWorkspace.SelectedTab.FetchCommand}" />
+          <MenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedTab.PullCommand}" />
+          <MenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedTab.PushCommand}" />
+          <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedTab.SyncNowCommand}" />
           <MenuItem Header="Show remote branches" ToggleType="CheckBox"
                     IsChecked="{Binding SelectedWorkspace.SelectedTab.ShowRemotes, FallbackValue=False}" />
         </MenuItem>
@@ -69,18 +83,22 @@
           <Binding Path="SelectedWorkspace.HasTabs" Converter="{x:Static BoolConverters.Not}" />
         </MultiBinding>
       </Panel.IsVisible>
-      <Grid ColumnDefinitions="264,1">
-        <v:SidebarView Grid.Column="0" />
-        <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
-      </Grid>
+      <v:SidebarView Width="256" />
     </Panel>
 
-    <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
-      <!-- Open repositories in this workspace -->
-      <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1"
-              IsVisible="{Binding HasTabs}">
-        <ListBox Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
+    <Grid Grid.Column="2" RowDefinitions="Auto,*" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
+      <!-- Open repositories in this workspace: tabs on the frame, the selected one merging into the sheet below. -->
+      <Panel Grid.Row="0" MinHeight="8">
+        <!-- Too many tabs scroll sideways without a scrollbar: wheel over the strip, or select one to bring it into view. -->
+        <ListBox x:Name="TabStrip" Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" IsVisible="{Binding HasTabs}" Margin="18,4,8,0"
+                 ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">
+          <!-- Tabs running past the edge fade out instead of being cut off. -->
+          <ListBox.OpacityMask>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Offset="0.96" Color="Black" />
+              <GradientStop Offset="1" Color="Transparent" />
+            </LinearGradientBrush>
+          </ListBox.OpacityMask>
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate>
               <StackPanel Orientation="Horizontal" />
@@ -88,17 +106,19 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:RepoTabViewModel">
-              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent">
+              <Grid RowDefinitions="2,*" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped">
                 <Grid.ContextMenu>
                   <ContextMenu>
+                    <MenuItem Header="Keep open" Command="{Binding Workspace.PinTabCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsPreview}" />
                     <MenuItem Header="Close" Command="{Binding Workspace.CloseTabCommand}" CommandParameter="{Binding}" />
                     <MenuItem Header="Close tabs to the right" Command="{Binding Workspace.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
                     <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
                   </ContextMenu>
                 </Grid.ContextMenu>
-                <StackPanel Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="36">
+                <Border Grid.Row="0" Classes="tabline" />
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
                   <ctl:IconView Data="{StaticResource I.Worktree}" Width="13" Height="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
-                  <TextBlock Classes="name" Text="{Binding Title}" VerticalAlignment="Center" />
+                  <TextBlock Classes="name" Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
                   <TextBlock Classes="muted small" Text="{Binding BranchLabel}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
                   <Button Classes="ghost close" Padding="3" Margin="2,0,0,0"
                           Command="{Binding $parent[ListBox].((vm:WorkspaceViewModel)DataContext).CloseTabCommand}"
@@ -106,15 +126,18 @@
                     <ctl:IconView Data="{StaticResource I.Close}" Width="12" Height="12" />
                   </Button>
                 </StackPanel>
-                <Border Grid.Row="1" Classes="tabline" />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-      </Border>
+      </Panel>
+
+      <!-- The sheet: everything about the open repository -->
+      <Border Grid.Row="1" Classes="sheet">
+      <Grid RowDefinitions="Auto,*">
 
       <!-- Git errors surface here, in place, until dismissed -->
-      <Border Grid.Row="1" Background="{DynamicResource DelBgBrush}" Padding="14,8"
+      <Border Grid.Row="0" Background="{DynamicResource DelBgBrush}" Padding="14,8"
               DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
               IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
         <Grid ColumnDefinitions="*,Auto">
@@ -125,10 +148,10 @@
         </Grid>
       </Border>
 
-      <v:RepoTabView Grid.Row="2" DataContext="{Binding SelectedTab}" IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).HasTabs}" />
+      <v:RepoTabView Grid.Row="1" DataContext="{Binding SelectedTab}" IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).HasTabs}" />
 
       <!-- Nothing open yet -->
-      <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420"
+      <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420"
                   IsVisible="{Binding !HasTabs}">
         <ctl:IconView Data="{StaticResource I.Repo}" Width="40" Height="40" HorizontalAlignment="Center" StrokeThickness="1.4" />
         <TextBlock Classes="title" HorizontalAlignment="Center" TextAlignment="Center"
@@ -140,6 +163,8 @@
         <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" IsVisible="{Binding !HasFolders}"
                 Content="Add folder" />
       </StackPanel>
+      </Grid>
+      </Border>
     </Grid>
   </Grid>
   </DockPanel>
