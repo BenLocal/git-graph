@@ -13,6 +13,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private CancellationTokenSource? _diffCts;
     private DiffTarget? _target;
     private string? _key;
+    // The diff currently on screen, reused when the same file is opened full screen.
+    private (DiffTarget Target, FileChange File, FileDiff Diff)? _shown;
 
     [ObservableProperty]
     private bool _hasContent;
@@ -50,6 +52,13 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private string? _filesSummary;
 
     [ObservableProperty]
+    private int _fileCount;
+
+    /// <summary>0 shows the commit message, 1 the changed files; kept while the selection moves.</summary>
+    [ObservableProperty]
+    private int _selectedTabIndex;
+
+    [ObservableProperty]
     private FileChangeViewModel? _selectedFile;
 
     [ObservableProperty]
@@ -78,6 +87,36 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
 
     public bool IsUnified => !IsSplit;
 
+    /// <summary>The panel is shared by every tab, like the panel in VS Code, so its visibility lives on the host.</summary>
+    public bool IsPanelVisible
+    {
+        get => host.ShowDetailsPanel;
+        set
+        {
+            if (host.ShowDetailsPanel == value) return;
+            host.ShowDetailsPanel = value;
+            if (!value) IsMaximized = false;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The panel takes the graph's space; the toolbar stays.</summary>
+    [ObservableProperty]
+    private bool _isMaximized;
+
+    [RelayCommand]
+    private void ClosePanel() => IsPanelVisible = false;
+
+    [RelayCommand]
+    private void ToggleMaximize() => IsMaximized = !IsMaximized;
+
+    /// <summary>Re-reads the shared visibility after another tab changed it.</summary>
+    public void SyncPanel()
+    {
+        if (!IsPanelVisible) IsMaximized = false;
+        OnPropertyChanged(nameof(IsPanelVisible));
+    }
+
     [RelayCommand]
     private void ShowSplit() => IsSplit = true;
 
@@ -92,6 +131,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         _target = null;
         HasContent = false;
         Files.Clear();
+        FileCount = 0;
         ResetDiff(null);
     }
 
@@ -185,6 +225,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
 
             Files.Clear();
             foreach (var c in changes) Files.Add(new FileChangeViewModel(c));
+            FileCount = changes.Count;
             var adds = changes.Sum(c => c.Additions ?? 0);
             var dels = changes.Sum(c => c.Deletions ?? 0);
             FilesSummary = changes.Count == 0 ? "No file changes"
@@ -212,29 +253,64 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         var cts = _diffCts = new CancellationTokenSource();
         try
         {
-            var text = await repo.GetFileDiffAsync(target, file, cts.Token);
-            var parsed = await Task.Run(() => UnifiedDiff.Parse(text), cts.Token);
+            var diff = await ComputeDiffAsync(target, file, cts.Token);
             if (cts.IsCancellationRequested) return;
-            if (parsed.IsBinary)
+            _shown = (target, file, diff);
+            if (EmptyMessage(diff, file) is { } message)
             {
-                ResetDiff("Binary file. There is no text diff to show.");
+                ResetDiff(message);
                 return;
             }
-            if (parsed.Lines.Count == 0)
-            {
-                ResetDiff(file.Kind == ChangeKind.Renamed ? "Renamed without content changes." : "No text changes, only file mode or metadata.");
-                return;
-            }
-            DiffLines = parsed.Lines.Select(l => new DiffLineViewModel(l)).ToList();
-            SplitRows = UnifiedDiff.ToSplit(parsed.Lines).Select(r => new SplitRowViewModel(r)).ToList();
+            DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l)).ToList();
+            SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r)).ToList();
             DiffMessage = null;
             HasDiff = true;
         }
         catch (OperationCanceledException) { }
-        catch (GitException e)
+        catch (Exception e) when (e is GitException or IOException)
         {
             ResetDiff($"Could not load this diff: {e.Message}");
         }
+    }
+
+    private async Task<FileDiff> ComputeDiffAsync(DiffTarget target, FileChange file, CancellationToken ct)
+    {
+        // git's numstat already knows binary files; skip reading them.
+        if (file.IsBinary) return new FileDiff { Lines = [], SplitRows = [], IsBinary = true };
+        var (oldText, newText) = await repo.GetFileVersionsAsync(target, file, ct);
+        return await Task.Run(() => TextDiff.Build(oldText, newText), ct);
+    }
+
+    private static string? EmptyMessage(FileDiff diff, FileChange file) =>
+        diff.IsBinary ? "Binary file. There is no text diff to show."
+        : diff.Lines.Count > 0 ? null
+        : file.Kind == ChangeKind.Renamed ? "Renamed without content changes."
+        : "No text changes, only file mode, line endings or metadata.";
+
+    /// <summary>Opens one file's diff side by side in its own maximized window.</summary>
+    [RelayCommand]
+    private async Task OpenFullDiff(FileChangeViewModel? file)
+    {
+        file ??= SelectedFile;
+        if (file is null || _target is null) return;
+        var target = _target;
+        try
+        {
+            var diff = _shown is { } s && s.Target == target && s.File == file.Change
+                ? s.Diff
+                : await ComputeDiffAsync(target, file.Change, CancellationToken.None);
+            host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, EmptyMessage(diff, file.Change)));
+        }
+        catch (Exception e) when (e is GitException or IOException)
+        {
+            host.ReportError($"Could not load the diff of {file.Change.Path}: {e.Message}");
+        }
+    }
+
+    private static string RangeLabel(DiffTarget t)
+    {
+        static string Short(string rev) => rev == GitRepository.EmptyTree ? "empty tree" : rev.Length == 40 ? rev[..7] : rev;
+        return $"{Short(t.From)} → {(t.To is null ? "working tree" : Short(t.To))}";
     }
 
     private void ResetDiff(string? message)
@@ -267,15 +343,17 @@ public sealed class DiffLineViewModel(DiffLine line)
     public string NewNo { get; } = line.NewLine?.ToString() ?? "";
     public string Sign { get; } = line.Kind switch { DiffLineKind.Added => "+", DiffLineKind.Deleted => "−", _ => "" };
     public string Text { get; } = line.Text;
+    public IReadOnlyList<DiffSegment>? Segments { get; } = line.Segments;
     public bool IsAdded { get; } = line.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line.Kind == DiffLineKind.Deleted;
-    public bool IsHunk { get; } = line.Kind is DiffLineKind.Hunk or DiffLineKind.Note;
+    public bool IsHunk { get; } = line.Kind == DiffLineKind.Hunk;
 }
 
 public sealed class SplitCellViewModel(DiffLine? line, bool left)
 {
     public string No { get; } = (left ? line?.OldLine : line?.NewLine)?.ToString() ?? "";
     public string Text { get; } = line?.Text ?? "";
+    public IReadOnlyList<DiffSegment>? Segments { get; } = line?.Segments;
     public bool IsAdded { get; } = line?.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line?.Kind == DiffLineKind.Deleted;
     public bool IsEmpty { get; } = line is null;
@@ -295,4 +373,18 @@ public sealed class SplitRowViewModel
     public string HunkText { get; }
     public SplitCellViewModel Left { get; }
     public SplitCellViewModel Right { get; }
+}
+
+/// <summary>A file's diff shown side by side in its own window.</summary>
+public sealed class FullDiffViewModel(FileChange file, string range, FileDiff diff, string? message)
+{
+    public string Path { get; } = file.Path;
+    public string? OldPath { get; } = file.OldPath;
+    public bool HasOldPath => OldPath != null;
+    public string Range { get; } = range;
+    public string? AddText { get; } = diff.Additions > 0 ? $"+{diff.Additions}" : null;
+    public string? DelText { get; } = diff.Deletions > 0 ? $"−{diff.Deletions}" : null;
+    public string? Message { get; } = message;
+    public bool HasMessage => Message != null;
+    public IReadOnlyList<SplitRowViewModel> Rows { get; } = diff.SplitRows.Select(r => new SplitRowViewModel(r)).ToList();
 }

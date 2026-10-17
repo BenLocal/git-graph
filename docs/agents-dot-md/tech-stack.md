@@ -18,6 +18,7 @@ Structure and design trade-offs are in `architecture.md`.
 | UI | Avalonia + Themes.Fluent | 12.1.3 | `AvaloniaUseCompiledBindingsByDefault` is on |
 | MVVM | CommunityToolkit.Mvvm | 8.4.2 | `[ObservableProperty]` fields + `[RelayCommand]` |
 | Serialization | System.Text.Json | BCL | source generator |
+| Text diff | DiffPlex | 1.9.0 | line diff plus word diff inside modified lines (`Diff/TextDiff.cs`) |
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
 | Fonts | IBM Plex Sans / Mono | bundled in `Assets/Fonts` (OFL) | |
 

@@ -14,6 +14,7 @@ public interface IAppHost
     IDialogService Dialogs { get; }
     bool ShowRemoteBranches { get; }
     bool SplitDiff { get; set; }
+    bool ShowDetailsPanel { get; set; }
     void ReportError(string message);
     void SaveState();
 }
@@ -59,6 +60,51 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
             _state.SplitDiff = value;
             SaveState();
         }
+    }
+
+    public bool ShowDetailsPanel
+    {
+        get => _state.ShowDetailsPanel;
+        set
+        {
+            if (_state.ShowDetailsPanel == value) return;
+            _state.ShowDetailsPanel = value;
+            OnPropertyChanged();
+            SaveState();
+        }
+    }
+
+    /// <summary>Hiding it only takes effect while a repository is open; the empty state needs the sidebar.</summary>
+    public bool ShowSidebar
+    {
+        get => _state.ShowSidebar;
+        set
+        {
+            if (_state.ShowSidebar == value) return;
+            _state.ShowSidebar = value;
+            OnPropertyChanged();
+            SaveState();
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleSidebar() => ShowSidebar = !ShowSidebar;
+
+    [RelayCommand]
+    private void TogglePanel() => ShowDetailsPanel = !ShowDetailsPanel;
+
+    /// <summary>Maximizes or restores the commit details panel of the open tab, showing it first if hidden.</summary>
+    [RelayCommand]
+    private void ToggleMaximizePanel()
+    {
+        if (SelectedWorkspace.SelectedTab?.Details is not { } details) return;
+        if (!ShowDetailsPanel)
+        {
+            ShowDetailsPanel = true;
+            details.IsMaximized = true;
+            return;
+        }
+        details.IsMaximized = !details.IsMaximized;
     }
 
     public string ThemeLabel => _state.Theme switch

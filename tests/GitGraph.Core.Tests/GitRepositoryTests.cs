@@ -65,8 +65,9 @@ public sealed class GitRepositoryTests : IDisposable
         var change = Assert.Single(changes);
         Assert.Equal(("a.txt", 1, 0), (change.Path, change.Additions, change.Deletions));
 
-        var diff = await repo.GetFileDiffAsync(target, change);
-        Assert.Contains("+two", diff);
+        var (oldText, newText) = await repo.GetFileVersionsAsync(target, change);
+        Assert.Equal("one\n", oldText.Replace("\r", ""));
+        Assert.Contains("two", newText);
     }
 
     [Fact]
@@ -80,7 +81,8 @@ public sealed class GitRepositoryTests : IDisposable
         var changes = await repo.GetChangesAsync(new DiffTarget("HEAD", null));
         Assert.Contains(changes, c => c is { Path: "a.txt", Kind: ChangeKind.Modified });
         var untracked = Assert.Single(changes, c => c.Kind == ChangeKind.Untracked);
-        Assert.Contains("+hello", await repo.GetFileDiffAsync(new DiffTarget("HEAD", null), untracked));
+        var (oldText, newText) = await repo.GetFileVersionsAsync(new DiffTarget("HEAD", null), untracked);
+        Assert.Equal(("", "hello\n"), (oldText, newText));
     }
 
     [Fact]

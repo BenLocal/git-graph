@@ -13,4 +13,7 @@ public interface IDialogService
     Task<string?> PickFolderAsync(string title);
 
     Task CopyTextAsync(string text);
+
+    /// <summary>Shows one file's diff side by side in a maximized window.</summary>
+    void ShowDiff(ViewModels.FullDiffViewModel diff);
 }

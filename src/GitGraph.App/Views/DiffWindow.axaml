@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGraph.App.ViewModels"
+        xmlns:ctl="using:GitGraph.App.Controls"
+        x:Class="GitGraph.App.Views.DiffWindow"
+        x:DataType="vm:FullDiffViewModel"
+        Title="{Binding Path, StringFormat='{}{0} – Git Graph'}"
+        Icon="/Assets/Icons/gitgraph-256.png"
+        Width="1280" Height="800" MinWidth="640" MinHeight="400"
+        WindowState="Maximized" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource CanvasBrush}">
+  <Grid RowDefinitions="Auto,Auto,*">
+    <!-- File and range -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <TextBlock Classes="title mono" Text="{Binding Path}" VerticalAlignment="Center" />
+            <TextBlock Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" />
+            <TextBlock Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="-6,0,0,0" />
+          </StackPanel>
+          <TextBlock Classes="muted small" Text="{Binding OldPath, StringFormat='Renamed from {0}'}" IsVisible="{Binding HasOldPath}" />
+          <TextBlock Classes="muted small" Text="{Binding Range}" />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)" VerticalAlignment="Top">
+          <ctl:IconView Data="{StaticResource I.Close}" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Which side is which -->
+    <Grid Grid.Row="1" ColumnDefinitions="*,1,*" Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding !HasMessage}">
+      <TextBlock Classes="section" Text="Before" Margin="58,6" />
+      <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+      <TextBlock Grid.Column="2" Classes="section" Text="After" Margin="58,6" />
+    </Grid>
+
+    <TextBlock Grid.Row="2" Classes="muted" Text="{Binding Message}" Margin="20" IsVisible="{Binding HasMessage}" />
+    <ListBox Grid.Row="2" Classes="dense plain" ItemsSource="{Binding Rows}" IsVisible="{Binding !HasMessage}"
+             ItemTemplate="{StaticResource SplitRowTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+  </Grid>
+</Window>

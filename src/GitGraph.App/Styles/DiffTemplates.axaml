@@ -1,0 +1,44 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:vm="using:GitGraph.App.ViewModels"
+                    xmlns:ctl="using:GitGraph.App.Controls">
+  <!-- Diff rows shared by the details panel and the full-screen diff window. -->
+
+  <DataTemplate x:Key="UnifiedLineTemplate" x:DataType="vm:DiffLineViewModel">
+    <Grid Classes="diffline" Classes.add="{Binding IsAdded}" Classes.del="{Binding IsDeleted}" Classes.hunk="{Binding IsHunk}"
+          ColumnDefinitions="52,52,18,*">
+      <TextBlock Classes="lineno" Text="{Binding OldNo}" />
+      <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
+      <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
+      <ctl:DiffText Grid.Column="3" Line="{Binding Text}" Segments="{Binding Segments}" IsAdded="{Binding IsAdded}"
+                    TextWrapping="Wrap" Margin="0,0,12,0" />
+    </Grid>
+  </DataTemplate>
+
+  <DataTemplate x:Key="SplitRowTemplate" x:DataType="vm:SplitRowViewModel">
+    <Panel>
+      <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
+        <Grid Classes="diffline">
+          <TextBlock Text="{Binding HunkText}" />
+        </Grid>
+      </Border>
+      <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
+        <Border Classes="cell" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
+          <Grid Classes="diffline" ColumnDefinitions="48,*">
+            <TextBlock Classes="lineno" Text="{Binding Left.No}" />
+            <ctl:DiffText Grid.Column="1" Line="{Binding Left.Text}" Segments="{Binding Left.Segments}" IsAdded="False"
+                          TextWrapping="Wrap" Margin="0,0,10,0" />
+          </Grid>
+        </Border>
+        <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+        <Border Grid.Column="2" Classes="cell" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
+          <Grid Classes="diffline" ColumnDefinitions="48,*">
+            <TextBlock Classes="lineno" Text="{Binding Right.No}" />
+            <ctl:DiffText Grid.Column="1" Line="{Binding Right.Text}" Segments="{Binding Right.Segments}" IsAdded="True"
+                          TextWrapping="Wrap" Margin="0,0,10,0" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Panel>
+  </DataTemplate>
+</ResourceDictionary>

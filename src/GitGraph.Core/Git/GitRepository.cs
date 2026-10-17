@@ -113,20 +113,30 @@ public sealed class GitRepository(string path)
     public static DiffTarget TargetForCommit(CommitInfo c) =>
         new(c.Parents.Count > 0 ? c.Parents[0] : EmptyTree, c.Hash);
 
-    public async Task<string> GetFileDiffAsync(DiffTarget target, FileChange file, CancellationToken ct = default)
+    /// <summary>
+    /// The file before and after the change, for diffing in-process. A side that doesn't exist
+    /// (an added file's old version, a deleted file's new version) is empty.
+    /// </summary>
+    public async Task<(string Old, string New)> GetFileVersionsAsync(DiffTarget target, FileChange file, CancellationToken ct = default)
     {
-        if (file.Kind == ChangeKind.Untracked)
+        var oldTask = file.Kind is ChangeKind.Added or ChangeKind.Untracked || target.From == EmptyTree
+            ? Task.FromResult("")
+            : ShowAsync(target.From, file.OldPath ?? file.Path, ct);
+        string newText;
+        if (file.Kind == ChangeKind.Deleted)
+            newText = "";
+        else if (target.To is null)
         {
-            // --no-index exits 1 when the files differ, which they always do here.
-            return await GitRunner.RunAsync(Path, ["diff", "--no-color", "--no-index", "--", "/dev/null", file.Path], ct, 1);
+            var full = System.IO.Path.Combine(Path, file.Path);
+            newText = File.Exists(full) ? await File.ReadAllTextAsync(full, ct) : "";
         }
-        var args = new List<string> { "diff", "--no-color", "--no-ext-diff", "-M", "-U3", target.From };
-        if (target.To != null) args.Add(target.To);
-        args.Add("--");
-        if (file.OldPath != null) args.Add(file.OldPath);
-        args.Add(file.Path);
-        return await GitRunner.RunAsync(Path, args, ct);
+        else
+            newText = await ShowAsync(target.To, file.Path, ct);
+        return (await oldTask, newText);
     }
+
+    private Task<string> ShowAsync(string rev, string path, CancellationToken ct) =>
+        GitRunner.RunAsync(Path, ["show", "--no-textconv", $"{rev}:{path}"], ct);
 
     // ---- Commands ----------------------------------------------------------------------------
 

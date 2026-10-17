@@ -6,12 +6,74 @@
         x:Class="GitGraph.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Git Graph"
+        Icon="/Assets/Icons/gitgraph-256.png"
         Width="1440" Height="900" MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen">
 
-  <Grid ColumnDefinitions="264,1,*">
-    <v:SidebarView Grid.Column="0" />
-    <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+B" Command="{Binding ToggleSidebarCommand}" />
+    <KeyBinding Gesture="Ctrl+J" Command="{Binding TogglePanelCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel>
+  <!-- Menu bar, with the layout toggles on the right as in VS Code's title bar. -->
+  <Border DockPanel.Dock="Top" Classes="menubar">
+    <Grid ColumnDefinitions="*,Auto">
+      <Menu>
+        <MenuItem Header="_File">
+          <MenuItem Header="Add folder to workspace…" Command="{Binding SelectedWorkspace.AddFolderCommand}" />
+          <Separator />
+          <MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" />
+          <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
+          <MenuItem Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
+          <Separator />
+          <MenuItem Header="Exit" Click="OnExit" />
+        </MenuItem>
+        <MenuItem Header="_View">
+          <MenuItem Header="Sidebar" ToggleType="CheckBox" IsChecked="{Binding ShowSidebar, Mode=OneWay}"
+                    Command="{Binding ToggleSidebarCommand}" InputGesture="Ctrl+B" />
+          <MenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}"
+                    Command="{Binding TogglePanelCommand}" InputGesture="Ctrl+J" />
+          <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" />
+          <Separator />
+          <MenuItem Header="{Binding ThemeLabel, StringFormat='Theme: {0}'}" Command="{Binding CycleThemeCommand}" />
+        </MenuItem>
+        <MenuItem Header="_Repository">
+          <MenuItem Header="Find commits" Click="OnFind" InputGesture="Ctrl+F" />
+          <MenuItem Header="Refresh" Command="{Binding SelectedWorkspace.SelectedTab.RefreshCommand}" InputGesture="F5" />
+          <MenuItem Header="Fetch from all remotes" Command="{Binding SelectedWorkspace.SelectedTab.FetchCommand}" />
+          <MenuItem Header="Show remote branches" ToggleType="CheckBox"
+                    IsChecked="{Binding SelectedWorkspace.SelectedTab.ShowRemotes, FallbackValue=False}" />
+        </MenuItem>
+      </Menu>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0" VerticalAlignment="Center">
+        <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}"
+                      ToolTip.Tip="Toggle sidebar (Ctrl+B)">
+          <ctl:IconView Data="{StaticResource I.Sidebar}" Width="15" Height="15" />
+        </ToggleButton>
+        <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}" Command="{Binding TogglePanelCommand}"
+                      ToolTip.Tip="Toggle commit details panel (Ctrl+J)">
+          <ctl:IconView Data="{StaticResource I.Panel}" Width="15" Height="15" />
+        </ToggleButton>
+      </StackPanel>
+    </Grid>
+  </Border>
+
+  <Grid ColumnDefinitions="Auto,Auto,*">
+    <!-- The sidebar hides on request, but never while no repository is open. -->
+    <Panel Grid.Column="0" Grid.ColumnSpan="2">
+      <Panel.IsVisible>
+        <MultiBinding Converter="{x:Static BoolConverters.Or}">
+          <Binding Path="ShowSidebar" />
+          <Binding Path="SelectedWorkspace.HasTabs" Converter="{x:Static BoolConverters.Not}" />
+        </MultiBinding>
+      </Panel.IsVisible>
+      <Grid ColumnDefinitions="264,1">
+        <v:SidebarView Grid.Column="0" />
+        <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+      </Grid>
+    </Panel>
 
     <Grid Grid.Column="2" RowDefinitions="Auto,Auto,*" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
       <!-- Open repositories in this workspace -->
@@ -73,4 +135,5 @@
       </StackPanel>
     </Grid>
   </Grid>
+  </DockPanel>
 </Window>

@@ -21,7 +21,10 @@ from pathlib import Path
 
 APP_ID = "gitgraph"
 EXE = "GitGraph.exe" if os.name == "nt" else "GitGraph"
-ICON_SRC = Path(__file__).resolve().parent.parent / "src/GitGraph.App/Assets/gitgraph.svg"
+ASSETS = Path(__file__).resolve().parent.parent / "src/GitGraph.App/Assets"
+ICON_SVG = ASSETS / "gitgraph.svg"
+ICON_PNG_DIR = ASSETS / "Icons"  # gitgraph-<size>.png, from scripts/render_icon.py
+ICON_SIZES = [16, 24, 32, 48, 64, 128, 256, 512]
 
 DESKTOP_ENTRY = """[Desktop Entry]
 Type=Application
@@ -41,6 +44,7 @@ def paths(prefix):
         "bin": prefix / "bin" / APP_ID,
         "desktop": prefix / "share/applications" / (APP_ID + ".desktop"),
         "icon": prefix / "share/icons/hicolor/scalable/apps" / (APP_ID + ".svg"),
+        "pngs": [prefix / ("share/icons/hicolor/%dx%d/apps" % (s, s)) / (APP_ID + ".png") for s in ICON_SIZES],
     }
 
 
@@ -67,6 +71,14 @@ def add_shortcut(entry):
     if shutil.which("gio"):
         subprocess.run(["gio", "set", str(shortcut), "metadata::trusted", "true"], check=False)
     print("shortcut: %s" % shortcut)
+
+
+def refresh_icon_cache(prefix):
+    # Optional: without a cache GTK scans the folders itself.
+    tool = shutil.which("gtk-update-icon-cache")
+    theme = prefix / "share/icons/hicolor"
+    if tool and (theme / "index.theme").exists():
+        subprocess.run([tool, "-q", "-t", str(theme)], check=False)
 
 
 def refresh_desktop_db(prefix):
@@ -102,9 +114,14 @@ def install(source, prefix, shortcut):
 
     if platform.system() == "Linux":
         p["icon"].parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ICON_SRC, p["icon"])
+        shutil.copyfile(ICON_SVG, p["icon"])
+        for size, png in zip(ICON_SIZES, p["pngs"]):
+            png.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ICON_PNG_DIR / ("gitgraph-%d.png" % size), png)
+        refresh_icon_cache(prefix)
         p["desktop"].parent.mkdir(parents=True, exist_ok=True)
-        entry = DESKTOP_ENTRY.format(exe=app / EXE, icon=APP_ID)
+        # An absolute icon path works even where the launcher or desktop doesn't search ~/.local icons.
+        entry = DESKTOP_ENTRY.format(exe=app / EXE, icon=p["pngs"][ICON_SIZES.index(256)])
         p["desktop"].write_text(entry, encoding="utf-8")
         refresh_desktop_db(prefix)
         if shortcut:
@@ -120,9 +137,9 @@ def install(source, prefix, shortcut):
 def uninstall(prefix):
     p = paths(prefix)
     shutil.rmtree(p["app"], ignore_errors=True)
-    for key in ("bin", "desktop", "icon"):
-        if p[key].is_symlink() or p[key].exists():
-            p[key].unlink()
+    for f in [p["bin"], p["desktop"], p["icon"], *p["pngs"]]:
+        if f.is_symlink() or f.exists():
+            f.unlink()
     if platform.system() == "Linux":
         refresh_desktop_db(prefix)
         # Only remove a shortcut that points at this prefix's install.

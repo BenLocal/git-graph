@@ -27,8 +27,10 @@
       <Color x:Key="HoverWashColor">#14FFFFFF</Color>
       <Color x:Key="OnLaneColor">#10141B</Color>
       <Color x:Key="AddBgColor">#1D3A32</Color>
+      <Color x:Key="AddWordBgColor">#2F6652</Color>
       <Color x:Key="AddFgColor">#7FD1B0</Color>
       <Color x:Key="DelBgColor">#41242B</Color>
+      <Color x:Key="DelWordBgColor">#74343F</Color>
       <Color x:Key="DelFgColor">#F08A86</Color>
       <Color x:Key="HunkBgColor">#222B3E</Color>
       <Color x:Key="HunkFgColor">#8EA2D4</Color>
@@ -51,8 +53,10 @@
       <Color x:Key="HoverWashColor">#0C1C2330</Color>
       <Color x:Key="OnLaneColor">#11161F</Color>
       <Color x:Key="AddBgColor">#E1F3EA</Color>
+      <Color x:Key="AddWordBgColor">#B5E3CB</Color>
       <Color x:Key="AddFgColor">#1E7652</Color>
       <Color x:Key="DelBgColor">#FBE6E4</Color>
+      <Color x:Key="DelWordBgColor">#F5C1BB</Color>
       <Color x:Key="DelFgColor">#B13A32</Color>
       <Color x:Key="HunkBgColor">#E8EEF8</Color>
       <Color x:Key="HunkFgColor">#4760A0</Color>
@@ -77,6 +81,8 @@
   <SolidColorBrush x:Key="AddBgBrush" Color="{DynamicResource AddBgColor}" />
   <SolidColorBrush x:Key="AddFgBrush" Color="{DynamicResource AddFgColor}" />
   <SolidColorBrush x:Key="DelBgBrush" Color="{DynamicResource DelBgColor}" />
+  <SolidColorBrush x:Key="AddWordBgBrush" Color="{DynamicResource AddWordBgColor}" />
+  <SolidColorBrush x:Key="DelWordBgBrush" Color="{DynamicResource DelWordBgColor}" />
   <SolidColorBrush x:Key="DelFgBrush" Color="{DynamicResource DelFgColor}" />
   <SolidColorBrush x:Key="HunkBgBrush" Color="{DynamicResource HunkBgColor}" />
   <SolidColorBrush x:Key="HunkFgBrush" Color="{DynamicResource HunkFgColor}" />

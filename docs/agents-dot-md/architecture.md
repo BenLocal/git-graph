@@ -36,7 +36,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 | Top-level state | `MainWindowViewModel` | Workspace list, theme, global error bar; implements `IAppHost` |
 | Workspace | `WorkspaceViewModel` / `RepoNodeViewModel` / `WorktreeNodeViewModel` | Folders, discovered repositories and worktrees, open tabs |
 | Repository tab | `RepoTabViewModel` / `CommitRowViewModel` | Load commits, refs and worktrees; build rows and badges; find, compare, context-menu commands; watch `.git` |
-| Details | `DetailsViewModel` | File list and per-file diff (unified or split) |
+| Details | `DetailsViewModel` | Two tabs: Commit (full message and metadata) and Changes (file list and per-file diff, unified or split) |
 | Views | `Views/*.axaml` | Bindings and a little keyboard and pointer handling only |
 
 ## 4. Key flows
@@ -47,7 +47,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 3. `Build` assembles `CommitRowViewModel`s and badges (local, remote, tag, checked out in another worktree).
 4. `GraphCell.Render` draws only the top and bottom halves of its own row; adjacent rows join into continuous lines.
 
-**Selecting a commit to see its diff**: `RepoTabViewModel` → `DetailsViewModel.ShowCommit` → `GetChangesAsync` (`--name-status -z` merged with `--numstat -z`) → select a file → `GetFileDiffAsync` → `UnifiedDiff.Parse` / `ToSplit`.
+**Selecting a commit to see its diff**: `RepoTabViewModel` → `DetailsViewModel.ShowCommit` → `GetChangesAsync` (`--name-status -z` merged with `--numstat -z`) → select a file → `GetFileVersionsAsync` (`git show <rev>:<path>`, or the file on disk for the working tree) → `TextDiff.Build` (DiffPlex) → unified lines and split rows, collapsed to 3 lines of context per hunk. Double-click, Enter or the context menu opens the same diff in `DiffWindow`.
 
 **Automatic refresh**: a `FileSystemWatcher` on the git dir and common dir, debounced to 700 ms, ignoring `objects/`, `logs/` and `*.lock`. The window also refreshes on activation, throttled to 2 s.
 
@@ -61,6 +61,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 - **Call the git CLI instead of libgit2 / LibGit2Sharp**
   - Trade-off: behavior matches the user's command line exactly (worktrees, config, hooks, credentials); the cost is parsing output ourselves and starting a process per call.
   - Parsing always uses NUL / `0x1e`-separated format strings and `-z`, never human-readable output. The environment is fixed to `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` and `GIT_TERMINAL_PROMPT=0`.
+- **Diff with DiffPlex instead of parsing `git diff`**: both file versions come from git and DiffPlex computes the diff in-process, which gives word-level highlights inside modified lines. Change lists and +/− counts still come from git (`--numstat`), so rename detection and binary detection match git. Line-ending-only changes show as no text changes.
 - **Self-contained graph rows**: each row records its own segments and doesn't depend on its neighbours being rendered, which allows list virtualization. Lanes keep a fixed column and free slots are reused; gaps are not compacted the way vscode-git-graph does.
 - **Worktrees grouped by `--git-common-dir`**: multiple working trees of one repository hang under a single repository node in the sidebar.
 - **Visual concept: transit map**: lane colors are the only strong color; the rest of the UI is quiet slate. The amber Signal color only means "where you are" (HEAD, selection, active tab). Tokens live in `Styles/Tokens.axaml`; don't hard-code colors in views.

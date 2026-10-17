@@ -76,32 +76,64 @@ public class ParserTests
     }
 
     [Fact]
-    public void UnifiedDiff_numbers_lines_and_pairs_split_rows()
+    public void TextDiff_numbers_lines_and_pairs_split_rows()
     {
-        var diff = """
-            diff --git a/f b/f
-            --- a/f
-            +++ b/f
-            @@ -1,3 +1,3 @@
-             keep
-            -old
-            +new
-            +extra
-             tail
-            """;
-        var parsed = UnifiedDiff.Parse(diff);
+        var diff = TextDiff.Build("keep\nold value\ntail\n", "keep\nnew value\nextra\ntail\n");
 
-        Assert.Equal(1, parsed.Deletions);
-        Assert.Equal(2, parsed.Additions);
-        var added = parsed.Lines.Where(l => l.Kind == DiffLineKind.Added).ToList();
-        Assert.Equal([2, 3], added.Select(l => l.NewLine!.Value));
-        Assert.Equal(3, parsed.Lines.Single(l => l.Text == "tail").OldLine);
+        Assert.Equal(1, diff.Deletions);
+        Assert.Equal(2, diff.Additions);
+        Assert.Equal("@@ -1,3 +1,4 @@", diff.Lines[0].Text);
+        // Unified: deletions before additions, as git prints them.
+        Assert.Equal(
+            [DiffLineKind.Hunk, DiffLineKind.Context, DiffLineKind.Deleted, DiffLineKind.Added, DiffLineKind.Added, DiffLineKind.Context],
+            diff.Lines.Select(l => l.Kind));
+        Assert.Equal([2, 3], diff.Lines.Where(l => l.Kind == DiffLineKind.Added).Select(l => l.NewLine!.Value));
+        Assert.Equal(3, diff.Lines.Single(l => l.Text == "tail").OldLine);
 
-        var split = UnifiedDiff.ToSplit(parsed.Lines);
-        // hunk, keep, old|new, (empty)|extra, tail
-        Assert.Equal(5, split.Count);
-        Assert.Equal("old", split[2].Left!.Text);
-        Assert.Equal("new", split[2].Right!.Text);
-        Assert.Null(split[3].Left);
+        // Split: hunk, keep, old|new, (empty)|extra, tail
+        Assert.Equal(5, diff.SplitRows.Count);
+        Assert.Equal("old value", diff.SplitRows[2].Left!.Text);
+        Assert.Equal("new value", diff.SplitRows[2].Right!.Text);
+        Assert.Null(diff.SplitRows[3].Left);
+    }
+
+    [Fact]
+    public void TextDiff_marks_changed_words_in_modified_lines()
+    {
+        var diff = TextDiff.Build("var x = 1;\n", "var x = 2;\n");
+        var deleted = diff.Lines.Single(l => l.Kind == DiffLineKind.Deleted);
+        var added = diff.Lines.Single(l => l.Kind == DiffLineKind.Added);
+
+        Assert.NotNull(added.Segments);
+        Assert.Equal("var x = 1;", string.Concat(deleted.Segments!.Select(s => s.Text)));
+        Assert.Contains(added.Segments!, s => s.Changed && s.Text.Contains('2'));
+        Assert.DoesNotContain(added.Segments!, s => s.Changed && s.Text.Contains("var"));
+    }
+
+    [Fact]
+    public void TextDiff_collapses_unchanged_lines_into_hunks()
+    {
+        var lines = Enumerable.Range(1, 30).Select(i => $"line {i}").ToList();
+        var oldText = string.Join('\n', lines) + "\n";
+        lines[1] = "changed 2";
+        lines[27] = "changed 28";
+        var diff = TextDiff.Build(oldText, string.Join('\n', lines) + "\n");
+
+        var hunks = diff.Lines.Where(l => l.Kind == DiffLineKind.Hunk).Select(l => l.Text).ToList();
+        Assert.Equal(["@@ -1,5 +1,5 @@", "@@ -25,6 +25,6 @@"], hunks);
+    }
+
+    [Fact]
+    public void TextDiff_of_an_added_file_has_no_deletions()
+    {
+        var diff = TextDiff.Build("", "a\nb\n");
+        Assert.Equal((2, 0), (diff.Additions, diff.Deletions));
+        Assert.Equal("@@ -0,0 +1,2 @@", diff.Lines[0].Text);
+    }
+
+    [Fact]
+    public void TextDiff_reports_binary_content()
+    {
+        Assert.True(TextDiff.Build("a\0b", "a").IsBinary);
     }
 }

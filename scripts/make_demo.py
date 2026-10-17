@@ -83,8 +83,9 @@ def make_atlas(projects):
            "Guard against a missing map container", ANA)
 
     # Leave uncommitted changes so the graph shows its dashed working-tree row.
-    with (atlas / "src/app.ts").open("a", encoding="utf-8") as out:
-        out.write("export const debug = true;\n")
+    app = atlas / "src/app.ts"
+    app.write_text(app.read_text(encoding="utf-8").replace("routing\n", "hash routing with fallback\n")
+                   + "export const debug = true;\n", encoding="utf-8")
     (atlas / "TODO.md").write_text("notes\n", encoding="utf-8")
     return atlas
 
@@ -99,14 +100,15 @@ def make_beacon(projects):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--out", default=".demo", help="output directory, replaced if it exists (default: .demo)")
+    parser.add_argument("--out", default=".demo", help="output directory; its projects/ folder is recreated (default: .demo)")
     parser.add_argument("--theme", default="Dark", choices=["System", "Dark", "Light"])
     args = parser.parse_args()
 
     out = Path(args.out).resolve()
-    if out.exists():
-        shutil.rmtree(out)
     projects = out / "projects"
+    # Only the repositories are recreated; other files in <out>, such as snapshots, are kept.
+    if projects.exists():
+        shutil.rmtree(projects)
     projects.mkdir(parents=True)
 
     atlas = make_atlas(projects)

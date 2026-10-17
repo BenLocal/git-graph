@@ -31,6 +31,11 @@ public partial class MainWindow : Window, IDialogService
         if (DataContext is MainWindowViewModel vm) vm.Dialogs = this;
     }
 
+    private void OnExit(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
+
+    private void OnFind(object? sender, Avalonia.Interactivity.RoutedEventArgs e) =>
+        this.GetVisualDescendants().OfType<RepoTabView>().FirstOrDefault(v => v.IsEffectivelyVisible)?.FocusFind();
+
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.F && e.KeyModifiers.HasFlag(KeyModifiers.Control))
@@ -56,4 +61,6 @@ public partial class MainWindow : Window, IDialogService
     {
         if (Clipboard is { } cb) await cb.SetTextAsync(text);
     }
+
+    public void ShowDiff(FullDiffViewModel diff) => new DiffWindow { DataContext = diff }.Show(this);
 }

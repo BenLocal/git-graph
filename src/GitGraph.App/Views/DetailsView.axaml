@@ -9,127 +9,131 @@
     <TextBlock Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasContent}"
                Text="Select a commit to see what it changed. Ctrl+click a second one to compare the two." />
 
-    <Grid ColumnDefinitions="360,1,*" IsVisible="{Binding HasContent}">
-      <!-- Commit summary and changed files -->
-      <Grid RowDefinitions="Auto,Auto,*">
-        <StackPanel Margin="16,12,16,8" Spacing="6">
-          <TextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="14" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" />
-          <TextBlock Classes="muted small" Text="{Binding RangeText}" TextWrapping="Wrap"
-                     IsVisible="{Binding RangeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-          <ScrollViewer MaxHeight="96" IsVisible="{Binding Body, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <SelectableTextBlock Classes="muted" Text="{Binding Body}" TextWrapping="Wrap" />
-          </ScrollViewer>
-          <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,2,0,0"
-                IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <TextBlock Classes="muted small" Text="Commit" Margin="0,0,12,2" />
-            <SelectableTextBlock Grid.Column="1" Classes="mono" Text="{Binding HashText}" TextWrapping="Wrap" />
-            <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,12,2" />
-            <SelectableTextBlock Grid.Row="1" Grid.Column="1" FontSize="12" Text="{Binding AuthorText}" TextWrapping="Wrap" />
-            <TextBlock Grid.Row="2" Classes="muted small" Text="Date" Margin="0,0,12,2" />
-            <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" Text="{Binding DateText}" />
-          </Grid>
-          <TextBlock Classes="muted small" Text="{Binding CommitterText}" TextWrapping="Wrap"
-                     IsVisible="{Binding CommitterText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-          <TextBlock Classes="muted small" Text="{Binding ParentsText}" TextWrapping="Wrap"
-                     IsVisible="{Binding ParentsText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-        </StackPanel>
+    <Panel IsVisible="{Binding HasContent}">
+      <!-- Rule under the tab strip; the TabControl template has no border of its own. -->
+      <Border Height="34" VerticalAlignment="Top" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" />
 
-        <Border Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0" Padding="16,8,16,4">
-          <TextBlock Classes="section" Text="{Binding FilesSummary}" />
-        </Border>
-
-        <ListBox Grid.Row="2" Classes="dense" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:FileChangeViewModel">
-              <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
-                    ToolTip.Tip="{Binding Tooltip}">
-                <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
-                           Text="{Binding Status}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" Margin="6,0,8,0" />
-                <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Directory}" VerticalAlignment="Center"
-                           TextTrimming="LeadingCharacterEllipsis" />
-                <TextBlock Grid.Column="3" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11.5" />
-                <TextBlock Grid.Column="4" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" />
+      <TabControl Classes="pane" SelectedIndex="{Binding SelectedTabIndex}">
+        <!-- The full commit message and its metadata -->
+        <TabItem Header="Commit">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="20,14,20,16" Spacing="10" MaxWidth="880" HorizontalAlignment="Left">
+              <SelectableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap" />
+              <TextBlock Classes="muted" Text="{Binding RangeText}" TextWrapping="Wrap"
+                         IsVisible="{Binding RangeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
+                    IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Classes="muted small" Text="Commit" Margin="0,0,16,4" VerticalAlignment="Center" />
+                <SelectableTextBlock Grid.Column="1" Classes="mono" Text="{Binding HashText}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,16,4" VerticalAlignment="Center" />
+                <SelectableTextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AuthorText}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="2" Classes="muted small" Text="Date" Margin="0,0,16,0" VerticalAlignment="Center" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DateText}" />
               </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </Grid>
-
-      <GridSplitter Grid.Column="1" Width="1" ResizeDirection="Columns" />
-
-      <!-- Diff of the selected file -->
-      <Grid Grid.Column="2" RowDefinitions="Auto,*" Background="{DynamicResource CanvasBrush}">
-        <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SurfaceBrush}" Padding="14,4,8,4">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Classes="mono" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis"
-                       Text="{Binding SelectedFile.Change.Path, FallbackValue=''}" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-              <ToggleButton Classes="ghost" IsChecked="{Binding IsUnified, Mode=OneWay}" Command="{Binding ShowUnifiedCommand}" ToolTip.Tip="One column">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <ctl:IconView Data="{StaticResource I.Unified}" Width="14" Height="14" VerticalAlignment="Center" />
-                  <TextBlock Classes="small" Text="Unified" VerticalAlignment="Center" />
-                </StackPanel>
-              </ToggleButton>
-              <ToggleButton Classes="ghost" IsChecked="{Binding IsSplit, Mode=OneWay}" Command="{Binding ShowSplitCommand}" ToolTip.Tip="Before and after side by side">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                  <ctl:IconView Data="{StaticResource I.Split}" Width="14" Height="14" VerticalAlignment="Center" />
-                  <TextBlock Classes="small" Text="Split" VerticalAlignment="Center" />
-                </StackPanel>
-              </ToggleButton>
+              <TextBlock Classes="muted small" Text="{Binding CommitterText}" TextWrapping="Wrap"
+                         IsVisible="{Binding CommitterText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Classes="muted small" Text="{Binding ParentsText}" TextWrapping="Wrap"
+                         IsVisible="{Binding ParentsText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,0"
+                      IsVisible="{Binding Body, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <SelectableTextBlock Text="{Binding Body}" TextWrapping="Wrap" LineHeight="20" />
+              </Border>
             </StackPanel>
-          </Grid>
-        </Border>
+          </ScrollViewer>
+        </TabItem>
 
-        <TextBlock Grid.Row="1" Classes="muted" Text="{Binding DiffMessage}" Margin="16" TextWrapping="Wrap"
-                   IsVisible="{Binding DiffMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-
-        <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding DiffLines}" IsVisible="{Binding IsUnified}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:DiffLineViewModel">
-              <Grid Classes="diffline" Classes.add="{Binding IsAdded}" Classes.del="{Binding IsDeleted}" Classes.hunk="{Binding IsHunk}"
-                    ColumnDefinitions="52,52,18,*">
-                <TextBlock Classes="lineno" Text="{Binding OldNo}" />
-                <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
-                <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
-                <TextBlock Grid.Column="3" Text="{Binding Text}" TextWrapping="Wrap" Margin="0,0,12,0" />
-              </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-
-        <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding SplitRows}" IsVisible="{Binding IsSplit}"
-                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:SplitRowViewModel">
-              <Panel>
-                <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
-                  <Grid Classes="diffline">
-                    <TextBlock Text="{Binding HunkText}" />
-                  </Grid>
-                </Border>
-                <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
-                  <Border Classes="cell" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
-                    <Grid Classes="diffline" ColumnDefinitions="48,*">
-                      <TextBlock Classes="lineno" Text="{Binding Left.No}" />
-                      <TextBlock Grid.Column="1" Text="{Binding Left.Text}" TextWrapping="Wrap" Margin="0,0,10,0" />
+        <!-- Changed files and the diff of the selected one -->
+        <TabItem>
+          <TabItem.Header>
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <TextBlock Text="Changes" VerticalAlignment="Center" />
+              <Border Classes="count" VerticalAlignment="Center">
+                <TextBlock Text="{Binding FileCount}" />
+              </Border>
+            </StackPanel>
+          </TabItem.Header>
+          <Grid ColumnDefinitions="320,1,*">
+            <Grid RowDefinitions="Auto,*">
+              <Border Padding="16,8,16,4">
+                <TextBlock Classes="section" Text="{Binding FilesSummary}" />
+              </Border>
+              <ListBox x:Name="FileList" Grid.Row="1" Classes="dense" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FileChangeViewModel">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
+                          ToolTip.Tip="{Binding Tooltip}">
+                      <Grid.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Open diff in full window"
+                                    Command="{Binding $parent[ListBox].((vm:DetailsViewModel)DataContext).OpenFullDiffCommand}"
+                                    CommandParameter="{Binding}" InputGesture="Enter" />
+                        </ContextMenu>
+                      </Grid.ContextMenu>
+                      <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
+                                 Text="{Binding Status}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding FileName}" VerticalAlignment="Center" Margin="6,0,8,0" />
+                      <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Directory}" VerticalAlignment="Center"
+                                 TextTrimming="LeadingCharacterEllipsis" />
+                      <TextBlock Grid.Column="3" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11.5" />
+                      <TextBlock Grid.Column="4" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" />
                     </Grid>
-                  </Border>
-                  <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
-                  <Border Grid.Column="2" Classes="cell" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
-                    <Grid Classes="diffline" ColumnDefinitions="48,*">
-                      <TextBlock Classes="lineno" Text="{Binding Right.No}" />
-                      <TextBlock Grid.Column="1" Text="{Binding Right.Text}" TextWrapping="Wrap" Margin="0,0,10,0" />
-                    </Grid>
-                  </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="1" ResizeDirection="Columns" />
+
+            <!-- Diff of the selected file -->
+            <Grid Grid.Column="2" RowDefinitions="Auto,*" Background="{DynamicResource CanvasBrush}">
+              <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Background="{DynamicResource SurfaceBrush}" Padding="14,4,8,4">
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock Classes="mono" VerticalAlignment="Center" TextTrimming="LeadingCharacterEllipsis"
+                             Text="{Binding SelectedFile.Change.Path, FallbackValue=''}" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                    <ToggleButton Classes="ghost" IsChecked="{Binding IsUnified, Mode=OneWay}" Command="{Binding ShowUnifiedCommand}" ToolTip.Tip="One column">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ctl:IconView Data="{StaticResource I.Unified}" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock Classes="small" Text="Unified" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </ToggleButton>
+                    <ToggleButton Classes="ghost" IsChecked="{Binding IsSplit, Mode=OneWay}" Command="{Binding ShowSplitCommand}" ToolTip.Tip="Before and after side by side">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <ctl:IconView Data="{StaticResource I.Split}" Width="14" Height="14" VerticalAlignment="Center" />
+                        <TextBlock Classes="small" Text="Split" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </ToggleButton>
+                  </StackPanel>
                 </Grid>
-              </Panel>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
-      </Grid>
-    </Grid>
+              </Border>
+
+              <TextBlock Grid.Row="1" Classes="muted" Text="{Binding DiffMessage}" Margin="16" TextWrapping="Wrap"
+                         IsVisible="{Binding DiffMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+              <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding DiffLines}" IsVisible="{Binding IsUnified}"
+                       ItemTemplate="{StaticResource UnifiedLineTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+
+              <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding SplitRows}" IsVisible="{Binding IsSplit}"
+                       ItemTemplate="{StaticResource SplitRowTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+            </Grid>
+          </Grid>
+        </TabItem>
+      </TabControl>
+    </Panel>
+
+    <!-- Panel actions on the right of the tab strip, as in VS Code. -->
+    <StackPanel Orientation="Horizontal" Spacing="2" Height="34" Margin="0,0,8,0"
+                HorizontalAlignment="Right" VerticalAlignment="Top">
+      <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="Maximize panel size" IsVisible="{Binding !IsMaximized}">
+        <ctl:IconView Data="{StaticResource I.ChevronUp}" Width="14" Height="14" />
+      </Button>
+      <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="Restore panel size" IsVisible="{Binding IsMaximized}">
+        <ctl:IconView Data="{StaticResource I.Chevron}" Width="14" Height="14" />
+      </Button>
+      <Button Classes="ghost" Command="{Binding ClosePanelCommand}" ToolTip.Tip="Hide panel (Ctrl+J)">
+        <ctl:IconView Data="{StaticResource I.Close}" Width="14" Height="14" />
+      </Button>
+    </StackPanel>
   </Panel>
 </UserControl>

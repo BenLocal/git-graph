@@ -10,7 +10,8 @@
     <KeyBinding Gesture="Escape" Command="{Binding ClearCompareCommand}" />
   </UserControl.KeyBindings>
 
-  <Grid RowDefinitions="Auto,Auto,*,Auto,320">
+  <!-- Rows 1–4 are resized from code-behind when the details panel is hidden or maximized. -->
+  <Grid x:Name="Layout" RowDefinitions="Auto,Auto,*,Auto,320">
     <!-- Toolbar -->
     <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="16,10,12,8">
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -68,7 +69,7 @@
     </Grid>
 
     <!-- Column headings -->
-    <Border Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,1" Background="{DynamicResource SurfaceBrush}">
+    <Border x:Name="Headings" Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,1" Background="{DynamicResource SurfaceBrush}">
       <Grid ColumnDefinitions="Auto,*,140,150,84" Height="26">
         <TextBlock Classes="section" Width="{Binding GraphWidth}" Padding="10,0,0,0" Text="Graph" VerticalAlignment="Center" />
         <TextBlock Grid.Column="1" Classes="section" Margin="4,0" Text="Description" VerticalAlignment="Center" />
@@ -79,7 +80,7 @@
     </Border>
 
     <!-- The graph -->
-    <Panel Grid.Row="2">
+    <Panel x:Name="Graph" Grid.Row="2">
       <ListBox x:Name="CommitList" Classes="dense" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}"
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemTemplate>
@@ -164,8 +165,8 @@
               IsVisible="{Binding HasMore}" Command="{Binding LoadMoreCommand}" Content="Load more commits" />
     </Panel>
 
-    <GridSplitter Grid.Row="3" Height="1" ResizeDirection="Rows" />
+    <GridSplitter x:Name="DetailsSplitter" Grid.Row="3" Height="1" ResizeDirection="Rows" />
 
-    <v:DetailsView Grid.Row="4" DataContext="{Binding Details}" />
+    <v:DetailsView x:Name="DetailsPane" Grid.Row="4" DataContext="{Binding Details}" />
   </Grid>
 </UserControl>

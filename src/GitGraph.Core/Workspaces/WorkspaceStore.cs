@@ -22,6 +22,9 @@ public sealed class AppState
     public string Theme { get; set; } = "System";
     public bool ShowRemoteBranches { get; set; } = true;
     public bool SplitDiff { get; set; }
+    /// <summary>Whether the commit details panel under the graph is open.</summary>
+    public bool ShowDetailsPanel { get; set; } = true;
+    public bool ShowSidebar { get; set; } = true;
 }
 
 [JsonSerializable(typeof(AppState))]
