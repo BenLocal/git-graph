@@ -1,0 +1,34 @@
+# Every push and pull request: formatting and analyzers (dotnet format), a Release build, and the tests.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore GitGraph.slnx
+
+      - name: Lint
+        run: dotnet format GitGraph.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build GitGraph.slnx -c Release --no-restore
+
+      - name: Test
+        run: dotnet test GitGraph.slnx -c Release --no-build

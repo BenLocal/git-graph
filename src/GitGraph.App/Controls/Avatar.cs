@@ -15,15 +15,15 @@ public sealed class Avatar : Control
     public static readonly StyledProperty<string?> EmailProperty =
         AvaloniaProperty.Register<Avatar, string?>(nameof(Email));
 
-    public static readonly StyledProperty<string?> NameProperty =
-        AvaloniaProperty.Register<Avatar, string?>(nameof(Name));
+    public static readonly StyledProperty<string?> AuthorNameProperty =
+        AvaloniaProperty.Register<Avatar, string?>(nameof(AuthorName));
 
     private Bitmap? _image;
     private FormattedText? _initials;
 
     static Avatar()
     {
-        AffectsRender<Avatar>(EmailProperty, NameProperty);
+        AffectsRender<Avatar>(EmailProperty, AuthorNameProperty);
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
@@ -53,16 +53,16 @@ public sealed class Avatar : Control
     }
 
     /// <summary>The author's name, for the initials shown while there is no image.</summary>
-    public new string? Name
+    public string? AuthorName
     {
-        get => GetValue(NameProperty);
-        set => SetValue(NameProperty, value);
+        get => GetValue(AuthorNameProperty);
+        set => SetValue(AuthorNameProperty, value);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == NameProperty || change.Property == EmailProperty) _initials = null;
+        if (change.Property == AuthorNameProperty || change.Property == EmailProperty) _initials = null;
         if (change.Property != EmailProperty) return;
         _image = null;
         if (Email is { Length: > 0 } email) _ = LoadAsync(email);
@@ -96,7 +96,7 @@ public sealed class Avatar : Control
         }
 
         ctx.DrawGeometry(new SolidColorBrush(ColorFor(Email)), null, circle);
-        _initials ??= new FormattedText(Initials(Name, Email), System.Globalization.CultureInfo.CurrentCulture,
+        _initials ??= new FormattedText(Initials(AuthorName, Email), System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold),
             size * 0.42, Brushes.White);
         ctx.DrawText(_initials, new Point(rect.Center.X - _initials.Width / 2, rect.Center.Y - _initials.Height / 2));

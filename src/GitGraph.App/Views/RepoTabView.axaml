@@ -194,7 +194,7 @@
 
               <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding DateText}" VerticalAlignment="Center" />
               <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="0,0,10,0">
-                <ctl:Avatar Email="{Binding AuthorEmail}" Name="{Binding Author}" Width="18" Height="18" VerticalAlignment="Center" />
+                <ctl:Avatar Email="{Binding AuthorEmail}" AuthorName="{Binding Author}" Width="18" Height="18" VerticalAlignment="Center" />
                 <TextBlock Classes="muted small" Text="{Binding Author}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="118" />
               </StackPanel>
               <TextBlock Grid.Column="4" Classes="mono muted" Text="{Binding ShortHash}" VerticalAlignment="Center" />

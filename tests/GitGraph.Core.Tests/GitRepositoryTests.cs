@@ -117,9 +117,8 @@ public sealed class GitRepositoryTests : IDisposable
         // One commit only here (to push), one only on the remote (to pull).
         var clone = Path.Combine(_root, "clone");
         Git("clone", "-q", remote, clone);
-        GitRunner.RunAsync(clone, ["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "theirs"])
-            .GetAwaiter().GetResult();
-        GitRunner.RunAsync(clone, ["push", "-q"]).GetAwaiter().GetResult();
+        await GitRunner.RunAsync(clone, ["-c", "user.name=T", "-c", "user.email=t@example.com", "commit", "-q", "--allow-empty", "-m", "theirs"]);
+        await GitRunner.RunAsync(clone, ["push", "-q"]);
         Commit("d.txt", "mine\n", "mine");
         await repo.FetchAsync();
 

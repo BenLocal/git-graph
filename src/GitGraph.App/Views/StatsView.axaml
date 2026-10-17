@@ -51,7 +51,7 @@
             <Border Classes="statcard" Margin="0,0,14,14">
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="Auto,*,Auto">
-                  <ctl:Avatar Email="{Binding Email}" Name="{Binding Name}" Width="36" Height="36" VerticalAlignment="Center" />
+                  <ctl:Avatar Email="{Binding Email}" AuthorName="{Binding Name}" Width="36" Height="36" VerticalAlignment="Center" />
                   <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center" Spacing="1">
                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock Classes="muted small" Text="{Binding Email}" TextTrimming="CharacterEllipsis" />

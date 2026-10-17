@@ -1,7 +1,7 @@
-using Avalonia.Threading;
 using System.Collections.ObjectModel;
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitGraph.App.Services;

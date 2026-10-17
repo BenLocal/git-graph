@@ -1,6 +1,6 @@
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
-using System.ComponentModel;
 using Avalonia.VisualTree;
 using GitGraph.App.Controls;
 using GitGraph.App.ViewModels;

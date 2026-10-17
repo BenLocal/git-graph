@@ -1,9 +1,9 @@
 using System.ComponentModel;
 using Avalonia;
-using Avalonia.VisualTree;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.TextMate;
 using GitGraph.App.Controls;

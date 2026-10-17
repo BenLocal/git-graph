@@ -1,0 +1,17 @@
+<Project>
+  <!--
+    Shared by every project. The version is 0.0.0-dev for local builds; the release workflow passes
+    -p:Version=<tag without the v>. The SDK appends the git commit to InformationalVersion ("0.1.0+abc123…"),
+    which Help → About shows.
+  -->
+  <PropertyGroup>
+    <Version>0.0.0-dev</Version>
+    <Product>Git Graph</Product>
+    <Authors>benshi</Authors>
+    <Copyright>Copyright © benshi</Copyright>
+    <RepositoryUrl>https://github.com/BenLocal/git-graph</RepositoryUrl>
+  </PropertyGroup>
+  <ItemGroup>
+    <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
+  </ItemGroup>
+</Project>

@@ -3,9 +3,9 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Styling;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Styling;
 using GitGraph.Core.Graph;
 
 namespace GitGraph.App.Controls;

@@ -1,8 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.VisualTree;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using GitGraph.App.ViewModels;
 
 namespace GitGraph.App.Views;
@@ -15,7 +15,7 @@ namespace GitGraph.App.Views;
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
 /// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
-/// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_DELAY=seconds waits longer before rendering.
+/// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_DELAY=seconds waits longer before rendering. GITGRAPH_SNAPSHOT_ABOUT=1 renders the About window.
 /// </summary>
 public partial class MainWindow
 {
@@ -74,6 +74,12 @@ public partial class MainWindow
                     await Task.Delay(500);
                 }
             }
+            if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_ABOUT") == "1")
+            {
+                _ = new AboutWindow().ShowDialog(this);
+                await Task.Delay(800);
+                target = OwnedWindows.LastOrDefault() ?? this;
+            }
             if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SHORTCUTS") is { Length: > 0 } filter)
             {
                 RunShortcut("KeyboardShortcuts");
@@ -87,7 +93,7 @@ public partial class MainWindow
             var size = new PixelSize((int)(target.Bounds.Width * scale), (int)(target.Bounds.Height * scale));
             using var bmp = new RenderTargetBitmap(size, new Vector(96 * scale, 96 * scale));
             bmp.Render(target);
-            bmp.Save(path);
+            bmp.Save(path, PngBitmapEncoderOptions.Default);
             Close();
         }, TimeSpan.FromSeconds(double.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_DELAY"), out var wait) ? wait : 3));
     }

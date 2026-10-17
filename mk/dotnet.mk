@@ -23,3 +23,11 @@ clean: ## Remove build output and published artifacts
 
 publish: ## Publish a self-contained app (RID=linux-x64|win-x64|osx-arm64)
 	$(DOTNET) publish $(APP) -c Release -r $(RID) --self-contained -o $(PUBLISH_DIR)
+
+.PHONY: lint format
+
+lint: ## Check formatting and analyzers, as CI does
+	$(DOTNET) format $(SOLUTION) --verify-no-changes
+
+format: ## Fix formatting
+	$(DOTNET) format $(SOLUTION)

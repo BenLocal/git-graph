@@ -130,12 +130,12 @@ public sealed class MarkdownView : StackPanel
                 }
                 break;
             case CodeInline code:
-            {
-                var run = new Run(code.Content) { FontFamily = (FontFamily)this.FindResource("CodeFont")!, FontSize = 12 };
-                run.Bind(TextElement.BackgroundProperty, Res("RaisedBrush"));
-                into.Add(run);
-                break;
-            }
+                {
+                    var run = new Run(code.Content) { FontFamily = (FontFamily)this.FindResource("CodeFont")!, FontSize = 12 };
+                    run.Bind(TextElement.BackgroundProperty, Res("RaisedBrush"));
+                    into.Add(run);
+                    break;
+                }
             case AutolinkInline { IsEmail: true } mail:
                 // Keep the brackets of "Name <email>", as in trailers like Co-authored-by.
                 into.Add(new Run("<"));

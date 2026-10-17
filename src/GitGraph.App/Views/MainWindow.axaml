@@ -83,6 +83,11 @@
           <MenuItem Header="Close all tabs" Tag="CloseAllTabs" Click="OnMenuCommand"
                     ToolTip.Tip="{Binding Tips[CloseAllTabs], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
+        <MenuItem Header="_Help">
+          <MenuItem Header="Keyboard shortcuts…" Tag="KeyboardShortcuts" Click="OnMenuCommand" />
+          <Separator />
+          <MenuItem Header="About Git Graph" Click="OnAbout" />
+        </MenuItem>
       </Menu>
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0" VerticalAlignment="Center">

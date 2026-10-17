@@ -39,6 +39,27 @@ Needs the .NET 10 SDK and `git` on `PATH`. State is saved to `~/.config/GitGraph
 dotnet test
 ```
 
+## Releases
+
+Every push runs CI (`.github/workflows/ci.yml`): formatting and analyzers (`dotnet format --verify-no-changes`, also `make lint`), a Release build and the tests.
+
+To release, tag a version and push the tag:
+
+```sh
+make tag VERSION=0.1.0      # lint and test, then create the annotated tag v0.1.0
+git push origin v0.1.0
+```
+
+The Release workflow (`.github/workflows/release.yml`) builds that version for each platform and publishes a GitHub release with notes generated from the commits. A version with a suffix, like `v0.2.0-beta.1`, becomes a pre-release.
+
+| Platform | Files |
+| --- | --- |
+| Linux x64 | `GitGraph-<version>-linux-x64.tar.gz`, `gitgraph_<version>_amd64.deb` |
+| Windows x64 | `GitGraph-<version>-win-x64.zip`, `GitGraph-<version>-win-x64-setup.exe` (Inno Setup; per-user or all users) |
+| macOS (Apple Silicon) | `GitGraph-<version>-osx-arm64.dmg` |
+
+The macOS app is only ad-hoc signed, not notarized, so the first launch needs right-click → Open. Help → About shows the version and the commit a build came from; local builds say `0.0.0-dev`. `make deb` builds the .deb locally.
+
 ## Make targets
 
 `make` lists every target. The targets are defined in `mk/*.mk` and helper scripts live in `scripts/`.

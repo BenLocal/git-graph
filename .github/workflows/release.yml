@@ -1,0 +1,126 @@
+# Pushing a version tag (v0.1.0, v1.2.3-beta.1) checks the code, builds self-contained packages and installers
+# (Linux tar.gz and .deb, Windows zip and setup.exe, macOS .dmg for Apple Silicon) with that version, and
+# publishes them as a GitHub release. The app's Help → About shows
+# the version and the commit.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Lint, build and test
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from the tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME is not a version like v1.2.3 or v1.2.3-beta.1"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet restore GitGraph.slnx
+      - run: dotnet format GitGraph.slnx --verify-no-changes --no-restore
+      - run: dotnet build GitGraph.slnx -c Release --no-restore -p:Version=${{ steps.version.outputs.version }}
+      - run: dotnet test GitGraph.slnx -c Release --no-build
+
+  package:
+    name: Package ${{ matrix.rid }}
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each platform builds on its own OS: Windows for the exe icon and Inno Setup, macOS for the .app,
+          # its icon, code signing and the .dmg.
+          - { rid: linux-x64, os: ubuntu-latest }
+          - { rid: win-x64, os: windows-latest }
+          - { rid: osx-arm64, os: macos-latest }
+    runs-on: ${{ matrix.os }}
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        shell: bash
+        run: |
+          name="GitGraph-$VERSION-${{ matrix.rid }}"
+          dotnet publish src/GitGraph.App -c Release -r ${{ matrix.rid }} --self-contained \
+            -p:Version="$VERSION" -o "dist/$name"
+          cp README.md "dist/$name/"
+          mkdir -p dist/out
+          echo "NAME=$name" >> "$GITHUB_ENV"
+
+      # Linux: a tar.gz (tar keeps the executable bit, which artifacts would lose) and a .deb.
+      - name: Linux archive and .deb
+        if: matrix.rid == 'linux-x64'
+        run: |
+          tar -C dist -czf "dist/out/$NAME.tar.gz" "$NAME"
+          python3 scripts/build_deb.py --from "dist/$NAME" --version "$VERSION" --out dist/out
+
+      # Windows: a zip and an installer (Inno Setup comes with the runner).
+      - name: Windows zip and installer
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist/$env:NAME" -DestinationPath "dist/out/$env:NAME.zip"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$env:VERSION" `
+            "/DSourceDir=$PWD\dist\$env:NAME" "/DOutputDir=$PWD\dist\out" packaging\windows\gitgraph.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # macOS: "Git Graph.app" in a drag-to-Applications .dmg.
+      - name: macOS app and .dmg
+        if: startsWith(matrix.rid, 'osx-')
+        run: python3 scripts/build_macos_app.py --from "dist/$NAME" --version "$VERSION" --rid ${{ matrix.rid }} --out dist/out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: |
+            dist/out/*.tar.gz
+            dist/out/*.zip
+            dist/out/*.deb
+            dist/out/*.exe
+            dist/out/*.dmg
+          if-no-files-found: error
+
+  release:
+    name: Publish the release
+    needs: [check, package]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          # A version with a suffix (1.2.0-beta.1) is published as a pre-release.
+          prerelease=""
+          [[ "$VERSION" == *-* ]] && prerelease="--prerelease"
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --title "Git Graph $VERSION" --generate-notes $prerelease

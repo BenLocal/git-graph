@@ -53,6 +53,8 @@ public partial class MainWindow : Window, IDialogService
 
     private void OnExit(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => Close();
 
+    private void OnAbout(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => new AboutWindow().ShowDialog(this);
+
     /// <summary>Menu items that run a shortcut command name it in their Tag.</summary>
     private void OnMenuCommand(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
