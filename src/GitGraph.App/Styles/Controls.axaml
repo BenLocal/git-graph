@@ -186,6 +186,17 @@
   <Style Selector="ToggleButton.ghost:checked LucideIcon">
     <Setter Property="Foreground" Value="{DynamicResource SignalBrush}" />
   </Style>
+  <!-- A button that can't act right now looks it -->
+  <Style Selector="Button.ghost:disabled LucideIcon">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:disabled LucideIcon">
+    <Setter Property="Opacity" Value="0.35" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
   <Style Selector="Button.text">
     <Setter Property="Padding" Value="10,5" />
   </Style>

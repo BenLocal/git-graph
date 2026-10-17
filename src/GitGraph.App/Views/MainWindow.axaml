@@ -35,8 +35,10 @@
           <MenuItem Header="Sidebar" ToggleType="CheckBox" IsChecked="{Binding ShowSidebar, Mode=OneWay}"
                     Command="{Binding ToggleSidebarCommand}" InputGesture="{Binding Keys[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}"
+                    IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}"
                     Command="{Binding TogglePanelCommand}" InputGesture="{Binding Keys[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}" />
-          <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" InputGesture="{Binding Keys[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}"
+                    IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" InputGesture="{Binding Keys[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Switch diff between unified and split" Tag="ToggleDiffLayout" Click="OnMenuCommand" InputGesture="{Binding Keys[ToggleDiffLayout], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Author avatars">
             <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
@@ -89,6 +91,7 @@
           <LucideIcon Kind="PanelLeft" Size="15" />
         </ToggleButton>
         <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}" Command="{Binding TogglePanelCommand}"
+                      IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}"
                       ToolTip.Tip="{Binding Tips[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}">
           <LucideIcon Kind="PanelBottom" Size="15" />
         </ToggleButton>
@@ -97,14 +100,8 @@
   </Border>
 
   <Grid ColumnDefinitions="Auto,Auto,*">
-    <!-- The sidebar hides on request, but never while no repository is open. -->
-    <Panel Grid.Column="0" Grid.ColumnSpan="2">
-      <Panel.IsVisible>
-        <MultiBinding Converter="{x:Static BoolConverters.Or}">
-          <Binding Path="ShowSidebar" />
-          <Binding Path="SelectedWorkspace.HasTabs" Converter="{x:Static BoolConverters.Not}" />
-        </MultiBinding>
-      </Panel.IsVisible>
+    <!-- The sidebar; when it's hidden and nothing is open, the empty page offers to bring it back. -->
+    <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding ShowSidebar}">
       <v:SidebarView Width="256" />
     </Panel>
 
@@ -188,6 +185,9 @@
                    Text="Add a folder to this workspace. Every repository inside it, and each of its worktrees, shows up in the sidebar." />
         <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" IsVisible="{Binding !HasFolders}"
                 Content="Add folder" />
+        <Button Classes="secondary" HorizontalAlignment="Center" Content="Show sidebar"
+                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSidebarCommand}"
+                IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).ShowSidebar}" />
       </StackPanel>
       </Grid>
       </Border>

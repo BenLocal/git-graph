@@ -109,7 +109,6 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         }
     }
 
-    /// <summary>Hiding it only takes effect while a repository is open; the empty state needs the sidebar.</summary>
     public bool ShowSidebar
     {
         get => _state.ShowSidebar;
