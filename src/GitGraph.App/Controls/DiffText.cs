@@ -1,13 +1,16 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Media;
+using Avalonia.Styling;
+using GitGraph.App.Services;
 using GitGraph.Core.Diff;
 
 namespace GitGraph.App.Controls;
 
 /// <summary>
-/// A diff line's text. When the line has word-level segments, the changed words get a stronger
-/// added or deleted background than the line itself.
+/// A diff line's text, coloured by <see cref="Syntax"/>. When the line has word-level segments, the changed
+/// words get a stronger added or deleted background than the line itself.
 /// </summary>
 public sealed class DiffText : TextBlock
 {
@@ -19,6 +22,11 @@ public sealed class DiffText : TextBlock
 
     public static readonly StyledProperty<bool> IsAddedProperty =
         AvaloniaProperty.Register<DiffText, bool>(nameof(IsAdded));
+
+    public static readonly StyledProperty<SyntaxSpan[]?> SyntaxProperty =
+        AvaloniaProperty.Register<DiffText, SyntaxSpan[]?>(nameof(Syntax));
+
+    public DiffText() => ActualThemeVariantChanged += (_, _) => { if (Syntax != null) Rebuild(); };
 
     // Styled like any other TextBlock (font, size, line height of diff lines).
     protected override Type StyleKeyOverride => typeof(TextBlock);
@@ -36,6 +44,12 @@ public sealed class DiffText : TextBlock
         set => SetValue(SegmentsProperty, value);
     }
 
+    public SyntaxSpan[]? Syntax
+    {
+        get => GetValue(SyntaxProperty);
+        set => SetValue(SyntaxProperty, value);
+    }
+
     /// <summary>Which background marks changed words: added (true) or deleted (false).</summary>
     public bool IsAdded
     {
@@ -46,27 +60,66 @@ public sealed class DiffText : TextBlock
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == LineProperty || change.Property == SegmentsProperty || change.Property == IsAddedProperty) Rebuild();
+        if (change.Property == LineProperty || change.Property == SegmentsProperty || change.Property == IsAddedProperty
+            || change.Property == SyntaxProperty) Rebuild();
     }
 
     private void Rebuild()
     {
+        var line = Line ?? "";
         var segments = Segments;
+        var syntax = Syntax;
+        // Segments must cover the line exactly, or their offsets can't be lined up with the syntax spans.
+        if (segments != null && segments.Sum(s => s.Text.Length) != line.Length) syntax = null;
         // Text and Inlines share one store, so set exactly one of them each time a row is reused.
-        if (segments is null)
+        if (segments is null && syntax is null)
         {
             Inlines = null;
             Text = Line;
             return;
         }
-        var inlines = new InlineCollection();
-        var key = IsAdded ? "AddWordBgBrush" : "DelWordBgBrush";
-        foreach (var s in segments)
+
+        // Cut the line wherever a syntax span or a changed-word segment starts or ends.
+        var cuts = new SortedSet<int> { 0, line.Length };
+        foreach (var span in syntax ?? [])
         {
-            var run = new Run(s.Text);
-            // Bound to the resource so the colour follows theme changes.
-            if (s.Changed) run.Bind(Inline.BackgroundProperty, this.GetResourceObservable(key));
-            inlines.Add(run);
+            cuts.Add(Math.Min(span.Start, line.Length));
+            cuts.Add(Math.Min(span.Start + span.Length, line.Length));
+        }
+        var changed = new List<(int Start, int End)>();
+        var offset = 0;
+        foreach (var s in segments ?? [])
+        {
+            if (s.Changed) changed.Add((offset, offset + s.Text.Length));
+            offset += s.Text.Length;
+            cuts.Add(offset);
+        }
+
+        var light = ActualThemeVariant == ThemeVariant.Light;
+        var key = IsAdded ? "AddWordBgBrush" : "DelWordBgBrush";
+        var inlines = new InlineCollection();
+        var text = segments != null && syntax is null ? string.Concat(segments.Select(s => s.Text)) : line;
+        var brushes = new Dictionary<Color, IBrush>();
+        int? previous = null;
+        foreach (var cut in cuts)
+        {
+            if (previous is { } start && cut > start && cut <= text.Length)
+            {
+                var run = new Run(text[start..cut]);
+                if (syntax != null && Array.FindLast(syntax, x => x.Start <= start && start < x.Start + x.Length) is { Length: > 0 } span)
+                {
+                    var color = light ? span.Light : span.Dark;
+                    if (!brushes.TryGetValue(color, out var brush)) brushes[color] = brush = new SolidColorBrush(color);
+                    run.Foreground = brush;
+                    run.FontStyle = span.Style;
+                    run.FontWeight = span.Weight;
+                }
+                // Bound to the resource so the colour follows theme changes.
+                if (changed.Exists(c => c.Start <= start && start < c.End))
+                    run.Bind(Inline.BackgroundProperty, this.GetResourceObservable(key));
+                inlines.Add(run);
+            }
+            previous = cut;
         }
         Inlines = inlines;
     }

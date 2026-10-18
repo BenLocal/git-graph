@@ -11,7 +11,7 @@ namespace GitGraph.App.Views;
 /// Visual check hook: with GITGRAPH_SNAPSHOT=out.png the window renders itself to a file once loaded.
 /// GITGRAPH_SNAPSHOT_SELECT=n selects the n-th row first, GITGRAPH_SNAPSHOT_COMPARE=m compares it with row m,
 /// GITGRAPH_SNAPSHOT_TAB=0|1 picks the Commit or Changes tab of the details pane,
-/// GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
+/// GITGRAPH_SNAPSHOT_FILE=n selects the n-th changed file, GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
 /// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
@@ -46,6 +46,11 @@ public partial class MainWindow
                 }
                 if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SIDEBAR") == "0") vm.ShowSidebar = false;
                 await Task.Delay(1500);
+                if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_FILE"), out var file) && file < tab.Details.Files.Count)
+                {
+                    tab.Details.SelectedFile = tab.Details.Files[file];
+                    await Task.Delay(1000);
+                }
             }
             if (int.TryParse(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_SCROLL"), out var scrolls)
                 && this.GetVisualDescendants().OfType<ListBox>().FirstOrDefault(l => l.Name == "CommitList") is { Scroll: ScrollViewer list })

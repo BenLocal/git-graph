@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GitGraph.App.Services;
 using GitGraph.Core.Diff;
 using GitGraph.Core.Git;
 
@@ -14,7 +15,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private DiffTarget? _target;
     private string? _key;
     // The diff currently on screen, reused when the same file is opened full screen.
-    private (DiffTarget Target, FileChange File, FileDiff Diff)? _shown;
+    private (DiffTarget Target, FileChange File, FileDiff Diff, DiffSyntax Syntax)? _shown;
 
     [ObservableProperty]
     private bool _hasContent;
@@ -266,16 +267,16 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         var cts = _diffCts = new CancellationTokenSource();
         try
         {
-            var diff = await ComputeDiffAsync(target, file, cts.Token);
+            var (diff, syntax) = await ComputeDiffAsync(target, file, cts.Token);
             if (cts.IsCancellationRequested) return;
-            _shown = (target, file, diff);
+            _shown = (target, file, diff, syntax);
             if (EmptyMessage(diff, file) is { } message)
             {
                 ResetDiff(message);
                 return;
             }
-            DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l)).ToList();
-            SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r)).ToList();
+            DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l, syntax)).ToList();
+            SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax)).ToList();
             DiffMessage = null;
             HasDiff = true;
         }
@@ -286,12 +287,16 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         }
     }
 
-    private async Task<FileDiff> ComputeDiffAsync(DiffTarget target, FileChange file, CancellationToken ct)
+    private async Task<(FileDiff Diff, DiffSyntax Syntax)> ComputeDiffAsync(DiffTarget target, FileChange file, CancellationToken ct)
     {
         // git's numstat already knows binary files; skip reading them.
-        if (file.IsBinary) return new FileDiff { Lines = [], SplitRows = [], IsBinary = true };
+        if (file.IsBinary) return (new FileDiff { Lines = [], SplitRows = [], IsBinary = true }, DiffSyntax.Empty);
         var (oldText, newText) = await repo.GetFileVersionsAsync(target, file, ct);
-        return await Task.Run(() => TextDiff.Build(oldText, newText), ct);
+        return await Task.Run(() =>
+        {
+            var diff = TextDiff.Build(oldText, newText);
+            return (diff, SyntaxHighlighter.Highlight(file.Path, diff));
+        }, ct);
     }
 
     private static string? EmptyMessage(FileDiff diff, FileChange file) =>
@@ -309,10 +314,10 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         var target = _target;
         try
         {
-            var diff = _shown is { } s && s.Target == target && s.File == file.Change
-                ? s.Diff
+            var (diff, syntax) = _shown is { } s && s.Target == target && s.File == file.Change
+                ? (s.Diff, s.Syntax)
                 : await ComputeDiffAsync(target, file.Change, CancellationToken.None);
-            host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, EmptyMessage(diff, file.Change),
+            host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, syntax, EmptyMessage(diff, file.Change),
                 host.Dialogs, FullPath(file.Change.Path)));
         }
         catch (Exception e) when (e is GitException or IOException)
@@ -394,23 +399,25 @@ public sealed class FileChangeViewModel(FileChange change, DetailsViewModel owne
     public bool IsModified => !IsAdded && !IsDeleted;
 }
 
-public sealed class DiffLineViewModel(DiffLine line)
+public sealed class DiffLineViewModel(DiffLine line, DiffSyntax syntax)
 {
     public string OldNo { get; } = line.OldLine?.ToString() ?? "";
     public string NewNo { get; } = line.NewLine?.ToString() ?? "";
     public string Sign { get; } = line.Kind switch { DiffLineKind.Added => "+", DiffLineKind.Deleted => "−", _ => "" };
     public string Text { get; } = line.Text;
     public IReadOnlyList<DiffSegment>? Segments { get; } = line.Segments;
+    public SyntaxSpan[]? Syntax { get; } = syntax.For(line);
     public bool IsAdded { get; } = line.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line.Kind == DiffLineKind.Deleted;
     public bool IsHunk { get; } = line.Kind == DiffLineKind.Hunk;
 }
 
-public sealed class SplitCellViewModel(DiffLine? line, bool left)
+public sealed class SplitCellViewModel(DiffLine? line, bool left, DiffSyntax syntax)
 {
     public string No { get; } = (left ? line?.OldLine : line?.NewLine)?.ToString() ?? "";
     public string Text { get; } = line?.Text ?? "";
     public IReadOnlyList<DiffSegment>? Segments { get; } = line?.Segments;
+    public SyntaxSpan[]? Syntax { get; } = syntax.For(line);
     public bool IsAdded { get; } = line?.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line?.Kind == DiffLineKind.Deleted;
     public bool IsEmpty { get; } = line is null;
@@ -418,12 +425,12 @@ public sealed class SplitCellViewModel(DiffLine? line, bool left)
 
 public sealed class SplitRowViewModel
 {
-    public SplitRowViewModel(SplitDiffRow row)
+    public SplitRowViewModel(SplitDiffRow row, DiffSyntax syntax)
     {
         IsHunk = row.IsHunk;
         HunkText = row.IsHunk ? row.Left!.Text : "";
-        Left = new SplitCellViewModel(row.IsHunk ? null : row.Left, true);
-        Right = new SplitCellViewModel(row.IsHunk ? null : row.Right, false);
+        Left = new SplitCellViewModel(row.IsHunk ? null : row.Left, true, syntax);
+        Right = new SplitCellViewModel(row.IsHunk ? null : row.Right, false, syntax);
     }
 
     public bool IsHunk { get; }
@@ -441,7 +448,7 @@ public sealed partial class FullDiffViewModel : ObservableObject
     private readonly Services.IDialogService _dialogs;
     private readonly string _fullPath;
 
-    public FullDiffViewModel(FileChange file, string range, FileDiff diff, string? message, Services.IDialogService dialogs, string fullPath)
+    public FullDiffViewModel(FileChange file, string range, FileDiff diff, DiffSyntax syntax, string? message, Services.IDialogService dialogs, string fullPath)
     {
         _dialogs = dialogs;
         _fullPath = fullPath;
@@ -453,7 +460,7 @@ public sealed partial class FullDiffViewModel : ObservableObject
         Message = message;
         foreach (var (start, count, foldable) in TextDiff.Sections(diff.AllRows))
         {
-            var rows = diff.AllRows.Skip(start).Take(count).Select(r => new SplitRowViewModel(r)).ToList();
+            var rows = diff.AllRows.Skip(start).Take(count).Select(r => new SplitRowViewModel(r, syntax)).ToList();
             if (foldable)
             {
                 var fold = new FoldViewModel(rows);
