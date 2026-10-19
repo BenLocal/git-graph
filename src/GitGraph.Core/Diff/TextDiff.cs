@@ -1,3 +1,4 @@
+using System.Text;
 using DiffPlex;
 using DiffPlex.Chunkers;
 using DiffPlex.DiffBuilder;
@@ -33,14 +34,15 @@ public sealed class FileDiff
 /// </summary>
 public static class TextDiff
 {
-    public static FileDiff Build(string oldText, string newText, int context = 3, int tabSize = 4)
+    /// <param name="ignoreWhitespace">Lines that differ only in whitespace count as unchanged.</param>
+    public static FileDiff Build(string oldText, string newText, int context = 3, int tabSize = 4, bool ignoreWhitespace = false)
     {
         if (oldText.Contains('\0') || newText.Contains('\0'))
             return new FileDiff { Lines = [], SplitRows = [], IsBinary = true };
 
-        // ignoreWhiteSpace defaults to true in DiffPlex; a whitespace-only change must still show.
+        // ignoreWhiteSpace defaults to true in DiffPlex; unless asked, a whitespace-only change must still show.
         var model = SideBySideDiffBuilder.Diff(Differ.Instance, TrimFinalNewline(oldText), TrimFinalNewline(newText),
-            ignoreWhiteSpace: false, ignoreCase: false, LineChunker.Instance, WordChunker.Instance);
+            ignoreWhiteSpace: ignoreWhitespace, ignoreCase: false, LineChunker.Instance, WordChunker.Instance);
         var tab = new string(' ', tabSize);
 
         // DiffPlex pads both sides to the same length, so row i of each side lines up.
@@ -52,7 +54,8 @@ public static class TextDiff
             var n = model.NewText.Lines[i];
             if (o.Type == ChangeType.Unchanged && n.Type == ChangeType.Unchanged)
             {
-                rows.Add((Line(DiffLineKind.Context, o, n, tab), Line(DiffLineKind.Context, o, n, tab)));
+                // Each side shows its own text: with whitespace ignored, the two can differ.
+                rows.Add((Line(DiffLineKind.Context, o, n, tab), Line(DiffLineKind.Context, o, n, tab, textOf: n)));
                 continue;
             }
             var del = o.Type == ChangeType.Imaginary ? null : Line(DiffLineKind.Deleted, o, null, tab);
@@ -99,13 +102,73 @@ public static class TextDiff
         };
     }
 
+    /// <summary>
+    /// A patch that makes only hunk number <paramref name="hunk"/> of <paramref name="diff"/> (built from these same
+    /// texts), for <c>git apply --recount</c>. Lines come from the original texts rather than the displayed ones,
+    /// so tabs and line endings survive.
+    /// </summary>
+    public static string HunkPatch(string path, string oldText, string newText, FileDiff diff, int hunk)
+    {
+        var (oldLines, oldEndsWithNewline) = RawLines(oldText);
+        var (newLines, newEndsWithNewline) = RawLines(newText);
+        var sb = new StringBuilder();
+        sb.Append($"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n");
+
+        void Emit(char sign, string text, bool noNewline)
+        {
+            sb.Append(sign).Append(text).Append('\n');
+            if (noNewline) sb.Append("\\ No newline at end of file\n");
+        }
+
+        var index = -1;
+        foreach (var line in diff.Lines)
+        {
+            if (line.Kind == DiffLineKind.Hunk)
+            {
+                if (++index == hunk) sb.Append(line.Text).Append('\n');
+                continue;
+            }
+            if (index != hunk) continue;
+            // The last line of a file without a final newline needs git's marker after it.
+            var oldLast = line.OldLine == oldLines.Length && !oldEndsWithNewline;
+            var newLast = line.NewLine == newLines.Length && !newEndsWithNewline;
+            switch (line.Kind)
+            {
+                case DiffLineKind.Context when oldLast == newLast:
+                    Emit(' ', oldLines[line.OldLine!.Value - 1], oldLast);
+                    break;
+                case DiffLineKind.Context:
+                    // Same text, but only one side ends with a newline: to git that is a changed line.
+                    Emit('-', oldLines[line.OldLine!.Value - 1], oldLast);
+                    Emit('+', newLines[line.NewLine!.Value - 1], newLast);
+                    break;
+                case DiffLineKind.Deleted:
+                    Emit('-', oldLines[line.OldLine!.Value - 1], oldLast);
+                    break;
+                case DiffLineKind.Added:
+                    Emit('+', newLines[line.NewLine!.Value - 1], newLast);
+                    break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Lines as stored, a CR of a CRLF ending included, without splitting on the final newline.</summary>
+    private static (string[] Lines, bool EndsWithNewline) RawLines(string text)
+    {
+        if (text.Length == 0) return ([], true);
+        var endsWithNewline = text.EndsWith('\n');
+        return ((endsWithNewline ? text[..^1] : text).Split('\n'), endsWithNewline);
+    }
+
     /// <summary>The newline that ends the last line would otherwise show up as an extra empty line.</summary>
     private static string TrimFinalNewline(string text) =>
         text.EndsWith("\r\n", StringComparison.Ordinal) ? text[..^2] : text.EndsWith('\n') ? text[..^1] : text;
 
-    private static DiffLine Line(DiffLineKind kind, DiffPiece? oldPiece, DiffPiece? newPiece, string tab)
+    /// <param name="textOf">The piece whose text to show, when not the old one.</param>
+    private static DiffLine Line(DiffLineKind kind, DiffPiece? oldPiece, DiffPiece? newPiece, string tab, DiffPiece? textOf = null)
     {
-        var piece = oldPiece ?? newPiece!;
+        var piece = textOf ?? oldPiece ?? newPiece!;
         var text = (piece.Text ?? "").Replace("\t", tab);
         IReadOnlyList<DiffSegment>? segments = null;
         if (piece.Type == ChangeType.Modified && piece.SubPieces.Count > 0)

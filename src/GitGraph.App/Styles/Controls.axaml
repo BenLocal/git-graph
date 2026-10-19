@@ -477,6 +477,42 @@
   <Style Selector="ListBox.dense ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
   </Style>
+  <!-- Stage / Unstage / Discard on a hunk header: small, so the row keeps its height -->
+  <Style Selector="Button.hunkaction">
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="FontSize" Value="{StaticResource FontSizeSmall}" />
+  </Style>
+
+  <!-- Image diffs: each side on a raised panel, so transparent images show their edges -->
+  <Style Selector="Border.imageframe">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="12" />
+  </Style>
+
+  <!-- Rows of the uncommitted changes list, which isn't a ListBox: hover and selection look the same as one -->
+  <Style Selector="Border.filerow">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Margin" Value="6,0" />
+    <Setter Property="Height" Value="24" />
+  </Style>
+  <Style Selector="Border.filerow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+  </Style>
+  <Style Selector="Border.filerow.selected">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+  </Style>
+  <Style Selector="Border.filerow StackPanel.rowactions">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.filerow:pointerover StackPanel.rowactions">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Border.filerow:pointerover StackPanel.counts">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
   <Style Selector="ListBox.plain ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter, ListBox.plain ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
   </Style>
@@ -491,6 +527,9 @@
   <Style Selector="Grid.commit.uncommitted TextBlock.subject">
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
     <Setter Property="FontStyle" Value="Italic" />
+  </Style>
+  <Style Selector="Grid.commit.stash TextBlock.subject">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
   </Style>
   <Style Selector="Grid.commit.match TextBlock.subject">
     <Setter Property="Foreground" Value="{DynamicResource SignalBrush}" />
@@ -550,6 +589,17 @@
   <Style Selector="Border.badge.wt Border.refblock LucideIcon">
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
   </Style>
+  <!-- A stash is not a ref of the graph's lanes: quiet, like a worktree label -->
+  <Style Selector="Border.badge.stash">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="Border.badge.stash TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Border.badge.stash Border.refblock LucideIcon">
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+  </Style>
 
   <!-- File status letters -->
   <Style Selector="TextBlock.status">
@@ -587,7 +637,13 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
 
-  <!-- Diff lines -->
+  <!-- Diff lines. The code wraps unless the list has the nowrap class (View → Wrap long lines in diffs). -->
+  <Style Selector="TextBlock.code">
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="ListBox.nowrap TextBlock.code">
+    <Setter Property="TextWrapping" Value="NoWrap" />
+  </Style>
   <Style Selector="Grid.diffline TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
     <Setter Property="FontSize" Value="{StaticResource FontSizeCode}" />
@@ -603,6 +659,26 @@
     <Setter Property="TextAlignment" Value="Right" />
     <Setter Property="Opacity" Value="0.75" />
     <Setter Property="Margin" Value="0,0,8,0" />
+  </Style>
+  <!-- Blame: the commit column, shaded in alternate runs, with the commit named on each run's first line -->
+  <Style Selector="Border.blame">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Border.blame.odd">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="Border.blame.start">
+    <Setter Property="BorderThickness" Value="0,1,1,0" />
+  </Style>
+  <Style Selector="Border.blame:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+  </Style>
+  <Style Selector="Border.blame TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+    <Setter Property="FontSize" Value="{StaticResource FontSizeSmall}" />
   </Style>
   <Style Selector="Grid.diffline.add">
     <Setter Property="Background" Value="{DynamicResource AddBgBrush}" />

@@ -16,4 +16,7 @@ public interface IDialogService
 
     /// <summary>Shows one file's diff side by side in a maximized window.</summary>
     void ShowDiff(ViewModels.FullDiffViewModel diff);
+
+    /// <summary>Shows one file's history and blame in a maximized window.</summary>
+    void ShowFileHistory(ViewModels.FileHistoryViewModel history);
 }

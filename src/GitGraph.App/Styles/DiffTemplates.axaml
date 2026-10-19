@@ -11,15 +11,36 @@
       <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
       <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
       <ctl:DiffText Grid.Column="3" Line="{Binding Text}" Segments="{Binding Segments}" Syntax="{Binding Syntax}" IsAdded="{Binding IsAdded}"
-                    TextWrapping="Wrap" Margin="0,0,12,0" />
+                    Classes="code" Margin="0,0,12,0" />
+      <!-- On the hunk headers of an uncommitted file: move this hunk alone. They sit where line numbers go, so they stay
+           in view when long lines scroll sideways. -->
+      <StackPanel Orientation="Horizontal" Spacing="2" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
+                  IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
+                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+        <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
+                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+        <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
+                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+      </StackPanel>
     </Grid>
   </DataTemplate>
 
   <DataTemplate x:Key="SplitRowTemplate" x:DataType="vm:SplitRowViewModel">
     <Panel>
       <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
-        <Grid Classes="diffline">
+        <Grid Classes="diffline" ColumnDefinitions="Auto,*">
           <TextBlock Text="{Binding HunkText}" />
+          <!-- Right after the header, so they stay in view when long lines scroll sideways -->
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
+                      IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
+                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+            <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
+                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+            <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
+                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+          </StackPanel>
         </Grid>
       </Border>
       <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
@@ -27,7 +48,7 @@
           <Grid Classes="diffline" ColumnDefinitions="48,*">
             <TextBlock Classes="lineno" Text="{Binding Left.No}" />
             <ctl:DiffText Grid.Column="1" Line="{Binding Left.Text}" Segments="{Binding Left.Segments}" Syntax="{Binding Left.Syntax}" IsAdded="False"
-                          TextWrapping="Wrap" Margin="0,0,10,0" />
+                          Classes="code" Margin="0,0,10,0" />
           </Grid>
         </Border>
         <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
@@ -35,7 +56,7 @@
           <Grid Classes="diffline" ColumnDefinitions="48,*">
             <TextBlock Classes="lineno" Text="{Binding Right.No}" />
             <ctl:DiffText Grid.Column="1" Line="{Binding Right.Text}" Segments="{Binding Right.Segments}" Syntax="{Binding Right.Syntax}" IsAdded="True"
-                          TextWrapping="Wrap" Margin="0,0,10,0" />
+                          Classes="code" Margin="0,0,10,0" />
           </Grid>
         </Border>
       </Grid>

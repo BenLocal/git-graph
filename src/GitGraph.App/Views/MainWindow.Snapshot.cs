@@ -13,7 +13,7 @@ namespace GitGraph.App.Views;
 /// GITGRAPH_SNAPSHOT_TAB=0|1 picks the Commit or Changes tab of the details pane,
 /// GITGRAPH_SNAPSHOT_FILE=n selects the n-th changed file, GITGRAPH_SNAPSHOT_PANEL=max|hidden maximizes or hides that pane, GITGRAPH_SNAPSHOT_SIDEBAR=0 hides the sidebar,
 /// and GITGRAPH_SNAPSHOT_FULLDIFF=1 opens the selected file's full-screen diff and renders that window instead
-/// (=expanded also opens every fold in it). GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
+/// (=expanded also opens every fold in it); GITGRAPH_SNAPSHOT_HISTORY=history|blame renders the selected file's history window. GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
 /// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_DELAY=seconds waits longer before rendering. GITGRAPH_SNAPSHOT_ABOUT=1 renders the About window.
 /// </summary>
@@ -78,6 +78,15 @@ public partial class MainWindow
                     diff.ExpandAllCommand.Execute(null);
                     await Task.Delay(500);
                 }
+            }
+            if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_HISTORY") is "history" or "blame" &&
+                DataContext is MainWindowViewModel hm && hm.SelectedWorkspace.SelectedRepoTab is { } historyTab)
+            {
+                var details = historyTab.Details;
+                if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_HISTORY") == "blame") details.BlameCommand.Execute(null);
+                else details.FileHistoryCommand.Execute(null);
+                await Task.Delay(1500);
+                target = OwnedWindows.LastOrDefault() ?? this;
             }
             if (Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT_ABOUT") == "1")
             {

@@ -49,6 +49,16 @@ public partial class DetailsView : UserControl
         if (SelectedMessageText() is { } text && _vm != null) _ = _vm.CopyTextAsync(text);
     }
 
+    private void OnWorkingFileTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is DetailsViewModel vm && (sender as Control)?.DataContext is FileChangeViewModel file) vm.SelectedFile = file;
+    }
+
+    private void OnWorkingFileDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is DetailsViewModel vm && (sender as Control)?.DataContext is FileChangeViewModel file) vm.OpenFullDiffCommand.Execute(file);
+    }
+
     private void OnFileDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (DataContext is not DetailsViewModel vm) return;

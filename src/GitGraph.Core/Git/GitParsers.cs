@@ -72,6 +72,107 @@ public static partial class GitParsers
     /// <summary>Format string paired with <see cref="ParseLog"/>.</summary>
     public const string LogFormat = "%H%x00%P%x00%an%x00%ae%x00%at%x00%s%x1e";
 
+    /// <summary>Format string paired with <see cref="ParseStashes"/>: name, hash, parents, author, date, reflog subject.</summary>
+    public const string StashFormat = "%gd%x00%H%x00%P%x00%an%x00%ae%x00%at%x00%gs%x1e";
+
+    /// <summary>
+    /// Entries of <c>git stash list</c>, newest first. A stash is a commit whose first parent is the commit it was
+    /// made on; its subject reads "On main: message" or "WIP on main: abc1234 subject".
+    /// </summary>
+    public static List<StashEntry> ParseStashes(string output)
+    {
+        var list = new List<StashEntry>();
+        foreach (var raw in output.Split(RecordSep))
+        {
+            var rec = raw.TrimStart('\n', '\r');
+            if (rec.Length == 0) continue;
+            var f = rec.Split(FieldSep);
+            if (f.Length < 7) continue;
+            var parents = f[2].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parents.Length == 0) continue;
+            list.Add(new StashEntry(f[0], f[1], parents[0], parents.Length > 2, f[3], f[4], FromUnix(f[5]), f[6]));
+        }
+        return list;
+    }
+
+    /// <summary>Format string paired with <see cref="ParseFileHistory"/>, used with <c>--name-status -z</c>.</summary>
+    public const string FileHistoryFormat = "%x1e%H%x00%P%x00%an%x00%ae%x00%at%x00%s%x00";
+
+    /// <summary>
+    /// <c>git log --follow --name-status -z</c> for one file: each record is the commit's fields, then the file's
+    /// status and path (status, old path and new path for a rename).
+    /// </summary>
+    public static List<FileHistoryEntry> ParseFileHistory(string output)
+    {
+        var list = new List<FileHistoryEntry>();
+        foreach (var rec in output.Split(RecordSep))
+        {
+            var f = rec.Split(FieldSep);
+            if (f.Length < 6) continue;
+            var parents = f[1].Length == 0 ? [] : f[1].Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var commit = new CommitInfo(f[0], parents, f[2], f[3], FromUnix(f[4]), f[5]);
+            var rest = f.Skip(6).Select(x => x.Trim('\n')).Where(x => x.Length > 0).ToList();
+            if (rest.Count < 2) continue;
+            var kind = rest[0][0] switch
+            {
+                'A' => ChangeKind.Added,
+                'D' => ChangeKind.Deleted,
+                'R' => ChangeKind.Renamed,
+                'C' => ChangeKind.Copied,
+                'T' => ChangeKind.TypeChanged,
+                _ => ChangeKind.Modified,
+            };
+            var change = kind is ChangeKind.Renamed or ChangeKind.Copied && rest.Count >= 3
+                ? new FileChange(kind, rest[2], rest[1], null, null)
+                : new FileChange(kind, rest[1], null, null, null);
+            list.Add(new FileHistoryEntry(commit, change));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// <c>git blame --porcelain</c>: a header "hash original final [count]" per line, the commit's details the first
+    /// time it appears, then the line itself after a tab.
+    /// </summary>
+    public static BlameResult ParseBlame(string output)
+    {
+        var lines = new List<BlameLine>();
+        var commits = new Dictionary<string, (string Name, string Email, long Time, string Summary)>(StringComparer.Ordinal);
+        string? hash = null;
+        var number = 0;
+        foreach (var line in output.Split('\n'))
+        {
+            if (line.StartsWith('\t'))
+            {
+                if (hash != null) lines.Add(new BlameLine(number, hash, line[1..].TrimEnd('\r')));
+                continue;
+            }
+            var space = line.IndexOf(' ');
+            var key = space < 0 ? line : line[..space];
+            var value = space < 0 ? "" : line[(space + 1)..];
+            if (key.Length == 40 && key.All(char.IsAsciiHexDigit))
+            {
+                hash = key;
+                var parts = value.Split(' ');
+                number = parts.Length > 1 && int.TryParse(parts[1], out var n) ? n : number + 1;
+                if (!commits.ContainsKey(hash)) commits[hash] = ("", "", 0, "");
+                continue;
+            }
+            if (hash is null) continue;
+            var c = commits[hash];
+            commits[hash] = key switch
+            {
+                "author" => c with { Name = value },
+                "author-mail" => c with { Email = value.Trim('<', '>') },
+                "author-time" => c with { Time = long.TryParse(value, out var t) ? t : 0 },
+                "summary" => c with { Summary = value },
+                _ => c,
+            };
+        }
+        return new BlameResult(lines, commits.ToDictionary(kv => kv.Key,
+            kv => new BlameCommit(kv.Key, kv.Value.Name, kv.Value.Email, DateTimeOffset.FromUnixTimeSeconds(kv.Value.Time).ToLocalTime(), kv.Value.Summary)));
+    }
+
     public static List<CommitInfo> ParseLog(string output)
     {
         var list = new List<CommitInfo>();

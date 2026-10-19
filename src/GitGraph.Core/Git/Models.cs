@@ -65,7 +65,11 @@ public sealed record FileChange(ChangeKind Kind, string Path, string? OldPath, i
 /// <summary>
 /// What a change list or diff compares. <see cref="To"/> null means the working tree.
 /// </summary>
-public enum GitOperation { Merge, CherryPick }
+/// <summary>Commands that can stop part-way (on conflicts) and then be continued or aborted.</summary>
+public enum GitOperation { Merge, CherryPick, Revert, Rebase }
+
+/// <summary>What <c>git reset</c> does besides moving the branch: keep changes staged, unstaged, or throw them away.</summary>
+public enum ResetMode { Soft, Mixed, Hard }
 
 /// <summary>A file's state in the working tree, for colouring the file tree as VS Code does. Earlier members win for folders.</summary>
 public enum FileStatusKind { Conflict, Deleted, Modified, Renamed, Added, Untracked, Ignored }
@@ -86,4 +90,38 @@ public sealed record SyncStatus(string? Branch, string? Upstream, int Ahead, int
 public sealed record DiffTarget(string From, string? To)
 {
     public bool IsWorkingTree => To is null;
+}
+
+/// <summary>Uncommitted changes split the way the index sees them; see <see cref="GitRepository.GetWorkingChangesAsync"/>.</summary>
+public sealed record WorkingChanges(IReadOnlyList<FileChange> Staged, IReadOnlyList<FileChange> Unstaged, IReadOnlyList<FileChange> Conflicted)
+{
+    public int Count => Staged.Count + Unstaged.Count + Conflicted.Count;
+}
+
+/// <summary>One entry of the stash. <see cref="HasUntracked"/>: it also saved untracked files (in its third parent).</summary>
+public sealed record StashEntry(string Name, string Hash, string BaseHash, bool HasUntracked, string AuthorName, string AuthorEmail,
+    DateTimeOffset Date, string Message);
+
+/// <summary>A commit that changed a file, with the file's path (and earlier path, for a rename) in that commit.</summary>
+public sealed record FileHistoryEntry(CommitInfo Commit, FileChange Change);
+
+/// <summary>Who last changed a line: one of <see cref="BlameResult.Commits"/>.</summary>
+public sealed record BlameLine(int Number, string Hash, string Text);
+
+public sealed record BlameCommit(string Hash, string AuthorName, string AuthorEmail, DateTimeOffset Date, string Summary)
+{
+    /// <summary>git blame's hash for lines changed in the working tree but not committed.</summary>
+    public const string NotCommitted = "0000000000000000000000000000000000000000";
+
+    public bool IsCommitted => Hash != NotCommitted;
+}
+
+public sealed record BlameResult(IReadOnlyList<BlameLine> Lines, IReadOnlyDictionary<string, BlameCommit> Commits);
+
+/// <summary>Narrows the commit list. <see cref="Path"/> is relative to the working tree's top level.</summary>
+public sealed record CommitFilter(string? Author, DateTimeOffset? Since, string? Path)
+{
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Author) && Since is null && string.IsNullOrWhiteSpace(Path);
+    /// <summary>Filters that drop commits without rewriting the parents of the ones left.</summary>
+    public bool DropsParents => !string.IsNullOrWhiteSpace(Author) || Since != null;
 }

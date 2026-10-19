@@ -39,6 +39,10 @@
                     Command="{Binding TogglePanelCommand}" InputGesture="{Binding Keys[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}"
                     IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" InputGesture="{Binding Keys[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Ignore whitespace in diffs" ToggleType="CheckBox" IsChecked="{Binding IgnoreWhitespace, Mode=OneWay}"
+                    Command="{Binding ToggleIgnoreWhitespaceCommand}" ToolTip.Tip="Lines that differ only in spaces, tabs or line endings count as unchanged" />
+          <MenuItem Header="Wrap long lines in diffs" ToggleType="CheckBox" IsChecked="{Binding WrapDiffLines, Mode=OneWay}"
+                    Command="{Binding ToggleWrapDiffLinesCommand}" />
           <MenuItem Header="Switch diff between unified and split" Tag="ToggleDiffLayout" Click="OnMenuCommand" InputGesture="{Binding Keys[ToggleDiffLayout], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Author avatars">
             <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
@@ -91,6 +95,8 @@
           <MenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedRepoTab.PullCommand}" InputGesture="{Binding Keys[Pull], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedRepoTab.PushCommand}" InputGesture="{Binding Keys[Push], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.SyncNowCommand}" InputGesture="{Binding Keys[Sync], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Stash changes…" Command="{Binding SelectedWorkspace.SelectedRepoTab.StashChangesCommand}" />
+          <MenuItem Header="Pop latest stash" Command="{Binding SelectedWorkspace.SelectedRepoTab.PopLatestStashCommand}" />
           <MenuItem Header="Force push (with lease)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ForcePushCommand}"
                     ToolTip.Tip="After a rebase or amend: overwrite the remote branch, unless someone else pushed to it since your last fetch" />
           <MenuItem Header="Pull by">

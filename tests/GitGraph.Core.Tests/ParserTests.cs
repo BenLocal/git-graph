@@ -98,6 +98,21 @@ public class ParserTests
     }
 
     [Fact]
+    public void TextDiff_can_ignore_whitespace_changes()
+    {
+        const string before = "if (x)\n{\n    run();\n}\n", after = "if (x)\n{\n\trun();  \n}\nnext();\n";
+        var strict = TextDiff.Build(before, after);
+        Assert.Equal((2, 1), (strict.Additions, strict.Deletions));
+
+        var diff = TextDiff.Build(before, after, ignoreWhitespace: true);
+        Assert.Equal((1, 0), (diff.Additions, diff.Deletions));
+        // The re-indented line is unchanged, and each side shows its own text.
+        var row = diff.AllRows[2];
+        Assert.Equal(DiffLineKind.Context, row.Left!.Kind);
+        Assert.Equal(("    run();", "    run();  "), (row.Left.Text, row.Right!.Text));
+    }
+
+    [Fact]
     public void TextDiff_marks_changed_words_in_modified_lines()
     {
         var diff = TextDiff.Build("var x = 1;\n", "var x = 2;\n");

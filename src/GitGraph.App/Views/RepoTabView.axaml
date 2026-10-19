@@ -12,87 +12,129 @@
 
   <!-- Rows 1–4 are resized from code-behind when the details panel is hidden or maximized. -->
   <Grid x:Name="Layout" RowDefinitions="Auto,Auto,*,Auto,320">
-    <!-- Toolbar -->
-    <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="16,10,12,8">
-      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
-                   ToolTip.Tip="{Binding Path}" />
-        <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <LucideIcon Kind="FolderTree" Size="12" IsVisible="{Binding IsWorktree}"
-                          VerticalAlignment="Center" ToolTip.Tip="This is a linked worktree" />
-            <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
-          </StackPanel>
-        </Border>
-        <!-- Pull/push state: counts to pull and push, a plain sync icon when up to date, or Publish for a new branch. -->
-        <Button Classes="ghost syncbutton" Command="{Binding SyncNowCommand}" IsVisible="{Binding ShowSync}" ToolTip.Tip="{Binding SyncTooltip}"
-                Padding="6,3" Margin="-6,0,0,0">
-          <StackPanel Orientation="Horizontal" Spacing="5">
-            <LucideIcon Kind="ArrowDownUp" Size="14" Classes="sync" Classes.spinning="{Binding IsSyncing}"
-                          VerticalAlignment="Center" IsVisible="{Binding !CanPublish}">
-              <LucideIcon.RenderTransform>
-                <RotateTransform />
-              </LucideIcon.RenderTransform>
-            </LucideIcon>
-            <LucideIcon Kind="CloudUpload" Size="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
-            <LucideIcon Kind="CloudAlert" Size="14" VerticalAlignment="Center"
-                        IsVisible="{Binding FetchError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-            <TextBlock Classes="sync small" Text="{Binding SyncCounts}" VerticalAlignment="Center" IsVisible="{Binding !IsInSync}" />
-            <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
-          </StackPanel>
-        </Button>
-        <Button Classes="ghost" Padding="5" Command="{Binding GoToHeadCommand}" Margin="-4,0,0,0"
-                ToolTip.Tip="{Binding Tips[GoToHead], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}: select the checked-out commit'}">
-          <LucideIcon Kind="LocateFixed" Size="15" />
-        </Button>
-        <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
-      </StackPanel>
+    <StackPanel Grid.Row="0">
+      <!-- Toolbar -->
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="16,10,12,8">
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
+                     ToolTip.Tip="{Binding Path}" />
+          <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <LucideIcon Kind="FolderTree" Size="12" IsVisible="{Binding IsWorktree}"
+                            VerticalAlignment="Center" ToolTip.Tip="This is a linked worktree" />
+              <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <!-- Pull/push state: counts to pull and push, a plain sync icon when up to date, or Publish for a new branch. -->
+          <Button Classes="ghost syncbutton" Command="{Binding SyncNowCommand}" IsVisible="{Binding ShowSync}" ToolTip.Tip="{Binding SyncTooltip}"
+                  Padding="6,3" Margin="-6,0,0,0">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <LucideIcon Kind="ArrowDownUp" Size="14" Classes="sync" Classes.spinning="{Binding IsSyncing}"
+                            VerticalAlignment="Center" IsVisible="{Binding !CanPublish}">
+                <LucideIcon.RenderTransform>
+                  <RotateTransform />
+                </LucideIcon.RenderTransform>
+              </LucideIcon>
+              <LucideIcon Kind="CloudUpload" Size="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+              <LucideIcon Kind="CloudAlert" Size="14" VerticalAlignment="Center"
+                          IsVisible="{Binding FetchError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Classes="sync small" Text="{Binding SyncCounts}" VerticalAlignment="Center" IsVisible="{Binding !IsInSync}" />
+              <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+            </StackPanel>
+          </Button>
+          <Button Classes="ghost" Padding="5" Command="{Binding GoToHeadCommand}" Margin="-4,0,0,0"
+                  ToolTip.Tip="{Binding Tips[GoToHead], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}: select the checked-out commit'}">
+            <LucideIcon Kind="LocateFixed" Size="15" />
+          </Button>
+          <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
+        </StackPanel>
 
-      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-        <ComboBox ItemsSource="{Binding BranchOptions}" SelectedItem="{Binding SelectedBranch}" MinWidth="170" MaxWidth="260"
-                  VerticalAlignment="Center" ToolTip.Tip="Show one branch, or all of them">
-          <ComboBox.ItemTemplate>
-            <DataTemplate x:DataType="vm:BranchOption">
-              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
-            </DataTemplate>
-          </ComboBox.ItemTemplate>
-        </ComboBox>
-        <CheckBox Content="Remotes" IsChecked="{Binding ShowRemotes}" VerticalAlignment="Center" Margin="4,0"
-                  ToolTip.Tip="Include remote-tracking branches in the graph" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+          <ComboBox ItemsSource="{Binding BranchOptions}" SelectedItem="{Binding SelectedBranch}" MinWidth="170" MaxWidth="260"
+                    VerticalAlignment="Center" ToolTip.Tip="Show one branch, or all of them">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:BranchOption">
+                <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <CheckBox Content="Remotes" IsChecked="{Binding ShowRemotes}" VerticalAlignment="Center" Margin="4,0"
+                    ToolTip.Tip="Include remote-tracking branches in the graph" />
 
-        <Panel Width="230" VerticalAlignment="Center">
-          <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
-                   ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous.">
-            <TextBox.KeyBindings>
-              <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" />
-              <KeyBinding Gesture="Shift+Enter" Command="{Binding FindPreviousCommand}" />
-            </TextBox.KeyBindings>
-            <TextBox.InnerRightContent>
-              <TextBlock Classes="muted small" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="0,0,8,0" />
-            </TextBox.InnerRightContent>
-          </TextBox>
-          <LucideIcon Kind="Search" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+          <Panel Width="230" VerticalAlignment="Center">
+            <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
+                     ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous.">
+              <TextBox.KeyBindings>
+                <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" />
+                <KeyBinding Gesture="Shift+Enter" Command="{Binding FindPreviousCommand}" />
+              </TextBox.KeyBindings>
+              <TextBox.InnerRightContent>
+                <TextBlock Classes="muted small" Text="{Binding FindStatus}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              </TextBox.InnerRightContent>
+            </TextBox>
+            <LucideIcon Kind="Search" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+          </Panel>
+          <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="{Binding Tips[FindPrevious], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Shift+Enter in the find box'}">
+            <LucideIcon Kind="ChevronUp" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="{Binding Tips[FindNext], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Enter in the find box'}">
+            <LucideIcon Kind="ChevronDown" />
+          </Button>
+
+          <ToggleButton Classes="ghost" IsChecked="{Binding ShowFilters, Mode=OneWay}" Command="{Binding ToggleFiltersCommand}"
+                        ToolTip.Tip="Filter commits by author, date or path">
+            <Panel>
+              <LucideIcon Kind="ListFilter" />
+              <!-- A dot while filters narrow the list -->
+              <Ellipse Width="6" Height="6" Fill="{DynamicResource SignalBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                       Margin="0,-2,-3,0" IsVisible="{Binding IsFiltered}" />
+            </Panel>
+          </ToggleButton>
+
+          <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
+          <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
+                        ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="ChartColumn" />
+          </ToggleButton>
+          <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="CloudDownload" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding Tips[Refresh], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="RotateCw" />
+          </Button>
+        </StackPanel>
+      </Grid>
+
+      <!-- Filters: only commits by an author, in a period, or touching a path -->
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="16,0,12,10" IsVisible="{Binding ShowFilters}">
+        <Panel Width="220">
+          <TextBox Classes="find" Text="{Binding AuthorFilter}" PlaceholderText="Author name or email" />
+          <LucideIcon Kind="User" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
         </Panel>
-        <Button Classes="ghost" Command="{Binding FindPreviousCommand}" ToolTip.Tip="{Binding Tips[FindPrevious], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Shift+Enter in the find box'}">
-          <LucideIcon Kind="ChevronUp" />
-        </Button>
-        <Button Classes="ghost" Command="{Binding FindNextCommand}" ToolTip.Tip="{Binding Tips[FindNext], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}. Enter in the find box'}">
-          <LucideIcon Kind="ChevronDown" />
-        </Button>
-
-        <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
-        <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
-                      ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
-          <LucideIcon Kind="ChartColumn" />
-        </ToggleButton>
-        <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
-          <LucideIcon Kind="CloudDownload" />
-        </Button>
-        <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding Tips[Refresh], Source={x:Static svc:ShortcutService.Instance}}">
-          <LucideIcon Kind="RotateCw" />
-        </Button>
+        <Panel Width="260">
+          <TextBox Classes="find" Text="{Binding PathFilter}" PlaceholderText="File or folder, e.g. src/"
+                   ToolTip.Tip="Only commits that changed this path, relative to the repository's top folder" />
+          <LucideIcon Kind="FileSearch" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+        </Panel>
+        <ComboBox ItemsSource="{x:Static vm:RepoTabViewModel.SinceOptions}" SelectedItem="{Binding SinceFilter}" MinWidth="140" />
+        <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Rows.Count, StringFormat='{}{0} rows'}"
+                   IsVisible="{Binding IsFiltered}" />
       </StackPanel>
-    </Grid>
+
+      <!-- A merge, cherry-pick, revert or rebase stopped part-way: continue it or abort it -->
+      <Border Background="{DynamicResource SignalWashBrush}" Padding="16,8,12,8" IsVisible="{Binding HasOperation}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <LucideIcon Kind="GitMerge" Size="15" Foreground="{DynamicResource SignalBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <TextBlock Grid.Column="1" Text="{Binding OperationText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0" VerticalAlignment="Center">
+            <Button Classes="ghost text" Command="{Binding ShowConflictsCommand}" Content="Show changes" />
+            <Button Classes="ghost text" Command="{Binding AbortOperationCommand}" Content="Abort" />
+            <Button Classes="primary" Command="{Binding ContinueOperationCommand}" Content="Continue"
+                    ToolTip.Tip="Go on once every conflict is resolved and staged" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </StackPanel>
 
     <!-- Column headings -->
     <Border x:Name="Headings" Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1">
@@ -112,24 +154,42 @@
                ScrollViewer.HorizontalScrollBarVisibility="Disabled">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CommitRowViewModel">
-            <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.match="{Binding IsMatch}"
+            <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.stash="{Binding IsStash}" Classes.match="{Binding IsMatch}"
                   Classes.compare="{Binding IsCompareTarget}"
                   ColumnDefinitions="Auto,*,140,150,84" Height="{StaticResource RowHeight}">
               <Grid.ContextMenu>
                 <ContextMenu>
+                  <MenuItem Header="Stash changes…" Command="{Binding StashChangesCommand}" IsVisible="{Binding IsUncommitted}" />
+                  <MenuItem Header="Apply stash" Command="{Binding ApplyStashCommand}" IsVisible="{Binding IsStash}"
+                            ToolTip.Tip="Apply the changes and keep the stash" />
+                  <MenuItem Header="Pop stash" Command="{Binding PopStashCommand}" IsVisible="{Binding IsStash}"
+                            ToolTip.Tip="Apply the changes, then drop the stash if they applied cleanly" />
+                  <MenuItem Header="Create branch from stash…" Command="{Binding StashBranchCommand}" IsVisible="{Binding IsStash}" />
+                  <MenuItem Header="Drop stash…" Command="{Binding DropStashCommand}" IsVisible="{Binding IsStash}" />
+                  <MenuItem Header="Copy stash name" Command="{Binding CopyStashNameCommand}" IsVisible="{Binding IsStash}" />
+                  <Separator IsVisible="{Binding !IsCommit}" />
                   <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
                             ToolTip.Tip="Or Ctrl+click a second commit" />
-                  <Separator />
-                  <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" />
-                  <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding !IsUncommitted}" />
-                  <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding !IsUncommitted}" />
-                  <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <Separator IsVisible="{Binding !IsStash}" />
+                  <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding !IsStash}" />
+                  <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding IsCommit}" />
+                  <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding IsCommit}" />
+                  <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsCommit}" />
                   <Separator IsVisible="{Binding CanApply}" />
                   <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
                   <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
-                  <Separator />
-                  <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding !IsUncommitted}" />
-                  <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding !IsUncommitted}" />
+                  <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
+                  <Separator IsVisible="{Binding IsCommit}" />
+                  <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
+                            ToolTip.Tip="Undo its changes with a new commit" />
+                  <MenuItem Header="Reset current branch to here" IsVisible="{Binding CanApply}">
+                    <MenuItem Header="Soft: keep the changes staged…" Command="{Binding ResetCommand}" CommandParameter="Soft" />
+                    <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding ResetCommand}" CommandParameter="Mixed" />
+                    <MenuItem Header="Hard: discard the changes…" Command="{Binding ResetCommand}" CommandParameter="Hard" />
+                  </MenuItem>
+                  <Separator IsVisible="{Binding IsCommit}" />
+                  <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding IsCommit}" />
+                  <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding IsCommit}" />
                 </ContextMenu>
               </Grid.ContextMenu>
 
@@ -147,17 +207,22 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:RefBadgeViewModel">
                       <Border Classes="badge" Classes.local="{Binding IsLocal}" Classes.remote="{Binding IsRemote}"
-                              Classes.tag="{Binding IsTag}" Classes.wt="{Binding IsWorktree}" Classes.current="{Binding IsCurrent}"
+                              Classes.tag="{Binding IsTag}" Classes.wt="{Binding IsWorktree}" Classes.stash="{Binding IsStash}" Classes.current="{Binding IsCurrent}"
                               ToolTip.Tip="{Binding Tooltip}">
                         <Border.ContextMenu>
                           <ContextMenu>
                             <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
                             <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanMerge}" />
+                            <MenuItem Header="Rebase current branch onto this…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanMerge}" />
                             <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
                             <MenuItem Header="Open worktree" Command="{Binding OpenWorktreeCommand}" IsVisible="{Binding IsWorktree}" />
+                            <MenuItem Header="Rename…" Command="{Binding RenameCommand}" IsVisible="{Binding IsLocal}" />
+                            <MenuItem Header="Set upstream…" Command="{Binding SetUpstreamCommand}" IsVisible="{Binding IsLocal}" />
+                            <MenuItem Header="Push to remote…" Command="{Binding PushTagCommand}" IsVisible="{Binding IsTag}" />
                             <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
-                            <Separator IsVisible="{Binding CanDelete}" />
+                            <Separator IsVisible="{Binding HasDeleteItem}" />
                             <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+                            <MenuItem Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
                           </ContextMenu>
                         </Border.ContextMenu>
                         <StackPanel Orientation="Horizontal">
@@ -167,6 +232,7 @@
                               <LucideIcon Kind="Cloud" IsVisible="{Binding IsRemote}" />
                               <LucideIcon Kind="Tag" IsVisible="{Binding IsTag}" />
                               <LucideIcon Kind="FolderTree" IsVisible="{Binding IsWorktree}" />
+                              <LucideIcon Kind="Archive" IsVisible="{Binding IsStash}" />
                             </Panel>
                           </Border>
                           <TextBlock Classes="name" Text="{Binding Text}" Margin="5,0,5,0" />

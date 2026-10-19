@@ -26,6 +26,10 @@ public sealed class AppState
     public string Theme { get; set; } = "System";
     public bool ShowRemoteBranches { get; set; } = true;
     public bool SplitDiff { get; set; }
+    /// <summary>Diffs treat lines that differ only in whitespace as unchanged.</summary>
+    public bool IgnoreWhitespace { get; set; }
+    /// <summary>Long diff lines wrap; otherwise the diff scrolls sideways.</summary>
+    public bool WrapDiffLines { get; set; } = true;
     /// <summary>Whether the commit details panel under the graph is open.</summary>
     public bool ShowDetailsPanel { get; set; } = true;
     public bool ShowSidebar { get; set; } = true;

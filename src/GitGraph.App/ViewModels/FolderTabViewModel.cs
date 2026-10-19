@@ -16,7 +16,7 @@ namespace GitGraph.App.ViewModels;
 public sealed partial class FolderTabViewModel : TabViewModel
 {
     private const long MaxFileBytes = 5 * 1024 * 1024;
-    private static readonly HashSet<string> ImageExtensions =
+    internal static readonly HashSet<string> ImageExtensions =
         [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico"];
 
     private readonly IAppHost _host;
@@ -318,6 +318,28 @@ public sealed partial class FolderTabViewModel : TabViewModel
     {
         var target = node?.FullPath ?? Path;
         if (ExternalTools.OpenInVsCode(target) is { } error) _host.ReportError(error);
+    }
+
+    [RelayCommand]
+    private Task FileHistory(FileNodeViewModel? node) => ShowHistoryAsync(node, blame: false);
+
+    [RelayCommand]
+    private Task Blame(FileNodeViewModel? node) => ShowHistoryAsync(node, blame: true);
+
+    private async Task ShowHistoryAsync(FileNodeViewModel? node, bool blame)
+    {
+        node ??= SelectedNode;
+        if (node is not { IsFile: true }) return;
+        var dir = System.IO.Path.GetDirectoryName(node.FullPath)!;
+        if (await GitRepository.FindTopLevelAsync(dir) is not { } top)
+        {
+            _host.ReportError($"{node.Name} isn't in a git repository, so it has no history.");
+            return;
+        }
+        var relative = System.IO.Path.GetRelativePath(top, node.FullPath).Replace('\\', '/');
+        // Through a symlinked folder, git's top level isn't above the path as written; git also takes paths from the file's folder.
+        var (root, path) = relative.StartsWith("..", StringComparison.Ordinal) ? (dir, node.Name) : (top, relative);
+        _host.Dialogs.ShowFileHistory(new FileHistoryViewModel(new GitRepository(root), path, null, _host.Dialogs, blame));
     }
 
     [RelayCommand]

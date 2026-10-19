@@ -79,4 +79,6 @@ public partial class MainWindow : Window, IDialogService
     }
 
     public void ShowDiff(FullDiffViewModel diff) => new DiffWindow { DataContext = diff }.Show(this);
+
+    public void ShowFileHistory(FileHistoryViewModel history) => new FileHistoryWindow { DataContext = history }.Show(this);
 }

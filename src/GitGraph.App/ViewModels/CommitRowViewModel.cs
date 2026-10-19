@@ -24,6 +24,11 @@ public partial class CommitRowViewModel : ObservableObject
     public GraphRow Graph { get; }
     public bool IsHead { get; }
     public bool IsUncommitted { get; }
+    /// <summary>Set on a stash's row, which hangs off the commit the stash was made on.</summary>
+    public StashEntry? Stash { get; init; }
+    public bool IsStash => Stash != null;
+    /// <summary>A real commit: not the uncommitted changes, not a stash.</summary>
+    public bool IsCommit => !IsUncommitted && !IsStash;
     public List<RefBadgeViewModel> Badges { get; } = [];
 
     public string Hash => Commit.Hash;
@@ -32,7 +37,9 @@ public partial class CommitRowViewModel : ObservableObject
     public string Author => IsUncommitted ? "" : Commit.AuthorName;
     public string? AuthorEmail => IsUncommitted ? null : Commit.AuthorEmail;
     public string DateText => IsUncommitted ? "" : Commit.AuthorDate.ToString("yyyy-MM-dd HH:mm");
-    public string Tooltip => IsUncommitted ? Subject : $"{Commit.Hash}\n{Commit.AuthorName} <{Commit.AuthorEmail}>";
+    public string Tooltip => IsUncommitted ? Subject
+        : Stash is { } st ? $"{st.Name}: {st.Message}\n{Commit.AuthorName}, {DateText}"
+        : $"{Commit.Hash}\n{Commit.AuthorName} <{Commit.AuthorEmail}>";
     public bool HasBadges => Badges.Count > 0;
     public IBrush LaneBrush => LanePalette.Brush(Graph.NodeColor);
 
@@ -69,11 +76,39 @@ public partial class CommitRowViewModel : ObservableObject
     [RelayCommand]
     private Task CherryPick() => _owner.CherryPickAsync(this);
 
+    [RelayCommand]
+    private Task Revert() => _owner.RevertAsync(this);
+
+    /// <param name="mode">Soft, Mixed or Hard.</param>
+    [RelayCommand]
+    private Task Reset(string mode) => _owner.ResetAsync(this, Enum.Parse<ResetMode>(mode));
+
+    [RelayCommand]
+    private Task Rebase() => _owner.RebaseAsync(Commit.Hash, $"{Commit.ShortHash} \"{Commit.Subject}\"");
+
     /// <summary>Merging or picking HEAD onto itself does nothing, so those menu items hide there.</summary>
-    public bool CanApply => !IsUncommitted && !IsHead;
+    public bool CanApply => IsCommit && !IsHead;
+
+    [RelayCommand]
+    private Task StashChanges() => _owner.StashChangesCommand.ExecuteAsync(null);
+
+    [RelayCommand]
+    private Task ApplyStash() => _owner.ApplyStashAsync(Stash!, pop: false);
+
+    [RelayCommand]
+    private Task PopStash() => _owner.ApplyStashAsync(Stash!, pop: true);
+
+    [RelayCommand]
+    private Task DropStash() => _owner.DropStashAsync(Stash!);
+
+    [RelayCommand]
+    private Task StashBranch() => _owner.StashBranchAsync(Stash!);
+
+    [RelayCommand]
+    private Task CopyStashName() => _owner.Host.Dialogs.CopyTextAsync(Stash!.Name);
 }
 
-public enum BadgeKind { Local, Remote, Tag, Worktree }
+public enum BadgeKind { Local, Remote, Tag, Worktree, Stash }
 
 public partial class RefBadgeViewModel : ObservableObject
 {
@@ -99,12 +134,15 @@ public partial class RefBadgeViewModel : ObservableObject
     public bool IsRemote => Kind == BadgeKind.Remote;
     public bool IsTag => Kind == BadgeKind.Tag;
     public bool IsWorktree => Kind == BadgeKind.Worktree;
+    public bool IsStash => Kind == BadgeKind.Stash;
     public bool IsBranch => Kind is BadgeKind.Local or BadgeKind.Remote;
 
     /// <summary>Remotes whose branch of the same name points here too, shown inside this label.</summary>
     public List<string> Remotes { get; } = [];
     public bool HasRemotes => Remotes.Count > 0;
     public bool CanDelete => Kind is BadgeKind.Local or BadgeKind.Tag && !IsCurrent;
+    /// <summary>The menu ends with a delete item: here, or on the remote.</summary>
+    public bool HasDeleteItem => CanDelete || IsRemote;
 
     public string Tooltip => Kind switch
     {
@@ -114,6 +152,7 @@ public partial class RefBadgeViewModel : ObservableObject
         BadgeKind.Local => $"Branch {Text}",
         BadgeKind.Remote => $"Remote branch {Text}",
         BadgeKind.Tag => $"Tag {Text}",
+        BadgeKind.Stash => $"Stash {Text}. Right-click the row to apply, pop or drop it.",
         _ => $"Checked out in worktree {Text}",
     };
 
@@ -126,7 +165,22 @@ public partial class RefBadgeViewModel : ObservableObject
     public bool CanMerge => IsBranch && !IsCurrent;
 
     [RelayCommand]
+    private Task Rebase() => _owner.RebaseAsync(Ref!.Name, Text);
+
+    [RelayCommand]
     private Task Delete() => _owner.DeleteRefAsync(this);
+
+    [RelayCommand]
+    private Task Rename() => _owner.RenameBranchAsync(this);
+
+    [RelayCommand]
+    private Task SetUpstream() => _owner.SetUpstreamAsync(this);
+
+    [RelayCommand]
+    private Task DeleteRemote() => _owner.DeleteRemoteBranchAsync(this);
+
+    [RelayCommand]
+    private Task PushTag() => _owner.PushTagAsync(this);
 
     [RelayCommand]
     private Task AddWorktree() => _owner.AddWorktreeForBranchAsync(this);

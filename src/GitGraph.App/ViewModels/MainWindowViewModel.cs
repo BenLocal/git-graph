@@ -21,6 +21,8 @@ public interface IAppHost
     FolderViewState FolderView(string folder);
     bool CompactFolders { get; }
     PullMode PullMode { get; }
+    bool IgnoreWhitespace { get; }
+    bool WrapDiffLines { get; }
     void ReportError(string message);
     /// <summary>A note that isn't an error, such as new commits found by the periodic fetch.</summary>
     void Notify(string message);
@@ -172,6 +174,31 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
             if (_state.AutoFetch) await SelectedWorkspace.AutoFetchAsync();
         };
         _autoFetch.Start();
+    }
+
+    public bool IgnoreWhitespace => _state.IgnoreWhitespace;
+    public bool WrapDiffLines => _state.WrapDiffLines;
+
+    [RelayCommand]
+    private void ToggleIgnoreWhitespace()
+    {
+        _state.IgnoreWhitespace = !_state.IgnoreWhitespace;
+        OnPropertyChanged(nameof(IgnoreWhitespace));
+        DiffOptionsChanged();
+    }
+
+    [RelayCommand]
+    private void ToggleWrapDiffLines()
+    {
+        _state.WrapDiffLines = !_state.WrapDiffLines;
+        OnPropertyChanged(nameof(WrapDiffLines));
+        DiffOptionsChanged();
+    }
+
+    private void DiffOptionsChanged()
+    {
+        foreach (var tab in Workspaces.SelectMany(w => w.Tabs).OfType<RepoTabViewModel>()) tab.Details.DiffOptionsChanged();
+        SaveState();
     }
 
     public PullMode PullMode => Enum.TryParse<PullMode>(_state.PullMode, out var m) ? m : PullMode.GitConfig;

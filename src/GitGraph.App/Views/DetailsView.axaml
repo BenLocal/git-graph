@@ -78,12 +78,123 @@
             </StackPanel>
           </TabItem.Header>
           <Grid ColumnDefinitions="320,1,*">
-            <Grid RowDefinitions="Auto,*">
-              <Border Padding="16,8,16,4">
+            <Grid RowDefinitions="Auto,Auto,*">
+              <!-- Uncommitted changes: write the message and commit what is staged -->
+              <StackPanel Margin="12,10,12,6" Spacing="6" IsVisible="{Binding IsStaging}">
+                <TextBox Text="{Binding CommitMessage}" PlaceholderText="Message (Ctrl+Enter to commit)" AcceptsReturn="True"
+                         TextWrapping="Wrap" MinHeight="58" MaxHeight="160">
+                  <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding CommitCommand}" />
+                  </TextBox.KeyBindings>
+                </TextBox>
+                <Grid ColumnDefinitions="*,Auto">
+                  <CheckBox Content="Amend last commit" IsChecked="{Binding Amend}" VerticalAlignment="Center"
+                            ToolTip.Tip="Replace the last commit with the staged changes and this message" />
+                  <Button Grid.Column="1" Classes="primary" Command="{Binding CommitCommand}" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <LucideIcon Kind="GitCommitHorizontal" Size="14" Foreground="{Binding $parent[Button].Foreground}" VerticalAlignment="Center" />
+                      <TextBlock Text="Commit" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Button>
+                </Grid>
+              </StackPanel>
+              <Border Grid.Row="1" Padding="16,8,16,4" IsVisible="{Binding !IsStaging}">
                 <TextBlock Classes="section" Text="{Binding FilesSummary}" />
               </Border>
-              <ListBox x:Name="FileList" Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
-                       ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+
+              <!-- Uncommitted files by group, each with stage, unstage and discard buttons -->
+              <ScrollViewer Grid.Row="2" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,8">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:FileGroupViewModel">
+                      <StackPanel>
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="16,8,10,2" Height="24">
+                          <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
+                          <Border Grid.Column="1" Classes="count" Margin="7,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Files.Count}" />
+                          </Border>
+                          <StackPanel Grid.Column="3" Orientation="Horizontal">
+                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.DiscardAllCommand}" CommandParameter="{Binding}"
+                                    IsVisible="{Binding CanDiscard}" ToolTip.Tip="Discard all changes">
+                              <LucideIcon Kind="Undo2" Size="14" />
+                            </Button>
+                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.StageAllCommand}" CommandParameter="{Binding}"
+                                    IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
+                              <LucideIcon Kind="Plus" Size="14" />
+                            </Button>
+                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.UnstageAllCommand}" CommandParameter="{Binding}"
+                                    IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage all changes">
+                              <LucideIcon Kind="Minus" Size="14" />
+                            </Button>
+                          </StackPanel>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Files}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:FileChangeViewModel">
+                              <Border Classes="filerow" Classes.selected="{Binding IsSelected}" Tapped="OnWorkingFileTapped"
+                                      DoubleTapped="OnWorkingFileDoubleTapped" ToolTip.Tip="{Binding Tooltip}">
+                                <Border.ContextMenu>
+                                  <ContextMenu>
+                                    <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}" CommandParameter="{Binding}" />
+                                    <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
+                                    <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
+                                    <Separator />
+                                    <MenuItem Header="Stage" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanStage}" />
+                                    <MenuItem Header="Unstage" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanUnstage}" />
+                                    <MenuItem Header="{Binding DiscardTip, StringFormat='{}{0}…'}" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
+                                              IsVisible="{Binding CanDiscard}" />
+                                    <MenuItem Header="Keep current version (ours)" Command="{Binding Owner.TakeOursCommand}" CommandParameter="{Binding}"
+                                              IsVisible="{Binding IsConflicted}"
+                                              ToolTip.Tip="The checked-out branch's version; during a rebase, the branch you are rebasing onto" />
+                                    <MenuItem Header="Take incoming version (theirs)" Command="{Binding Owner.TakeTheirsCommand}" CommandParameter="{Binding}"
+                                              IsVisible="{Binding IsConflicted}"
+                                              ToolTip.Tip="The version being merged, picked or reverted; during a rebase, your commit being replayed" />
+                                    <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}"
+                                              IsVisible="{Binding CanOpen}" />
+                                    <Separator />
+                                    <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
+                                    <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+                                  </ContextMenu>
+                                </Border.ContextMenu>
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="10,0,6,0">
+                                  <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
+                                             Text="{Binding Status}" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
+                                    <Run Text="{Binding FileName}" />
+                                    <Run Text="{Binding Directory}" FontSize="{StaticResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
+                                  </TextBlock>
+                                  <!-- Line counts, replaced by the buttons while the pointer is on the row -->
+                                  <StackPanel Grid.Column="2" Classes="counts" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                    <TextBlock Classes="add mono" Text="{Binding AddText}" FontSize="11.5" />
+                                    <TextBlock Classes="del mono" Text="{Binding DelText}" FontSize="11.5" />
+                                  </StackPanel>
+                                  <StackPanel Grid.Column="3" Classes="rowactions" Orientation="Horizontal">
+                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanDiscard}" ToolTip.Tip="{Binding DiscardTip}">
+                                      <LucideIcon Kind="Undo2" Size="13" />
+                                    </Button>
+                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
+                                      <LucideIcon Kind="Plus" Size="13" />
+                                    </Button>
+                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}"
+                                            IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage">
+                                      <LucideIcon Kind="Minus" Size="13" />
+                                    </Button>
+                                  </StackPanel>
+                                </Grid>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+
+              <ListBox x:Name="FileList" Grid.Row="2" Classes="dense pills" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+                       IsVisible="{Binding !IsStaging}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileChangeViewModel">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
@@ -92,6 +203,8 @@
                         <ContextMenu>
                           <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}"
                                     CommandParameter="{Binding}" InputGesture="Enter" />
+                          <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
+                          <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
                           <Separator />
                           <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
                           <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
@@ -126,6 +239,9 @@
                       <ContextMenu>
                         <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
                         <MenuItem Header="Copy full path" Command="{Binding CopyFullPathCommand}" />
+                        <Separator />
+                        <MenuItem Header="File history" Command="{Binding FileHistoryCommand}" CommandParameter="{x:Null}" />
+                        <MenuItem Header="Blame" Command="{Binding BlameCommand}" CommandParameter="{x:Null}" />
                       </ContextMenu>
                     </TextBlock.ContextMenu>
                   </TextBlock>
@@ -134,6 +250,14 @@
                     <LucideIcon Kind="Copy" Size="13" />
                   </Button>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
+                    <Button Classes="ghost" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" IsVisible="{Binding CanOpenSelected}"
+                            ToolTip.Tip="Open the file in VS Code">
+                      <LucideIcon Kind="SquareArrowOutUpRight" Size="14" />
+                    </Button>
+                    <Button Classes="ghost" Command="{Binding FileHistoryCommand}" CommandParameter="{x:Null}" IsVisible="{Binding HasDiff}"
+                            ToolTip.Tip="File history and blame">
+                      <LucideIcon Kind="FileClock" Size="14" />
+                    </Button>
                     <ToggleButton Classes="ghost" IsChecked="{Binding IsUnified, Mode=OneWay}" Command="{Binding ShowUnifiedCommand}" ToolTip.Tip="One column">
                       <StackPanel Orientation="Horizontal" Spacing="6">
                         <LucideIcon Kind="TextAlignStart" Size="14" VerticalAlignment="Center" />
@@ -153,11 +277,30 @@
               <TextBlock Grid.Row="1" Classes="muted" Text="{Binding DiffMessage}" Margin="16" TextWrapping="Wrap"
                          IsVisible="{Binding DiffMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-              <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding DiffLines}" IsVisible="{Binding IsUnified}"
-                       ItemTemplate="{StaticResource UnifiedLineTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+              <!-- An image file: before and after, side by side -->
+              <Grid Grid.Row="1" ColumnDefinitions="*,1,*" IsVisible="{Binding IsImageDiff}">
+                <Grid RowDefinitions="Auto,*" Margin="16">
+                  <TextBlock Classes="section" Text="{Binding OldImageText, StringFormat='Before  {0}'}" Margin="0,0,0,8" />
+                  <Border Grid.Row="1" Classes="imageframe">
+                    <Image Source="{Binding OldImage}" Stretch="Uniform" StretchDirection="DownOnly" />
+                  </Border>
+                </Grid>
+                <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+                <Grid Grid.Column="2" RowDefinitions="Auto,*" Margin="16">
+                  <TextBlock Classes="section" Text="{Binding NewImageText, StringFormat='After  {0}'}" Margin="0,0,0,8" />
+                  <Border Grid.Row="1" Classes="imageframe">
+                    <Image Source="{Binding NewImage}" Stretch="Uniform" StretchDirection="DownOnly" />
+                  </Border>
+                </Grid>
+              </Grid>
 
-              <ListBox Grid.Row="1" Classes="dense plain" ItemsSource="{Binding SplitRows}" IsVisible="{Binding IsSplit}"
-                       ItemTemplate="{StaticResource SplitRowTemplate}" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+              <ListBox Grid.Row="1" Classes="dense plain" Classes.nowrap="{Binding !WrapLines}" ItemsSource="{Binding DiffLines}"
+                       IsVisible="{Binding IsUnified}" ItemTemplate="{StaticResource UnifiedLineTemplate}"
+                       ScrollViewer.HorizontalScrollBarVisibility="{Binding WrapLines, Converter={x:Static vm:Converters.ScrollUnlessWrapped}}" />
+
+              <ListBox Grid.Row="1" Classes="dense plain" Classes.nowrap="{Binding !WrapLines}" ItemsSource="{Binding SplitRows}"
+                       IsVisible="{Binding IsSplit}" ItemTemplate="{StaticResource SplitRowTemplate}"
+                       ScrollViewer.HorizontalScrollBarVisibility="{Binding WrapLines, Converter={x:Static vm:Converters.ScrollUnlessWrapped}}" />
             </Grid>
           </Grid>
         </TabItem>

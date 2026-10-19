@@ -41,5 +41,24 @@ public partial class AboutWindow : Window
         CopyIcon.Kind = LucideIconKind.Copy;
     }
 
+    private string? _downloadUrl;
+
+    private async void OnCheckForUpdates(object? sender, RoutedEventArgs e)
+    {
+        CheckButton.IsEnabled = false;
+        UpdateText.IsVisible = true;
+        UpdateText.Text = "Checking…";
+        var result = await UpdateCheck.CheckAsync();
+        UpdateText.Text = result.Message;
+        _downloadUrl = result.DownloadUrl;
+        DownloadButton.IsVisible = _downloadUrl != null;
+        CheckButton.IsEnabled = true;
+    }
+
+    private async void OnDownload(object? sender, RoutedEventArgs e)
+    {
+        if (Uri.TryCreate(_downloadUrl, UriKind.Absolute, out var uri)) await Launcher.LaunchUriAsync(uri);
+    }
+
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
 }

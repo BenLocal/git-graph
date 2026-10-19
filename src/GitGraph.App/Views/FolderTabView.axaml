@@ -82,6 +82,9 @@
                 <Grid.ContextMenu>
                   <ContextMenu>
                     <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
+                    <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
+                    <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
+                    <Separator />
                     <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
                     <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
                   </ContextMenu>
@@ -112,6 +115,9 @@
                 <ContextMenu>
                   <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" CommandParameter="{x:Null}" />
                   <MenuItem Header="Copy full path" Command="{Binding CopyFullPathCommand}" CommandParameter="{x:Null}" />
+                  <Separator />
+                  <MenuItem Header="File history" Command="{Binding FileHistoryCommand}" CommandParameter="{x:Null}" />
+                  <MenuItem Header="Blame" Command="{Binding BlameCommand}" CommandParameter="{x:Null}" />
                 </ContextMenu>
               </TextBlock.ContextMenu>
             </TextBlock>

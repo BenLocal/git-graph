@@ -50,15 +50,29 @@ public static class SyntaxHighlighter
             {
                 if (GrammarFor(path) is not { } grammar) return DiffSyntax.Empty;
                 // AllRows holds every line of both versions in order; the text already has tabs expanded.
-                var oldLines = diff.AllRows.Select(r => r.Left).OfType<DiffLine>().Where(l => l.OldLine != null);
-                var newLines = diff.AllRows.Select(r => r.Right).OfType<DiffLine>().Where(l => l.NewLine != null);
-                return new DiffSyntax(Tokenize(grammar, oldLines, l => l.OldLine!.Value), Tokenize(grammar, newLines, l => l.NewLine!.Value));
+                var oldLines = diff.AllRows.Select(r => r.Left).OfType<DiffLine>().Where(l => l.OldLine != null).Select(l => (l.OldLine!.Value, l.Text));
+                var newLines = diff.AllRows.Select(r => r.Right).OfType<DiffLine>().Where(l => l.NewLine != null).Select(l => (l.NewLine!.Value, l.Text));
+                return new DiffSyntax(Tokenize(grammar, oldLines), Tokenize(grammar, newLines));
             }
         }
         catch (Exception)
         {
             // Colours are a nicety: a grammar that fails leaves the diff plain.
             return DiffSyntax.Empty;
+        }
+    }
+
+    /// <summary>Colours of a whole file's lines (tabs already expanded), by line number; empty for an unknown language.</summary>
+    public static IReadOnlyDictionary<int, SyntaxSpan[]> HighlightLines(string path, IEnumerable<(int Number, string Text)> lines)
+    {
+        try
+        {
+            lock (Gate)
+                return GrammarFor(path) is { } grammar ? Tokenize(grammar, lines.Take(MaxLines)) : new Dictionary<int, SyntaxSpan[]>();
+        }
+        catch (Exception)
+        {
+            return new Dictionary<int, SyntaxSpan[]>();
         }
     }
 
@@ -73,24 +87,24 @@ public static class SyntaxHighlighter
         return grammar;
     }
 
-    private static Dictionary<int, SyntaxSpan[]> Tokenize(IGrammar grammar, IEnumerable<DiffLine> lines, Func<DiffLine, int> number)
+    private static Dictionary<int, SyntaxSpan[]> Tokenize(IGrammar grammar, IEnumerable<(int Number, string Text)> lines)
     {
         var result = new Dictionary<int, SyntaxSpan[]>();
         IStateStack? state = null;
         var spans = new List<SyntaxSpan>();
-        foreach (var line in lines)
+        foreach (var (number, text) in lines)
         {
-            if (line.Text.Length > MaxLineLength) continue;
-            var tokens = grammar.TokenizeLine(line.Text, state, LineTimeLimit);
+            if (text.Length > MaxLineLength) continue;
+            var tokens = grammar.TokenizeLine(text, state, LineTimeLimit);
             state = tokens.RuleStack;
             spans.Clear();
             foreach (var token in tokens.Tokens)
             {
-                var end = Math.Min(token.EndIndex, line.Text.Length);
+                var end = Math.Min(token.EndIndex, text.Length);
                 if (end <= token.StartIndex || StyleOf(token.Scopes) is not { } s) continue;
                 spans.Add(new SyntaxSpan(token.StartIndex, end - token.StartIndex, s.Dark, s.Light, s.Style, s.Weight));
             }
-            if (spans.Count > 0) result[number(line)] = [.. spans];
+            if (spans.Count > 0) result[number] = [.. spans];
         }
         return result;
     }

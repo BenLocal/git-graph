@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGraph.App.ViewModels"
+        xmlns:ctl="using:GitGraph.App.Controls"
+        x:Class="GitGraph.App.Views.FileHistoryWindow"
+        x:DataType="vm:FileHistoryViewModel"
+        Title="{Binding Path, StringFormat='{}{0} – History – Git Graph'}"
+        Icon="/Assets/Icons/gitgraph-256.png"
+        Width="1280" Height="800" MinWidth="640" MinHeight="400"
+        WindowState="Maximized" WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="Auto,*">
+    <!-- The file, and where its blame is taken from -->
+    <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Classes="ghost" Padding="4" Margin="-8,0,4,0" Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path">
+          <LucideIcon Kind="Copy" Size="14" />
+        </Button>
+        <StackPanel Grid.Column="1" Spacing="2">
+          <TextBlock Classes="title mono" Text="{Binding Path}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding Path}" />
+          <TextBlock Classes="muted small" Text="{Binding RevText}" />
+        </StackPanel>
+        <Button Grid.Column="2" Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)" VerticalAlignment="Top">
+          <LucideIcon Kind="X" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <Panel Grid.Row="1">
+      <Border Height="34" VerticalAlignment="Top" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" />
+      <TabControl Classes="pane" SelectedIndex="{Binding SelectedTabIndex}">
+        <!-- Commits that changed the file, and the selected one's diff -->
+        <TabItem Header="History">
+          <Grid ColumnDefinitions="400,1,*">
+            <Grid RowDefinitions="Auto,*">
+              <TextBlock Classes="muted small" Text="{Binding HistoryMessage}" TextWrapping="Wrap" Margin="16,8,16,4"
+                         IsVisible="{Binding HistoryMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ListBox Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:FileHistoryRowViewModel">
+                    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="12,6,12,6" Background="Transparent"
+                          ToolTip.Tip="{Binding Hash}">
+                      <Grid.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="Copy commit hash" Command="{Binding Owner.CopyHashCommand}" CommandParameter="{Binding Hash}" />
+                        </ContextMenu>
+                      </Grid.ContextMenu>
+                      <ctl:Avatar Grid.RowSpan="2" Email="{Binding AuthorEmail}" AuthorName="{Binding Author}" Width="24" Height="24"
+                                  VerticalAlignment="Top" Margin="0,1,10,0" />
+                      <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="2" Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
+                                 Text="{Binding Status}" Margin="8,0,0,0" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Classes="muted small" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Author}" />
+                        <Run Text="{Binding DateText}" />
+                        <Run Text="{Binding ShortHash}" FontFamily="{StaticResource CodeFont}" />
+                      </TextBlock>
+                      <TextBlock Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Classes="muted small" Text="{Binding RenameText}"
+                                 TextTrimming="LeadingCharacterEllipsis" IsVisible="{Binding HasRename}" />
+                    </Grid>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="1" ResizeDirection="Columns" />
+
+            <Grid Grid.Column="2" Background="{DynamicResource CanvasBrush}">
+              <TextBlock Classes="muted" Text="{Binding DiffMessage}" Margin="16" TextWrapping="Wrap"
+                         IsVisible="{Binding DiffMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <ListBox Classes="dense plain" ItemsSource="{Binding DiffLines}" ItemTemplate="{StaticResource UnifiedLineTemplate}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+            </Grid>
+          </Grid>
+        </TabItem>
+
+        <!-- Each line with the commit that last changed it -->
+        <TabItem Header="Blame">
+          <Grid Background="{DynamicResource CanvasBrush}">
+            <TextBlock Classes="muted" Text="{Binding BlameMessage}" Margin="16" TextWrapping="Wrap"
+                       IsVisible="{Binding BlameMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <ListBox Classes="dense plain" ItemsSource="{Binding BlameLines}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:BlameRowViewModel">
+                  <Grid Classes="diffline" ColumnDefinitions="300,52,*">
+                    <Border Classes="blame" Classes.odd="{Binding IsOddBlock}" Classes.start="{Binding IsBlockStart}"
+                            Tapped="OnBlameTapped" ToolTip.Tip="{Binding Tooltip}">
+                      <Grid ColumnDefinitions="*,Auto" Margin="12,0,10,0">
+                        <TextBlock Text="{Binding Summary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Meta}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NumberText}" />
+                    <ctl:DiffText Grid.Column="2" Line="{Binding Text}" Syntax="{Binding Syntax}" TextWrapping="Wrap" Margin="12,0,12,0" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </Grid>
+        </TabItem>
+      </TabControl>
+    </Panel>
+  </Grid>
+</Window>

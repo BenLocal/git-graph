@@ -39,9 +39,16 @@ public sealed class GitRepository(string path)
     }
 
     /// <param name="branches">Refs to show; null or empty shows every branch and tag.</param>
-    public async Task<List<CommitInfo>> GetCommitsAsync(int maxCount, IReadOnlyList<string>? branches, bool includeRemotes, CancellationToken ct = default)
+    /// <param name="filter">Only commits by an author, since a date, or touching a path.</param>
+    public async Task<List<CommitInfo>> GetCommitsAsync(int maxCount, IReadOnlyList<string>? branches, bool includeRemotes,
+        CommitFilter? filter = null, CancellationToken ct = default)
     {
         var args = new List<string> { "log", "--date-order", $"--max-count={maxCount}", $"--format={GitParsers.LogFormat}" };
+        if (filter is { Author: { Length: > 0 } author })
+            args.AddRange(["--regexp-ignore-case", "--fixed-strings", $"--author={author}"]);
+        if (filter is { Since: { } since }) args.Add($"--since={since.ToUnixTimeSeconds()}");
+        // Limiting to a path simplifies history; --parents rewrites each commit's parents to the nearest ones shown.
+        if (filter is { Path: { Length: > 0 } }) args.Add("--parents");
         if (branches is { Count: > 0 })
         {
             args.AddRange(branches);
@@ -56,6 +63,7 @@ public sealed class GitRepository(string path)
             args.Add("HEAD");
         }
         args.Add("--");
+        if (filter is { Path: { Length: > 0 } path }) args.Add(path);
         var r = await GitRunner.RunRawAsync(Path, args, ct);
         // An empty repository has no HEAD; that is "no commits", not an error.
         if (r.ExitCode != 0)
@@ -109,6 +117,36 @@ public sealed class GitRepository(string path)
         return list;
     }
 
+    /// <summary>Stands for the index (the staging area) in a <see cref="DiffTarget"/>, as in <c>git show :path</c>.</summary>
+    public const string Index = ":";
+
+    /// <summary>
+    /// The working tree's changes as git's staging sees them: staged (HEAD → index), unstaged (index → working
+    /// tree, with untracked files) and conflicted. A file can be both staged and unstaged.
+    /// </summary>
+    public async Task<WorkingChanges> GetWorkingChangesAsync(CancellationToken ct = default)
+    {
+        // Without HEAD (no commits yet), "diff --cached" compares the index with the empty tree.
+        var stagedStatus = Git(ct, "diff", "--cached", "--name-status", "-z", "-M", "--");
+        var stagedStat = Git(ct, "diff", "--cached", "--numstat", "-z", "-M", "--");
+        var unstagedStatus = Git(ct, "diff", "--name-status", "-z", "--");
+        var unstagedStat = Git(ct, "diff", "--numstat", "-z", "--");
+        var untracked = Git(ct, "ls-files", "--others", "--exclude-standard", "-z");
+        await Task.WhenAll(stagedStatus, stagedStat, unstagedStatus, unstagedStat, untracked);
+
+        var staged = GitParsers.ParseChanges(stagedStatus.Result, stagedStat.Result);
+        var unstaged = GitParsers.ParseChanges(unstagedStatus.Result, unstagedStat.Result);
+        foreach (var p in GitParsers.SplitZ(untracked.Result))
+            unstaged.Add(new FileChange(ChangeKind.Untracked, p, null, null, null));
+        // An unmerged file shows on both sides; it belongs only with the conflicts.
+        var conflicted = staged.Concat(unstaged).Where(c => c.Kind == ChangeKind.Conflicted).DistinctBy(c => c.Path).ToList();
+        var conflictPaths = conflicted.Select(c => c.Path).ToHashSet(StringComparer.Ordinal);
+        return new WorkingChanges(
+            staged.Where(c => !conflictPaths.Contains(c.Path)).ToList(),
+            unstaged.Where(c => !conflictPaths.Contains(c.Path)).ToList(),
+            conflicted);
+    }
+
     /// <summary>Resolves what a commit row compares against: its first parent, or the empty tree for a root commit.</summary>
     public static DiffTarget TargetForCommit(CommitInfo c) =>
         new(c.Parents.Count > 0 ? c.Parents[0] : EmptyTree, c.Hash);
@@ -135,10 +173,134 @@ public sealed class GitRepository(string path)
         return (await oldTask, newText);
     }
 
+    /// <summary>Both versions of a file as bytes, for showing images; a side that doesn't exist is null.</summary>
+    public async Task<(byte[]? Old, byte[]? New)> GetFileBytesAsync(DiffTarget target, FileChange file, CancellationToken ct = default)
+    {
+        Task<byte[]> Show(string rev, string path) =>
+            GitRunner.RunBytesAsync(Path, ["show", "--no-textconv", rev == Index ? ":" + path : $"{rev}:{path}"], ct);
+
+        var oldBytes = file.Kind is ChangeKind.Added or ChangeKind.Untracked || target.From == EmptyTree
+            ? null
+            : await Show(target.From, file.OldPath ?? file.Path);
+        byte[]? newBytes = null;
+        if (file.Kind != ChangeKind.Deleted)
+        {
+            if (target.To is null)
+            {
+                var full = System.IO.Path.Combine(Path, file.Path);
+                newBytes = File.Exists(full) ? await File.ReadAllBytesAsync(full, ct) : null;
+            }
+            else newBytes = await Show(target.To, file.Path);
+        }
+        return (oldBytes, newBytes);
+    }
+
     private Task<string> ShowAsync(string rev, string path, CancellationToken ct) =>
-        GitRunner.RunAsync(Path, ["show", "--no-textconv", $"{rev}:{path}"], ct);
+        GitRunner.RunAsync(Path, ["show", "--no-textconv", rev == Index ? ":" + path : $"{rev}:{path}"], ct);
 
     // ---- Commands ----------------------------------------------------------------------------
+
+    /// <summary>Commits that changed a file, newest first, following it through renames.</summary>
+    /// <param name="rev">Start from this commit instead of HEAD.</param>
+    public async Task<List<FileHistoryEntry>> GetFileHistoryAsync(string path, string? rev, int maxCount, CancellationToken ct = default)
+    {
+        var args = new List<string> { "log", "--follow", "-M", "--name-status", "-z", $"--format={GitParsers.FileHistoryFormat}", $"--max-count={maxCount}" };
+        if (rev != null) args.Add(rev);
+        args.AddRange(["--", path]);
+        var r = await GitRunner.RunRawAsync(Path, args, ct);
+        // A file in a repository with no commits yet has no history.
+        return r.ExitCode == 0 ? GitParsers.ParseFileHistory(r.StdOut) : [];
+    }
+
+    /// <summary>Who last changed each line: of the working tree's file, or of the file at <paramref name="rev"/>.</summary>
+    public async Task<BlameResult> BlameAsync(string path, string? rev, CancellationToken ct = default)
+    {
+        var args = new List<string> { "blame", "--porcelain" };
+        if (rev != null) args.Add(rev);
+        args.AddRange(["--", path]);
+        return GitParsers.ParseBlame(await GitRunner.RunAsync(Path, args, ct));
+    }
+
+    // ---- Stash -------------------------------------------------------------------------------
+
+    public async Task<List<StashEntry>> GetStashesAsync(CancellationToken ct = default)
+    {
+        var r = await GitRunner.RunRawAsync(Path, ["stash", "list", $"--format={GitParsers.StashFormat}"], ct);
+        return r.ExitCode == 0 ? GitParsers.ParseStashes(r.StdOut) : [];
+    }
+
+    /// <summary>Untracked files a stash saved, which live in its third parent rather than in the stash itself.</summary>
+    public async Task<List<string>> GetStashUntrackedAsync(StashEntry stash, CancellationToken ct = default) =>
+        stash.HasUntracked ? GitParsers.SplitZ(await Git(ct, "ls-tree", "-r", "-z", "--name-only", stash.Hash + "^3")).ToList() : [];
+
+    /// <summary>Saves the uncommitted changes as a new stash and cleans the working tree.</summary>
+    public Task StashAsync(string? message, bool includeUntracked, CancellationToken ct = default)
+    {
+        var args = new List<string> { "stash", "push" };
+        if (includeUntracked) args.Add("--include-untracked");
+        if (!string.IsNullOrWhiteSpace(message)) { args.Add("-m"); args.Add(message.Trim()); }
+        return GitRunner.RunAsync(Path, args, ct);
+    }
+
+    /// <param name="pop">Drop the stash once it applied cleanly.</param>
+    /// <param name="restoreIndex">Restore what was staged as staged, instead of leaving everything unstaged.</param>
+    public Task ApplyStashAsync(string name, bool pop, bool restoreIndex, CancellationToken ct = default) =>
+        restoreIndex ? Git(ct, "stash", pop ? "pop" : "apply", "--index", name) : Git(ct, "stash", pop ? "pop" : "apply", name);
+
+    public Task DropStashAsync(string name, CancellationToken ct = default) => Git(ct, "stash", "drop", name);
+
+    /// <summary>Creates a branch at the commit the stash was made on, checks it out, applies the stash and drops it.</summary>
+    public Task StashBranchAsync(string branch, string name, CancellationToken ct = default) => Git(ct, "stash", "branch", branch, name);
+
+    /// <summary>Stages files as they are in the working tree, deletions included.</summary>
+    public Task StageAsync(IEnumerable<string> paths, CancellationToken ct = default) =>
+        GitRunner.RunAsync(Path, ["add", "-A", "--", .. paths], ct);
+
+    /// <summary>Takes files out of the index again, leaving the working tree as it is.</summary>
+    public async Task UnstageAsync(IEnumerable<string> paths, CancellationToken ct = default)
+    {
+        // With no commits yet there is nothing to restore from: the files just leave the index.
+        if ((await GetHeadAsync(ct)).Hash is null) await GitRunner.RunAsync(Path, ["rm", "--cached", "-r", "-q", "--", .. paths], ct);
+        else await GitRunner.RunAsync(Path, ["restore", "--staged", "--", .. paths], ct);
+    }
+
+    /// <summary>
+    /// Throws away unstaged changes: tracked files go back to their staged (or committed) content and untracked
+    /// files are deleted.
+    /// </summary>
+    public async Task DiscardAsync(IReadOnlyCollection<FileChange> files, CancellationToken ct = default)
+    {
+        var untracked = files.Where(f => f.Kind == ChangeKind.Untracked).Select(f => f.Path).ToList();
+        var tracked = files.Where(f => f.Kind != ChangeKind.Untracked).Select(f => f.Path).ToList();
+        if (tracked.Count > 0) await GitRunner.RunAsync(Path, ["restore", "--worktree", "--", .. tracked], ct);
+        if (untracked.Count > 0) await GitRunner.RunAsync(Path, ["clean", "-f", "-q", "--", .. untracked], ct);
+    }
+
+    /// <param name="amend">Replace the last commit with the index and this message instead of adding one.</param>
+    public Task CommitAsync(string message, bool amend, CancellationToken ct = default) =>
+        amend ? Git(ct, "commit", "--amend", "-m", message) : Git(ct, "commit", "-m", message);
+
+    public async Task<string> GetLastCommitMessageAsync(CancellationToken ct = default) =>
+        (await Git(ct, "log", "-1", "--format=%B")).TrimEnd();
+
+    /// <summary>
+    /// Applies a patch to the index (<paramref name="cached"/>) or the working tree; <paramref name="reverse"/> takes
+    /// it back out. Hunk counts are recounted, so a patch built from one hunk of a larger diff applies cleanly.
+    /// </summary>
+    public async Task ApplyPatchAsync(string patch, bool cached, bool reverse, CancellationToken ct = default)
+    {
+        var file = System.IO.Path.GetTempFileName();
+        try
+        {
+            await File.WriteAllTextAsync(file, patch, ct);
+            var args = new List<string> { "apply", "--recount", "--whitespace=nowarn" };
+            if (cached) args.Add("--cached");
+            if (reverse) args.Add("-R");
+            args.Add(file);
+            await GitRunner.RunAsync(Path, args, ct);
+        }
+        finally { File.Delete(file); }
+    }
 
     public Task CheckoutAsync(string target, CancellationToken ct = default) => Git(ct, "checkout", target);
 
@@ -154,6 +316,18 @@ public sealed class GitRepository(string path)
             : Git(ct, "tag", "-a", name, "-m", message, target);
 
     public Task DeleteTagAsync(string name, CancellationToken ct = default) => Git(ct, "tag", "-d", name);
+
+    public Task RenameBranchAsync(string name, string newName, CancellationToken ct = default) => Git(ct, "branch", "-m", name, newName);
+
+    /// <param name="upstream">A remote branch such as "origin/main".</param>
+    public Task SetUpstreamAsync(string branch, string upstream, CancellationToken ct = default) =>
+        Git(ct, "branch", $"--set-upstream-to={upstream}", branch);
+
+    /// <param name="branch">The branch's name on the remote: "main", not "origin/main".</param>
+    public Task DeleteRemoteBranchAsync(string remote, string branch, CancellationToken ct = default) =>
+        Git(ct, "push", remote, "--delete", branch);
+
+    public Task PushTagAsync(string remote, string tag, CancellationToken ct = default) => Git(ct, "push", remote, $"refs/tags/{tag}");
 
     /// <summary>Merges <paramref name="target"/> into the checked-out branch, with git's default message.</summary>
     public Task MergeAsync(string target, bool noFastForward, bool squash, CancellationToken ct = default)
@@ -176,16 +350,67 @@ public sealed class GitRepository(string path)
         return GitRunner.RunAsync(Path, args, ct);
     }
 
-    /// <summary>Whether a merge or cherry-pick stopped part-way, for example on conflicts.</summary>
-    public async Task<bool> IsInProgressAsync(GitOperation op, CancellationToken ct = default)
+    /// <summary>Undoes a commit with a new commit. A merge commit is undone relative to its first parent.</summary>
+    public Task RevertAsync(string hash, bool isMerge, bool noCommit, CancellationToken ct = default)
     {
-        var gitDir = await GetGitDirAsync(ct);
-        var marker = op == GitOperation.Merge ? "MERGE_HEAD" : "CHERRY_PICK_HEAD";
-        return gitDir != null && File.Exists(System.IO.Path.Combine(gitDir, marker));
+        var args = new List<string> { "revert", "--no-edit" };
+        if (isMerge) args.AddRange(["-m", "1"]);
+        if (noCommit) args.Add("--no-commit");
+        args.Add(hash);
+        return GitRunner.RunAsync(Path, args, ct);
     }
 
-    public Task AbortAsync(GitOperation op, CancellationToken ct = default) =>
-        Git(ct, op == GitOperation.Merge ? "merge" : "cherry-pick", "--abort");
+    /// <summary>Moves the checked-out branch to <paramref name="target"/>.</summary>
+    public Task ResetAsync(string target, ResetMode mode, CancellationToken ct = default) =>
+        Git(ct, "reset", mode switch { ResetMode.Soft => "--soft", ResetMode.Hard => "--hard", _ => "--mixed" }, target);
+
+    /// <summary>Replays the checked-out branch's own commits on top of <paramref name="onto"/>.</summary>
+    /// <param name="autostash">Stash uncommitted changes first and bring them back afterwards.</param>
+    public Task RebaseAsync(string onto, bool autostash, CancellationToken ct = default) =>
+        autostash ? Git(ct, "rebase", "--autostash", onto) : Git(ct, "rebase", onto);
+
+    /// <summary>Whether an operation stopped part-way, for example on conflicts.</summary>
+    public async Task<bool> IsInProgressAsync(GitOperation op, CancellationToken ct = default) =>
+        await GetOperationInProgressAsync(ct) == op;
+
+    /// <summary>The merge, cherry-pick, revert or rebase waiting to be continued or aborted, if any.</summary>
+    public async Task<GitOperation?> GetOperationInProgressAsync(CancellationToken ct = default)
+    {
+        var gitDir = await GetGitDirAsync(ct);
+        if (gitDir is null) return null;
+        bool Has(string name) => File.Exists(System.IO.Path.Combine(gitDir, name)) || Directory.Exists(System.IO.Path.Combine(gitDir, name));
+        // A rebase that stops on a conflict also leaves CHERRY_PICK_HEAD behind, so it is checked first.
+        if (Has("rebase-merge") || Has("rebase-apply")) return GitOperation.Rebase;
+        if (Has("MERGE_HEAD")) return GitOperation.Merge;
+        if (Has("CHERRY_PICK_HEAD")) return GitOperation.CherryPick;
+        if (Has("REVERT_HEAD")) return GitOperation.Revert;
+        return null;
+    }
+
+    public Task AbortAsync(GitOperation op, CancellationToken ct = default) => Git(ct, Verb(op), "--abort");
+
+    /// <summary>Goes on after the conflicts were resolved and staged, keeping the messages git prepared.</summary>
+    public Task ContinueAsync(GitOperation op, CancellationToken ct = default) =>
+        op == GitOperation.Merge
+            ? Git(ct, "commit", "--no-edit")
+            // No terminal to edit the message in: keep it as it is.
+            : Git(ct, "-c", "core.editor=true", Verb(op), "--continue");
+
+    private static string Verb(GitOperation op) => op switch
+    {
+        GitOperation.Merge => "merge",
+        GitOperation.CherryPick => "cherry-pick",
+        GitOperation.Revert => "revert",
+        _ => "rebase",
+    };
+
+    /// <summary>Resolves conflicted files by taking one side whole (during a rebase, "ours" is the branch being rebased onto), and stages them.</summary>
+    public async Task TakeSideAsync(IEnumerable<string> paths, bool ours, CancellationToken ct = default)
+    {
+        var list = paths.ToList();
+        await GitRunner.RunAsync(Path, ["checkout", ours ? "--ours" : "--theirs", "--", .. list], ct);
+        await StageAsync(list, ct);
+    }
 
     /// <param name="newBranch">When set, creates this branch at <paramref name="commitish"/> and checks it out in the new worktree.</param>
     public Task AddWorktreeAsync(string worktreePath, string commitish, string? newBranch, bool detach, CancellationToken ct = default)

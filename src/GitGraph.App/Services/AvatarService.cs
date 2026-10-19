@@ -34,7 +34,8 @@ public static partial class AvatarService
     /// <summary>Raised when the avatar style changes, so avatars on screen redraw.</summary>
     public static event Action? StyleChanged;
 
-    private static readonly HttpClient Http = new(new HttpClientHandler { Proxy = ResolveProxy(), UseProxy = true })
+    /// <summary>Also used by the update check, so both go through the same proxy.</summary>
+    internal static readonly HttpClient Http = new(new HttpClientHandler { Proxy = ResolveProxy(), UseProxy = true })
     {
         Timeout = TimeSpan.FromSeconds(10),
     };

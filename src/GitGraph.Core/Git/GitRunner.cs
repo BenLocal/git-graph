@@ -18,6 +18,41 @@ public static class GitRunner
 
     public static async Task<GitResult> RunRawAsync(string workDir, IEnumerable<string> args, CancellationToken ct = default)
     {
+        using var proc = Start(workDir, args);
+        var stdout = proc.StandardOutput.ReadToEndAsync(ct);
+        var stderr = proc.StandardError.ReadToEndAsync(ct);
+        await WaitAsync(proc, ct);
+        return new GitResult(proc.ExitCode, await stdout, await stderr);
+    }
+
+    /// <summary>Output as bytes, for file contents that aren't text (images).</summary>
+    public static async Task<byte[]> RunBytesAsync(string workDir, IReadOnlyList<string> args, CancellationToken ct = default)
+    {
+        using var proc = Start(workDir, args);
+        using var buffer = new MemoryStream();
+        var stdout = proc.StandardOutput.BaseStream.CopyToAsync(buffer, ct);
+        var stderr = proc.StandardError.ReadToEndAsync(ct);
+        await WaitAsync(proc, ct);
+        await stdout;
+        if (proc.ExitCode != 0) throw new GitException((await stderr).Trim(), proc.ExitCode, string.Join(' ', args));
+        return buffer.ToArray();
+    }
+
+    private static async Task WaitAsync(Process proc, CancellationToken ct)
+    {
+        try
+        {
+            await proc.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            try { proc.Kill(true); } catch { /* already gone */ }
+            throw;
+        }
+    }
+
+    private static Process Start(string workDir, IEnumerable<string> args)
+    {
         var psi = new ProcessStartInfo(GitPath)
         {
             WorkingDirectory = workDir,
@@ -39,20 +74,9 @@ public static class GitRunner
         psi.ArgumentList.Add("log.showSignature=false");
         foreach (var a in args) psi.ArgumentList.Add(a);
 
-        using var proc = Process.Start(psi) ?? throw new GitException("Could not start git.", -1, string.Join(' ', args));
+        var proc = Process.Start(psi) ?? throw new GitException("Could not start git.", -1, string.Join(' ', args));
         proc.StandardInput.Close();
-        var stdout = proc.StandardOutput.ReadToEndAsync(ct);
-        var stderr = proc.StandardError.ReadToEndAsync(ct);
-        try
-        {
-            await proc.WaitForExitAsync(ct);
-        }
-        catch (OperationCanceledException)
-        {
-            try { proc.Kill(true); } catch { /* already gone */ }
-            throw;
-        }
-        return new GitResult(proc.ExitCode, await stdout, await stderr);
+        return proc;
     }
 
     public static async Task<string> RunAsync(string workDir, IEnumerable<string> args, CancellationToken ct = default, params int[] okExitCodes)
