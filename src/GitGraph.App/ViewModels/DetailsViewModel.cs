@@ -20,6 +20,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private string _headRev = "HEAD";
     // The uncommitted file last looked at. A refresh briefly clears the selection, so it is kept here.
     private (FileGroup Group, string Path)? _workingFile;
+    // The uncommitted file list on screen, to leave it alone when a refresh finds the same changes.
+    private string? _workingSignature;
 
     [ObservableProperty]
     private bool _hasContent;
@@ -114,6 +116,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     /// <summary>Whitespace or wrapping changed in the View menu: redo the diff on screen.</summary>
     public void DiffOptionsChanged()
     {
+        _shown = null;
         OnPropertyChanged(nameof(WrapLines));
         if (SelectedFile is { } file) _ = LoadDiffAsync(file);
     }
@@ -163,6 +166,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         _diffCts?.Cancel();
         _key = null;
         _target = null;
+        _workingSignature = null;
         HasContent = false;
         IsStaging = false;
         Files.Clear();
@@ -237,6 +241,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
 
     public void ShowUncommitted(string from)
     {
+        // Arriving from another row: the changes are what there is to see (and stage); a refresh keeps the tab.
+        if (_key != "w") SelectedTabIndex = 1;
         // Always reload: the working tree changes under us, unlike a commit.
         _key = "w";
         IsCompare = false;
@@ -283,6 +289,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         var ct = cts.Token;
         var keepFile = target.IsWorkingTree && _target?.IsWorkingTree == true ? SelectedFile?.Change.Path : null;
         _target = target;
+        _workingSignature = null;
         HasContent = true;
         try
         {
@@ -330,6 +337,15 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         {
             var changes = await repo.GetWorkingChangesAsync(ct);
             if (ct.IsCancellationRequested) return;
+            // The same changes as on screen (the usual case for a refresh): keep the list, and only check the diff.
+            var signature = string.Join('\n', new[] { changes.Conflicted, changes.Staged, changes.Unstaged }
+                .Select((list, i) => string.Join('\n', list.Select(c => $"{i}|{c}"))));
+            if (signature == _workingSignature && Files.Count > 0)
+            {
+                if (SelectedFile is { } current) _ = LoadDiffAsync(current);
+                return;
+            }
+            _workingSignature = signature;
             Files.Clear();
             Groups.Clear();
             // A conflicted file shows with its conflict markers, against HEAD.
@@ -385,7 +401,11 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             var loaded = await ComputeDiffAsync(target, file, cts.Token);
             if (cts.IsCancellationRequested) return;
             var (diff, syntax) = (loaded.Diff, loaded.Syntax);
+            // Reloaded by a refresh with nothing changed: leave the diff (and its scroll position) alone.
+            var same = _shown is { } s && s.Target == target && s.File == file && s.Loaded.OldText == loaded.OldText
+                && s.Loaded.NewText == loaded.NewText && HasDiff;
             _shown = (target, file, loaded);
+            if (same) return;
             if (EmptyMessage(diff, file) is { } message)
             {
                 ResetDiff(message);

@@ -55,6 +55,7 @@ public partial class RepoTabViewModel : TabViewModel
     private int _maxCount = PageSize;
     private List<WorktreeInfo> _worktrees = [];
     private List<StashEntry> _stashes = [];
+    private bool _rebuilding;
     private string? _commonDir;
 
     public RepoTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host) : base(path, workspace)
@@ -186,6 +187,8 @@ public partial class RepoTabViewModel : TabViewModel
 
     partial void OnSelectedRowChanged(CommitRowViewModel? value)
     {
+        // While the rows are replaced, the list drops its selection for a moment; showing that would blank the details.
+        if (_rebuilding) return;
         if (CompareRow != null && value == CompareRow) ClearCompare();
         ShowDetails();
     }
@@ -349,22 +352,27 @@ public partial class RepoTabViewModel : TabViewModel
         var compareHash = CompareRow?.Hash;
         // At least wide enough for the "Graph" column heading.
         GraphWidth = Math.Max(GraphCell.WidthFor(Math.Min(maxLanes, 24)), 52);
-        Rows = rows;
-        HasMore = commits.Count >= _maxCount;
-        IsEmpty = rows.Count == 0;
+        _rebuilding = true;
+        try
+        {
+            Rows = rows;
+            HasMore = commits.Count >= _maxCount;
+            IsEmpty = rows.Count == 0;
 
-        CompareRow = compareHash is null ? null : rows.FirstOrDefault(r => r.Hash == compareHash);
-        if (CompareRow != null) CompareRow.IsCompareTarget = true;
-        var reselect = selectedHash is null ? null : rows.FirstOrDefault(r => r.Hash == selectedHash);
-        if (reselect != null)
-        {
-            SelectedRow = reselect;
+            CompareRow = compareHash is null ? null : rows.FirstOrDefault(r => r.Hash == compareHash);
+            if (CompareRow != null) CompareRow.IsCompareTarget = true;
+            var reselect = selectedHash is null ? null : rows.FirstOrDefault(r => r.Hash == selectedHash);
+            if (reselect != null)
+                SelectedRow = reselect;
+            else if (selectedHash == UncommittedHash)
+                // Everything was committed (show the new commit) or discarded.
+                SelectedRow = rows.FirstOrDefault(r => r.Hash == head.Hash);
+            else
+                SelectedRow = null;
         }
-        else if (selectedHash == UncommittedHash)
-        {
-            // Everything was committed (show the new commit) or discarded.
-            SelectedRow = rows.FirstOrDefault(r => r.Hash == head.Hash);
-        }
+        finally { _rebuilding = false; }
+        // Once, for the row selected after the rebuild; the same commit as before keeps its details as they are.
+        ShowDetails();
         ApplyFind(jump: false);
     }
 
