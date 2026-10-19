@@ -17,8 +17,33 @@
       <TabControl Classes="pane" SelectedIndex="{Binding SelectedTabIndex}">
         <!-- The full commit message and its metadata -->
         <TabItem Header="Commit">
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <StackPanel x:Name="MessagePage" Margin="20,14,20,16" Spacing="10" MaxWidth="880" HorizontalAlignment="Left" Background="Transparent">
+          <Panel>
+          <!-- Uncommitted changes: write the message and commit what is staged (the files are on the Changes tab) -->
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsStaging}">
+            <StackPanel Margin="20,14,20,16" Spacing="10">
+              <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" />
+              <TextBlock Classes="muted" Text="{Binding StagedText}" TextWrapping="Wrap" />
+              <TextBox Text="{Binding CommitMessage}" PlaceholderText="Message (Ctrl+Enter to commit)" AcceptsReturn="True"
+                       TextWrapping="Wrap" MinHeight="120" MaxHeight="320" VerticalContentAlignment="Top">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Ctrl+Enter" Command="{Binding CommitCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <Grid ColumnDefinitions="*,Auto">
+                <CheckBox Content="Amend last commit" IsChecked="{Binding Amend}" VerticalAlignment="Center"
+                          ToolTip.Tip="Replace the last commit with the staged changes and this message" />
+                <Button Grid.Column="1" Classes="primary" Command="{Binding CommitCommand}" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <LucideIcon Kind="GitCommitHorizontal" Size="14" Foreground="{Binding $parent[Button].Foreground}" VerticalAlignment="Center" />
+                    <TextBlock Text="Commit" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </Grid>
+            </StackPanel>
+          </ScrollViewer>
+
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !IsStaging}">
+            <StackPanel x:Name="MessagePage" Margin="20,14,20,16" Spacing="10" Background="Transparent">
               <!-- Right-click anywhere in the message: copy what's selected, or the whole message. -->
               <StackPanel.ContextMenu>
                 <ContextMenu x:Name="MessageMenu">
@@ -28,14 +53,17 @@
                             IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </ContextMenu>
               </StackPanel.ContextMenu>
-              <Grid ColumnDefinitions="*,Auto">
-                <SelectableTextBlock Text="{Binding Heading}" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap" />
-                <Button Grid.Column="1" Classes="ghost" Padding="5" Margin="12,-2,0,0" VerticalAlignment="Top"
-                        Command="{Binding CopyMessageCommand}" ToolTip.Tip="Copy message"
-                        IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
-                  <LucideIcon Kind="Copy" Size="14" />
-                </Button>
-              </Grid>
+              <!-- The copy button follows the subject's last word, wherever it wraps -->
+              <SelectableTextBlock FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap">
+                <Run Text="{Binding Heading}" />
+                <InlineUIContainer BaselineAlignment="Center">
+                  <Button Classes="ghost" Padding="5" Margin="6,0,0,0" RenderTransform="translate(0px, 3px)"
+                          Command="{Binding CopyMessageCommand}" ToolTip.Tip="Copy message"
+                          IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <LucideIcon Kind="Copy" Size="14" />
+                  </Button>
+                </InlineUIContainer>
+              </SelectableTextBlock>
               <TextBlock Classes="muted" Text="{Binding RangeText}" TextWrapping="Wrap"
                          IsVisible="{Binding RangeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
@@ -65,6 +93,7 @@
               </Border>
             </StackPanel>
           </ScrollViewer>
+          </Panel>
         </TabItem>
 
         <!-- Changed files and the diff of the selected one -->
@@ -78,32 +107,13 @@
             </StackPanel>
           </TabItem.Header>
           <Grid ColumnDefinitions="320,1,*">
-            <Grid RowDefinitions="Auto,Auto,*">
-              <!-- Uncommitted changes: write the message and commit what is staged -->
-              <StackPanel Margin="12,10,12,6" Spacing="6" IsVisible="{Binding IsStaging}">
-                <TextBox Text="{Binding CommitMessage}" PlaceholderText="Message (Ctrl+Enter to commit)" AcceptsReturn="True"
-                         TextWrapping="Wrap" MinHeight="58" MaxHeight="160">
-                  <TextBox.KeyBindings>
-                    <KeyBinding Gesture="Ctrl+Enter" Command="{Binding CommitCommand}" />
-                  </TextBox.KeyBindings>
-                </TextBox>
-                <Grid ColumnDefinitions="*,Auto">
-                  <CheckBox Content="Amend last commit" IsChecked="{Binding Amend}" VerticalAlignment="Center"
-                            ToolTip.Tip="Replace the last commit with the staged changes and this message" />
-                  <Button Grid.Column="1" Classes="primary" Command="{Binding CommitCommand}" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                      <LucideIcon Kind="GitCommitHorizontal" Size="14" Foreground="{Binding $parent[Button].Foreground}" VerticalAlignment="Center" />
-                      <TextBlock Text="Commit" VerticalAlignment="Center" />
-                    </StackPanel>
-                  </Button>
-                </Grid>
-              </StackPanel>
-              <Border Grid.Row="1" Padding="16,8,16,4" IsVisible="{Binding !IsStaging}">
+            <Grid RowDefinitions="Auto,*">
+              <Border Padding="16,8,16,4" IsVisible="{Binding !IsStaging}">
                 <TextBlock Classes="section" Text="{Binding FilesSummary}" />
               </Border>
 
               <!-- Uncommitted files by group, each with stage, unstage and discard buttons -->
-              <ScrollViewer Grid.Row="2" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled">
+              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
                 <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,8">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:FileGroupViewModel">
@@ -193,7 +203,7 @@
                 </ItemsControl>
               </ScrollViewer>
 
-              <ListBox x:Name="FileList" Grid.Row="2" Classes="dense pills" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
+              <ListBox x:Name="FileList" Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
                        IsVisible="{Binding !IsStaging}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileChangeViewModel">

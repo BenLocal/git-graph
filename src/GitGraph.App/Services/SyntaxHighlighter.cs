@@ -41,7 +41,11 @@ public static class SyntaxHighlighter
     private static readonly Dictionary<string, IGrammar?> Grammars = [];
     private static readonly Dictionary<string, (Color Dark, Color Light, FontStyle Style, FontWeight Weight)?> Styles = [];
 
-    public static DiffSyntax Highlight(string path, FileDiff diff)
+    /// <summary>
+    /// Colours both versions of a diffed file. This is the slow part of showing a diff (a large C# file takes most of a
+    /// second), so callers show the diff first and add the colours when they arrive; <paramref name="ct"/> stops it.
+    /// </summary>
+    public static DiffSyntax Highlight(string path, FileDiff diff, CancellationToken ct = default)
     {
         if (diff.IsBinary || diff.AllRows.Count > MaxLines) return DiffSyntax.Empty;
         try
@@ -52,14 +56,41 @@ public static class SyntaxHighlighter
                 // AllRows holds every line of both versions in order; the text already has tabs expanded.
                 var oldLines = diff.AllRows.Select(r => r.Left).OfType<DiffLine>().Where(l => l.OldLine != null).Select(l => (l.OldLine!.Value, l.Text));
                 var newLines = diff.AllRows.Select(r => r.Right).OfType<DiffLine>().Where(l => l.NewLine != null).Select(l => (l.NewLine!.Value, l.Text));
-                return new DiffSyntax(Tokenize(grammar, oldLines), Tokenize(grammar, newLines));
+                return new DiffSyntax(Cached(path, grammar, oldLines, ct), Cached(path, grammar, newLines, ct));
             }
         }
-        catch (Exception)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             // Colours are a nicety: a grammar that fails leaves the diff plain.
             return DiffSyntax.Empty;
         }
+    }
+
+    // Recently coloured texts, so going back to a file (or a version shared by two diffs) is instant.
+    private const int CacheSize = 24;
+    private static readonly Dictionary<string, Dictionary<int, SyntaxSpan[]>> Cache = [];
+    private static readonly LinkedList<string> CacheOrder = [];
+
+    private static Dictionary<int, SyntaxSpan[]> Cached(string path, IGrammar grammar, IEnumerable<(int Number, string Text)> lines, CancellationToken ct)
+    {
+        var list = lines.ToList();
+        var hash = System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', list.Select(l => $"{l.Number}\t{l.Text}"))));
+        var key = Path.GetExtension(path) + ":" + Convert.ToHexString(hash);
+        if (Cache.TryGetValue(key, out var hit))
+        {
+            CacheOrder.Remove(key);
+            CacheOrder.AddFirst(key);
+            return hit;
+        }
+        var result = Tokenize(grammar, list, ct);
+        Cache[key] = result;
+        CacheOrder.AddFirst(key);
+        if (CacheOrder.Count > CacheSize)
+        {
+            Cache.Remove(CacheOrder.Last!.Value);
+            CacheOrder.RemoveLast();
+        }
+        return result;
     }
 
     /// <summary>Colours of a whole file's lines (tabs already expanded), by line number; empty for an unknown language.</summary>
@@ -68,7 +99,7 @@ public static class SyntaxHighlighter
         try
         {
             lock (Gate)
-                return GrammarFor(path) is { } grammar ? Tokenize(grammar, lines.Take(MaxLines)) : new Dictionary<int, SyntaxSpan[]>();
+                return GrammarFor(path) is { } grammar ? Tokenize(grammar, lines.Take(MaxLines), default) : new Dictionary<int, SyntaxSpan[]>();
         }
         catch (Exception)
         {
@@ -87,13 +118,14 @@ public static class SyntaxHighlighter
         return grammar;
     }
 
-    private static Dictionary<int, SyntaxSpan[]> Tokenize(IGrammar grammar, IEnumerable<(int Number, string Text)> lines)
+    private static Dictionary<int, SyntaxSpan[]> Tokenize(IGrammar grammar, IEnumerable<(int Number, string Text)> lines, CancellationToken ct)
     {
         var result = new Dictionary<int, SyntaxSpan[]>();
         IStateStack? state = null;
         var spans = new List<SyntaxSpan>();
         foreach (var (number, text) in lines)
         {
+            ct.ThrowIfCancellationRequested();
             if (text.Length > MaxLineLength) continue;
             var tokens = grammar.TokenizeLine(text, state, LineTimeLimit);
             state = tokens.RuleStack;

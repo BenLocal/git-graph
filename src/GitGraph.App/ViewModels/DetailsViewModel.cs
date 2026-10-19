@@ -401,11 +401,11 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             var loaded = await ComputeDiffAsync(target, file, cts.Token);
             if (cts.IsCancellationRequested) return;
             var (diff, syntax) = (loaded.Diff, loaded.Syntax);
-            // Reloaded by a refresh with nothing changed: leave the diff (and its scroll position) alone.
-            var same = _shown is { } s && s.Target == target && s.File == file && s.Loaded.OldText == loaded.OldText
-                && s.Loaded.NewText == loaded.NewText && HasDiff;
+            // Reloaded by a refresh with nothing changed: leave the diff (and its scroll position and colours) alone.
+            if (_shown is { } s && s.Target == target && s.File == file && s.Loaded.OldText == loaded.OldText
+                && s.Loaded.NewText == loaded.NewText && HasDiff)
+                return;
             _shown = (target, file, loaded);
-            if (same) return;
             if (EmptyMessage(diff, file) is { } message)
             {
                 ResetDiff(message);
@@ -418,6 +418,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
             DiffMessage = null;
             HasDiff = true;
+            _ = ColourAsync(target, file, loaded, cts.Token);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is GitException or IOException)
@@ -426,16 +427,28 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         }
     }
 
+    /// <summary>Adds syntax colours to the diff on screen once they are worked out; picking another file stops it.</summary>
+    private async Task ColourAsync(DiffTarget target, FileChange file, LoadedDiff loaded, CancellationToken ct)
+    {
+        try
+        {
+            var syntax = await Task.Run(() => SyntaxHighlighter.Highlight(file.Path, loaded.Diff, ct), ct);
+            if (ct.IsCancellationRequested || _shown is not { } s || !ReferenceEquals(s.Loaded, loaded)) return;
+            _shown = (target, file, loaded with { Syntax = syntax });
+            foreach (var line in DiffLines) line.ApplySyntax(syntax);
+            foreach (var row in SplitRows) row.ApplySyntax(syntax);
+        }
+        catch (OperationCanceledException) { }
+    }
+
     private async Task<LoadedDiff> ComputeDiffAsync(DiffTarget target, FileChange file, CancellationToken ct)
     {
         // git's numstat already knows binary files; skip reading them.
         if (file.IsBinary) return new LoadedDiff(new FileDiff { Lines = [], SplitRows = [], IsBinary = true }, DiffSyntax.Empty, "", "");
         var (oldText, newText) = await repo.GetFileVersionsAsync(target, file, ct);
+        // Without colours: those take longer than everything else, so they follow (see ColourAsync).
         return await Task.Run(() =>
-        {
-            var diff = TextDiff.Build(oldText, newText, ignoreWhitespace: host.IgnoreWhitespace);
-            return new LoadedDiff(diff, SyntaxHighlighter.Highlight(file.Path, diff), oldText, newText);
-        }, ct);
+            new LoadedDiff(TextDiff.Build(oldText, newText, ignoreWhitespace: host.IgnoreWhitespace), DiffSyntax.Empty, oldText, newText), ct);
     }
 
     private static string? EmptyMessage(FileDiff diff, FileChange file) =>
@@ -456,6 +469,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             var (diff, syntax, _, _) = _shown is { } s && s.Target == target && s.File == file.Change
                 ? s.Loaded
                 : await ComputeDiffAsync(target, file.Change, CancellationToken.None);
+            // Opened before the colours arrived (or for another file): the window gets them before it shows.
+            if (syntax == DiffSyntax.Empty) syntax = await Task.Run(() => SyntaxHighlighter.Highlight(file.Change.Path, diff));
             host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, syntax, EmptyMessage(diff, file.Change),
                 host.Dialogs, FullPath(file.Change.Path)));
         }
@@ -476,7 +491,12 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private bool _amend;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StagedText))]
     private int _stagedCount;
+
+    public string StagedText => StagedCount == 0
+        ? "Nothing is staged yet. Stage changes on the Changes tab, or Commit offers to stage them all first."
+        : $"{Count(StagedCount, "staged change")} will be committed. Stage or unstage them on the Changes tab.";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(CommitCommand))]
@@ -804,14 +824,19 @@ public sealed partial class FileChangeViewModel(FileChange change, DetailsViewMo
     public bool IsModified => !IsAdded && !IsDeleted;
 }
 
-public sealed class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActions? hunk = null)
+public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActions? hunk = null) : ObservableObject
 {
     public string OldNo { get; } = line.OldLine?.ToString() ?? "";
     public string NewNo { get; } = line.NewLine?.ToString() ?? "";
     public string Sign { get; } = line.Kind switch { DiffLineKind.Added => "+", DiffLineKind.Deleted => "−", _ => "" };
     public string Text { get; } = line.Text;
     public IReadOnlyList<DiffSegment>? Segments { get; } = line.Segments;
-    public SyntaxSpan[]? Syntax { get; } = syntax.For(line);
+    /// <summary>Colours arrive after the diff is on screen; see <see cref="ApplySyntax"/>.</summary>
+    [ObservableProperty]
+    private SyntaxSpan[]? _syntax = syntax.For(line);
+
+    public void ApplySyntax(DiffSyntax s) => Syntax = s.For(line);
+
     public bool IsAdded { get; } = line.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line.Kind == DiffLineKind.Deleted;
     public bool IsHunk { get; } = line.Kind == DiffLineKind.Hunk;
@@ -819,12 +844,16 @@ public sealed class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActi
     public HunkActions? Hunk { get; } = hunk;
 }
 
-public sealed class SplitCellViewModel(DiffLine? line, bool left, DiffSyntax syntax)
+public sealed partial class SplitCellViewModel(DiffLine? line, bool left, DiffSyntax syntax) : ObservableObject
 {
     public string No { get; } = (left ? line?.OldLine : line?.NewLine)?.ToString() ?? "";
     public string Text { get; } = line?.Text ?? "";
     public IReadOnlyList<DiffSegment>? Segments { get; } = line?.Segments;
-    public SyntaxSpan[]? Syntax { get; } = syntax.For(line);
+
+    [ObservableProperty]
+    private SyntaxSpan[]? _syntax = syntax.For(line);
+
+    public void ApplySyntax(DiffSyntax s) => Syntax = s.For(line);
     public bool IsAdded { get; } = line?.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line?.Kind == DiffLineKind.Deleted;
     public bool IsEmpty { get; } = line is null;
@@ -846,6 +875,12 @@ public sealed class SplitRowViewModel
     public string HunkText { get; }
     public SplitCellViewModel Left { get; }
     public SplitCellViewModel Right { get; }
+
+    public void ApplySyntax(DiffSyntax syntax)
+    {
+        Left.ApplySyntax(syntax);
+        Right.ApplySyntax(syntax);
+    }
 }
 
 /// <summary>

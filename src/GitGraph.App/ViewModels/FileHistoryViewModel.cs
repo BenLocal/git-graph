@@ -92,15 +92,16 @@ public sealed partial class FileHistoryViewModel : ObservableObject
             // The log has no line counts, and a change without them reads as binary; the diff finds binary files itself.
             var change = row.Entry.Change with { Additions = 0, Deletions = 0 };
             var (oldText, newText) = await _repo.GetFileVersionsAsync(target, change, cts.Token);
-            var (diff, syntax) = await Task.Run(() =>
-            {
-                var d = TextDiff.Build(oldText, newText);
-                return (d, SyntaxHighlighter.Highlight(change.Path, d));
-            }, cts.Token);
+            var diff = await Task.Run(() => TextDiff.Build(oldText, newText), cts.Token);
             if (cts.IsCancellationRequested) return;
-            DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l, syntax)).ToList();
+            var lines = diff.Lines.Select(l => new DiffLineViewModel(l, DiffSyntax.Empty)).ToList();
+            DiffLines = lines;
             DiffMessage = diff.IsBinary ? "Binary file. There is no text diff to show."
                 : diff.Lines.Count == 0 ? "The file's content didn't change in this commit." : null;
+            // Colours take longest, so they follow the diff; picking another commit stops them.
+            var syntax = await Task.Run(() => SyntaxHighlighter.Highlight(change.Path, diff, cts.Token), cts.Token);
+            if (cts.IsCancellationRequested) return;
+            foreach (var line in lines) line.ApplySyntax(syntax);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is GitException or IOException)
