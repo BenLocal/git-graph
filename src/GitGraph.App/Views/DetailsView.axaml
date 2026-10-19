@@ -21,7 +21,7 @@
           <!-- Uncommitted changes: write the message and commit what is staged (the files are on the Changes tab) -->
           <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsStaging}">
             <StackPanel Margin="20,14,20,16" Spacing="10">
-              <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" />
+              <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeTitle}" />
               <TextBlock Classes="muted" Text="{Binding StagedText}" TextWrapping="Wrap" />
               <TextBox Text="{Binding CommitMessage}" PlaceholderText="Message (Ctrl+Enter to commit)" AcceptsReturn="True"
                        TextWrapping="Wrap" MinHeight="120" MaxHeight="320" VerticalContentAlignment="Top">
@@ -54,7 +54,7 @@
                 </ContextMenu>
               </StackPanel.ContextMenu>
               <!-- The copy button follows the subject's last word, wherever it wraps -->
-              <SelectableTextBlock FontWeight="SemiBold" FontSize="{StaticResource FontSizeTitle}" TextWrapping="Wrap">
+              <SelectableTextBlock FontWeight="SemiBold" FontSize="{DynamicResource FontSizeTitle}" TextWrapping="Wrap">
                 <Run Text="{Binding Heading}" />
                 <InlineUIContainer BaselineAlignment="Center">
                   <Button Classes="ghost" Padding="5" Margin="6,0,0,0" RenderTransform="translate(0px, 3px)"
@@ -172,12 +172,12 @@
                                              Text="{Binding Status}" VerticalAlignment="Center" />
                                   <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
                                     <Run Text="{Binding FileName}" />
-                                    <Run Text="{Binding Directory}" FontSize="{StaticResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
+                                    <Run Text="{Binding Directory}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
                                   </TextBlock>
                                   <!-- Line counts, replaced by the buttons while the pointer is on the row -->
                                   <StackPanel Grid.Column="2" Classes="counts" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <TextBlock Classes="add mono" Text="{Binding AddText}" FontSize="11.5" />
-                                    <TextBlock Classes="del mono" Text="{Binding DelText}" FontSize="11.5" />
+                                    <TextBlock Classes="add mono" Text="{Binding AddText}" FontSize="{DynamicResource FontSizeSmall}" />
+                                    <TextBlock Classes="del mono" Text="{Binding DelText}" FontSize="{DynamicResource FontSizeSmall}" />
                                   </StackPanel>
                                   <StackPanel Grid.Column="3" Classes="rowactions" Orientation="Horizontal">
                                     <Button Classes="ghost" Padding="3" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
@@ -226,10 +226,10 @@
                       <!-- Name and folder share one line that trims at the end, so the counts always stay visible. -->
                       <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
                         <Run Text="{Binding FileName}" />
-                        <Run Text="{Binding Directory}" FontSize="{StaticResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
+                        <Run Text="{Binding Directory}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
                       </TextBlock>
-                      <TextBlock Grid.Column="2" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11.5" />
-                      <TextBlock Grid.Column="3" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="11.5" />
+                      <TextBlock Grid.Column="2" Classes="add mono" Text="{Binding AddText}" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="{DynamicResource FontSizeSmall}" />
+                      <TextBlock Grid.Column="3" Classes="del mono" Text="{Binding DelText}" VerticalAlignment="Center" Margin="6,0,0,0" FontSize="{DynamicResource FontSizeSmall}" />
                     </Grid>
                   </DataTemplate>
                 </ListBox.ItemTemplate>

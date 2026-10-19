@@ -98,5 +98,12 @@ public partial class FolderTabView : UserControl
         // Keep the app's own canvas and line-number colours rather than the TextMate theme's.
         if (this.TryFindResource("CanvasBrush", variant, out var bg) && bg is IBrush canvas) Editor.Background = canvas;
         if (this.TryFindResource("MutedBrush", variant, out var fg) && fg is IBrush muted) Editor.LineNumbersForeground = muted;
+        // Otherwise the selection takes the app's amber accent, and selected text can't be read on it.
+        if (this.TryFindResource("EditorSelectionBrush", variant, out var sel) && sel is IBrush selection)
+        {
+            Editor.TextArea.SelectionBrush = selection;
+            Editor.TextArea.SelectionForeground = null;
+            Editor.TextArea.SelectionBorder = null;
+        }
     }
 }

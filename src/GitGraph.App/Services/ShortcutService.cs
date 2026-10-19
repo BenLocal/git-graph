@@ -21,6 +21,9 @@ public sealed class ShortcutService
         new("MaximizePanel", "View", "Maximize or restore the panel", null),
         new("ToggleDiffLayout", "View", "Switch diff between unified and split", null),
         new("CycleTheme", "View", "Switch theme", null),
+        new("FontLarger", "View", "Larger font", "Ctrl+OemPlus"),
+        new("FontSmaller", "View", "Smaller font", "Ctrl+OemMinus"),
+        new("FontReset", "View", "Reset font size", "Ctrl+D0"),
         new("Find", "Repository", "Find commits, or search the open file", "Ctrl+F"),
         new("FindNext", "Repository", "Next match", "F3"),
         new("FindPrevious", "Repository", "Previous match", "Shift+F3"),
@@ -129,6 +132,8 @@ public sealed class ShortcutService
     {
         var text = g.ToString();
         if (g.Key == Key.Enter) return text[..^"Return".Length] + "Enter";
+        if (g.Key == Key.OemPlus) return text[..^"OemPlus".Length] + "=";
+        if (g.Key == Key.OemMinus) return text[..^"OemMinus".Length] + "-";
         return g.Key is >= Key.D0 and <= Key.D9 ? text[..^2] + (char)('0' + (g.Key - Key.D0)) : text;
     }
 

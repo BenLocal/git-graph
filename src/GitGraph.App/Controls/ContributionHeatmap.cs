@@ -79,7 +79,7 @@ public sealed class ContributionHeatmap : Control
         var muted = Resource("MutedBrush");
         var typeface = new Typeface(FontFamily.Default);
         var today = DateOnly.FromDateTime(DateTime.Now);
-        FormattedText Text(string s) => new(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 10.5, muted);
+        FormattedText Text(string s) => new(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, GitGraph.App.Services.FontScale.Of(10.5), muted);
 
         foreach (var (row, name) in new[] { (1, "Mon"), (3, "Wed"), (5, "Fri") })
             ctx.DrawText(Text(name), new Point(0, Top + row * (Cell + Gap) - 1));

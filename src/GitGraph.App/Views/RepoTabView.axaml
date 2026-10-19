@@ -156,7 +156,7 @@
           <DataTemplate x:DataType="vm:CommitRowViewModel">
             <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.stash="{Binding IsStash}" Classes.match="{Binding IsMatch}"
                   Classes.compare="{Binding IsCompareTarget}"
-                  ColumnDefinitions="Auto,*,140,150,84" Height="{StaticResource RowHeight}">
+                  ColumnDefinitions="Auto,*,140,150,84" Height="{DynamicResource RowHeight}">
               <Grid.ContextMenu>
                 <ContextMenu>
                   <MenuItem Header="Stash changes…" Command="{Binding StashChangesCommand}" IsVisible="{Binding IsUncommitted}" />

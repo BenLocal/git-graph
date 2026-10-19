@@ -4,6 +4,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using GitGraph.App.Services;
 using Markdig;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -36,7 +37,24 @@ public sealed class MarkdownView : StackPanel
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property != MarkdownProperty) return;
+        if (change.Property == MarkdownProperty) Rebuild();
+    }
+
+    // The text sizes are set in code, so a new font size needs the text built again.
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        FontScale.Changed += Rebuild;
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        FontScale.Changed -= Rebuild;
+    }
+
+    private void Rebuild()
+    {
         Children.Clear();
         if (string.IsNullOrWhiteSpace(Markdown)) return;
         foreach (var block in Markdig.Markdown.Parse(Markdown, Pipeline))
@@ -45,7 +63,7 @@ public sealed class MarkdownView : StackPanel
 
     private Control? RenderBlock(Block block) => block switch
     {
-        HeadingBlock h => Text(h.Inline, h.Level switch { 1 => 16, 2 => 15, _ => 13.5 }, FontWeight.SemiBold),
+        HeadingBlock h => Text(h.Inline, FontScale.Of(h.Level switch { 1 => 16, 2 => 15, _ => 13.5 }), FontWeight.SemiBold),
         ParagraphBlock p => Text(p.Inline),
         ListBlock l => List(l),
         QuoteBlock q => Quote(q),
@@ -72,7 +90,7 @@ public sealed class MarkdownView : StackPanel
 
     private SelectableTextBlock Text(ContainerInline? inlines, double? size = null, FontWeight? weight = null)
     {
-        var tb = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = 20 };
+        var tb = new SelectableTextBlock { TextWrapping = TextWrapping.Wrap, LineHeight = FontScale.Of(20) };
         if (size is { } s) tb.FontSize = s;
         if (weight is { } w) tb.FontWeight = w;
         var collection = new InlineCollection();
@@ -131,7 +149,7 @@ public sealed class MarkdownView : StackPanel
                 break;
             case CodeInline code:
                 {
-                    var run = new Run(code.Content) { FontFamily = (FontFamily)this.FindResource("CodeFont")!, FontSize = 12 };
+                    var run = new Run(code.Content) { FontFamily = (FontFamily)this.FindResource("CodeFont")!, FontSize = FontScale.Of(12) };
                     run.Bind(TextElement.BackgroundProperty, Res("RaisedBrush"));
                     into.Add(run);
                     break;
@@ -198,7 +216,7 @@ public sealed class MarkdownView : StackPanel
         {
             var marker = list.IsOrdered ? $"{number++}." : "•";
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("22,*") };
-            var bullet = new TextBlock { Text = marker, LineHeight = 20, HorizontalAlignment = HorizontalAlignment.Left };
+            var bullet = new TextBlock { Text = marker, LineHeight = FontScale.Of(20), HorizontalAlignment = HorizontalAlignment.Left };
             bullet.Bind(TextBlock.ForegroundProperty, Res("MutedBrush"));
             row.Children.Add(bullet);
             var content = Stack(item, 4);
@@ -225,8 +243,8 @@ public sealed class MarkdownView : StackPanel
         {
             Text = text,
             FontFamily = (FontFamily)this.FindResource("CodeFont")!,
-            FontSize = 12,
-            LineHeight = 18,
+            FontSize = FontScale.Of(12),
+            LineHeight = FontScale.Of(18),
             TextWrapping = TextWrapping.Wrap,
         };
         var border = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8), Child = tb };

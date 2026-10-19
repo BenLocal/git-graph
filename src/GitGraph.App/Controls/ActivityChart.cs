@@ -96,7 +96,7 @@ public sealed class ActivityChart : Control
                 var y = Math.Round(height - f * (height - 4)) - 0.5;
                 ctx.DrawLine(new Pen(rule, 1, f == 0 ? null : new DashStyle([3, 3], 0)), new Point(left, y), new Point(left + width, y));
                 var label = new FormattedText((f * max).ToString("0.#", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture,
-                    FlowDirection.LeftToRight, typeface, 10.5, muted);
+                    FlowDirection.LeftToRight, typeface, GitGraph.App.Services.FontScale.Of(10.5), muted);
                 ctx.DrawText(label, new Point(left - 6 - label.Width, y - label.Height / 2));
             }
         }
@@ -129,7 +129,7 @@ public sealed class ActivityChart : Control
             if (i > 0 && weeks[i].Month == weeks[i - 1].Month) continue;
             var format = weeks[i].Month == 1 || i == 0 ? "MMM yyyy" : "MMM";
             var text = new FormattedText(weeks[i].ToString(format, CultureInfo.InvariantCulture), CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight, typeface, 10.5, muted);
+                FlowDirection.LeftToRight, typeface, GitGraph.App.Services.FontScale.Of(10.5), muted);
             var x = Math.Min(left + i * slot, Bounds.Width - text.Width);
             if (x < lastRight + 12) continue;
             ctx.DrawText(text, new Point(x, top + 4));

@@ -19,7 +19,7 @@
     <!-- Git state of files and folders, coloured like VS Code's explorer -->
     <Style Selector="Grid.gitstate TextBlock.mark">
       <Setter Property="FontFamily" Value="{StaticResource CodeFont}" />
-      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSizeSmall}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="Grid.gitstate.modified TextBlock">
@@ -45,7 +45,7 @@
       <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
       <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
       <Setter Property="MinHeight" Value="26" />
-      <Setter Property="FontSize" Value="{StaticResource FontSizeBody}" />
+      <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
     </Style>
   </UserControl.Styles>
 
@@ -152,7 +152,7 @@
         </ScrollViewer>
         <!-- AvaloniaEdit, read-only: TextMate highlighting as in VS Code, selection across lines, Ctrl+F to search. -->
         <ae:TextEditor x:Name="Editor" Grid.Row="1" IsReadOnly="True" ShowLineNumbers="True"
-                       FontFamily="{StaticResource CodeFont}" FontSize="{StaticResource FontSizeCode}"
+                       FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeCode}"
                        HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8,6,0,0"
                        IsVisible="{Binding FileText, Converter={x:Static ObjectConverters.IsNotNull}}" />
       </Grid>

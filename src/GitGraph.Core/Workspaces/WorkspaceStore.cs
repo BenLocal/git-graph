@@ -30,6 +30,8 @@ public sealed class AppState
     public bool IgnoreWhitespace { get; set; }
     /// <summary>Long diff lines wrap; otherwise the diff scrolls sideways.</summary>
     public bool WrapDiffLines { get; set; } = true;
+    /// <summary>View → Font size: a factor for all text, 1 for the default sizes.</summary>
+    public double FontScale { get; set; } = 1;
     /// <summary>Whether the commit details panel under the graph is open.</summary>
     public bool ShowDetailsPanel { get; set; } = true;
     public bool ShowSidebar { get; set; } = true;

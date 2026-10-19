@@ -39,6 +39,11 @@
                     Command="{Binding TogglePanelCommand}" InputGesture="{Binding Keys[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}"
                     IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" InputGesture="{Binding Keys[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="{Binding FontSizeLabel}">
+            <MenuItem Header="Larger" Command="{Binding FontLargerCommand}" InputGesture="{Binding Keys[FontLarger], Source={x:Static svc:ShortcutService.Instance}}" />
+            <MenuItem Header="Smaller" Command="{Binding FontSmallerCommand}" InputGesture="{Binding Keys[FontSmaller], Source={x:Static svc:ShortcutService.Instance}}" />
+            <MenuItem Header="Reset to 100%" Command="{Binding FontResetCommand}" InputGesture="{Binding Keys[FontReset], Source={x:Static svc:ShortcutService.Instance}}" />
+          </MenuItem>
           <MenuItem Header="Ignore whitespace in diffs" ToggleType="CheckBox" IsChecked="{Binding IgnoreWhitespace, Mode=OneWay}"
                     Command="{Binding ToggleIgnoreWhitespaceCommand}" ToolTip.Tip="Lines that differ only in spaces, tabs or line endings count as unchanged" />
           <MenuItem Header="Wrap long lines in diffs" ToggleType="CheckBox" IsChecked="{Binding WrapDiffLines, Mode=OneWay}"

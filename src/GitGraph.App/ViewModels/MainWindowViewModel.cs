@@ -51,6 +51,7 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         _selectedWorkspace.IsCurrent = true;
         _selectedWorkspace.EnsureScanned();
         ApplyTheme();
+        _state.FontScale = FontScale.Apply(_state.FontScale);
         StartAutoFetch();
     }
 
@@ -175,6 +176,25 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
             if (_state.AutoFetch) await SelectedWorkspace.AutoFetchAsync();
         };
         _autoFetch.Start();
+    }
+
+    /// <summary>"Font size: 110%" in the View menu.</summary>
+    public string FontSizeLabel => $"Font size: {FontScale.Current * 100:0}%";
+
+    [RelayCommand]
+    private void FontLarger() => SetFontScale(FontScale.Current + FontScale.Step);
+
+    [RelayCommand]
+    private void FontSmaller() => SetFontScale(FontScale.Current - FontScale.Step);
+
+    [RelayCommand]
+    private void FontReset() => SetFontScale(1);
+
+    private void SetFontScale(double scale)
+    {
+        _state.FontScale = FontScale.Apply(scale);
+        OnPropertyChanged(nameof(FontSizeLabel));
+        SaveState();
     }
 
     public bool IgnoreWhitespace => _state.IgnoreWhitespace;

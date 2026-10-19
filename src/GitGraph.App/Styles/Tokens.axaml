@@ -17,6 +17,9 @@
   <x:Double x:Key="FontSizeBody">13</x:Double>
   <x:Double x:Key="FontSizeTitle">15</x:Double>
   <x:Double x:Key="FontSizeCode">13</x:Double>
+  <x:Double x:Key="FontSizeCaption">12</x:Double>
+  <x:Double x:Key="FontSizeLarge">17</x:Double>
+  <x:Double x:Key="DiffLineHeight">19</x:Double>
   <x:Double x:Key="RowHeight">26</x:Double>
 
   <ResourceDictionary.ThemeDictionaries>
@@ -31,6 +34,8 @@
       <Color x:Key="MutedColor">#8B95A7</Color>
       <Color x:Key="SignalColor">#F2B33D</Color>
       <Color x:Key="SignalWashColor">#2EF2B33D</Color>
+      <!-- Selected text in the code viewer, as in VS Code: the text keeps its own colours on it -->
+      <Color x:Key="EditorSelectionColor">#264F78</Color>
       <Color x:Key="HoverWashColor">#14FFFFFF</Color>
       <Color x:Key="OnLaneColor">#10141B</Color>
       <Color x:Key="AddBgColor">#1D3A32</Color>
@@ -70,6 +75,7 @@
       <Color x:Key="MutedColor">#5D697C</Color>
       <Color x:Key="SignalColor">#B07206</Color>
       <Color x:Key="SignalWashColor">#26E9A21B</Color>
+      <Color x:Key="EditorSelectionColor">#ADD6FF</Color>
       <Color x:Key="HoverWashColor">#0C1C2330</Color>
       <Color x:Key="OnLaneColor">#11161F</Color>
       <Color x:Key="AddBgColor">#E1F3EA</Color>
@@ -109,6 +115,7 @@
   <SolidColorBrush x:Key="MutedBrush" Color="{DynamicResource MutedColor}" />
   <SolidColorBrush x:Key="SignalBrush" Color="{DynamicResource SignalColor}" />
   <SolidColorBrush x:Key="SignalWashBrush" Color="{DynamicResource SignalWashColor}" />
+  <SolidColorBrush x:Key="EditorSelectionBrush" Color="{DynamicResource EditorSelectionColor}" />
   <SolidColorBrush x:Key="HoverWashBrush" Color="{DynamicResource HoverWashColor}" />
   <SolidColorBrush x:Key="OnLaneBrush" Color="{DynamicResource OnLaneColor}" />
   <SolidColorBrush x:Key="AddBgBrush" Color="{DynamicResource AddBgColor}" />
