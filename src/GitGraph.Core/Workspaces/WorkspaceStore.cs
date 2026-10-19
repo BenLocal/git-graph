@@ -33,6 +33,10 @@ public sealed class AppState
     public string AvatarStyle { get; set; } = "Robots";
     /// <summary>Fetch every repository in the open workspace every few minutes, like VS Code's git.autofetch.</summary>
     public bool AutoFetch { get; set; } = true;
+    /// <summary>Minutes between automatic fetches.</summary>
+    public int AutoFetchMinutes { get; set; } = 3;
+    /// <summary>How Pull brings in new commits: "GitConfig", "Merge" or "Rebase".</summary>
+    public string PullMode { get; set; } = "GitConfig";
     /// <summary>Keyboard shortcuts the user changed, by command id; an empty value removes a shortcut.</summary>
     public Dictionary<string, string> Keybindings { get; set; } = [];
     /// <summary>Each folder tab's open subfolders and selected file, by folder path, so it reopens as it was left.</summary>

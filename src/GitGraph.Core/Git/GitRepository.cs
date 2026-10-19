@@ -203,7 +203,23 @@ public sealed class GitRepository(string path)
 
     public Task PruneWorktreesAsync(CancellationToken ct = default) => Git(ct, "worktree", "prune");
 
-    public Task FetchAsync(CancellationToken ct = default) => Git(ct, "fetch", "--all", "--prune");
+    public static readonly TimeSpan FetchTimeout = TimeSpan.FromMinutes(2);
+
+    /// <summary>
+    /// Fetches every remote. A fetch still running after <see cref="FetchTimeout"/> is stopped, so a stalled
+    /// connection can't hold up every later fetch.
+    /// </summary>
+    public async Task FetchAsync(CancellationToken ct = default)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(FetchTimeout);
+        try { await Git(timeout.Token, "fetch", "--all", "--prune"); }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new GitException($"git fetch was still running after {FetchTimeout.TotalMinutes:0} minutes, so it was stopped. "
+                + "Check the network connection and the remote's address.", -1, "fetch --all --prune");
+        }
+    }
 
     /// <summary>Changed, untracked and ignored paths, relative to the top level. Untracked and ignored folders come as "dir/".</summary>
     public async Task<List<FileStatusEntry>> GetStatusEntriesAsync(CancellationToken ct = default)
@@ -254,17 +270,33 @@ public sealed class GitRepository(string path)
     /// Pulls into the checked-out branch the way git is configured to (pull.rebase / pull.ff). Without either
     /// setting, git refuses to reconcile diverged branches, so this falls back to a merge, git's old default.
     /// </summary>
-    public async Task PullAsync(CancellationToken ct = default)
+    public async Task PullAsync(PullMode mode = PullMode.GitConfig, CancellationToken ct = default)
     {
+        switch (mode)
+        {
+            case PullMode.Merge: await Git(ct, "pull", "--no-edit", "--no-rebase"); return;
+            case PullMode.Rebase: await Git(ct, "pull", "--rebase"); return;
+        }
         var rebase = await GitRunner.RunRawAsync(Path, ["config", "--get", "pull.rebase"], ct);
         var ff = await GitRunner.RunRawAsync(Path, ["config", "--get", "pull.ff"], ct);
         var configured = rebase.ExitCode == 0 || ff.ExitCode == 0;
         await (configured ? Git(ct, "pull", "--no-edit") : Git(ct, "pull", "--no-edit", "--no-rebase"));
     }
 
-    public Task PushAsync(CancellationToken ct = default) => Git(ct, "push");
+    /// <param name="forceWithLease">Overwrite the remote branch, but only if it is still where the last fetch saw it.</param>
+    public Task PushAsync(bool forceWithLease = false, CancellationToken ct = default) =>
+        forceWithLease ? Git(ct, "push", "--force-with-lease") : Git(ct, "push");
 
     /// <summary>Pushes a branch that has no upstream yet and starts tracking it, like VS Code's "Publish Branch".</summary>
     public Task PublishAsync(string remote, string branch, CancellationToken ct = default) =>
         Git(ct, "push", "--set-upstream", remote, branch);
+}
+
+/// <summary>How Pull brings in the upstream's commits.</summary>
+public enum PullMode
+{
+    /// <summary>As pull.rebase / pull.ff say; a merge when neither is set.</summary>
+    GitConfig,
+    Merge,
+    Rebase,
 }

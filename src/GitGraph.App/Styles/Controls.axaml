@@ -59,7 +59,12 @@
     <Setter Property="Foreground" Value="{DynamicResource SignalBrush}" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
-  <!-- The sync icon turns while a pull or push runs, and only then. -->
+  <!-- Counts a periodic fetch just raised, until the repository is opened -->
+  <Style Selector="TextBlock.sync.fresh">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+    <Setter Property="Padding" Value="4,0" />
+  </Style>
+  <!-- The sync icon turns while a fetch, pull or push runs, and only then. -->
   <Style Selector="LucideIcon.sync.spinning">
     <Style.Animations>
       <Animation Duration="0:0:1" IterationCount="INFINITE">

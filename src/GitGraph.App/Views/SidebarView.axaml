@@ -149,9 +149,12 @@
                       <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" VerticalAlignment="Center"
                                  HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
-                      <!-- Commits to pull and push, as in VS Code's status bar -->
-                      <TextBlock Grid.Column="3" Classes="sync small" Text="{Binding SyncCounts}" Margin="6,0,0,0" VerticalAlignment="Center"
-                                 ToolTip.Tip="{Binding SyncTooltip}" />
+                      <!-- Commits to pull and push, as in VS Code's status bar; marked when a fetch just brought them in -->
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="4" Margin="6,0,0,0" VerticalAlignment="Center"
+                                  Background="Transparent" ToolTip.Tip="{Binding SyncTooltip}">
+                        <LucideIcon Kind="CloudAlert" Size="13" VerticalAlignment="Center" IsVisible="{Binding HasFetchError}" />
+                        <TextBlock Classes="sync small" Classes.fresh="{Binding HasNewCommits}" Text="{Binding SyncCounts}" VerticalAlignment="Center" />
+                      </StackPanel>
                     </Grid>
                   </Button>
                 </Grid>
@@ -174,7 +177,8 @@
                           <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" VerticalAlignment="Center"
                                      HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" />
-                          <TextBlock Grid.Column="3" Classes="sync small" Text="{Binding SyncCounts}" Margin="6,0,0,0" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Classes="sync small" Classes.fresh="{Binding HasNewCommits}" Text="{Binding SyncCounts}"
+                                     Margin="6,0,0,0" VerticalAlignment="Center" />
                         </Grid>
                       </Button>
                     </DataTemplate>

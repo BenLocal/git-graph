@@ -292,6 +292,11 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>Commits to pull for each sidebar row, by path, to spot what a fetch brought in.</summary>
+    private Dictionary<string, int> BehindCounts() =>
+        Repos.SelectMany(r => new[] { (r.MainPath, r.Sync) }.Concat(r.Worktrees.Select(w => (w.Path, w.Sync))))
+            .ToDictionary(x => x.Item1, x => x.Item2?.Behind ?? 0);
+
     /// <summary>Reads every repository's pull/push counts without touching the network.</summary>
     private async Task LoadSyncAsync()
     {
@@ -315,20 +320,53 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         _fetching = true;
         try
         {
+            var before = BehindCounts();
             foreach (var r in Repos.ToList())
             {
                 var tab = Tabs.OfType<RepoTabViewModel>().FirstOrDefault(t => r.Contains(t.Path));
-                if (tab != null) await tab.AutoFetchAsync();
+                if (tab != null) r.FetchError = await tab.AutoFetchAsync();
                 else
                 {
-                    try { await new GitRepository(r.MainPath).FetchAsync(); }
-                    catch (GitException) { }
+                    try
+                    {
+                        await new GitRepository(r.MainPath).FetchAsync();
+                        r.FetchError = null;
+                    }
+                    catch (GitException e) { r.FetchError = e.Message.Trim(); }
                 }
                 foreach (var t in Tabs.OfType<RepoTabViewModel>().Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshAsync();
             }
             await LoadSyncAsync();
+            ReportNewCommits(before);
         }
         finally { _fetching = false; }
+    }
+
+    /// <summary>Marks the rows that have more to pull than before the fetch, and says so once in a note.</summary>
+    private void ReportNewCommits(Dictionary<string, int> before)
+    {
+        var found = new List<string>();
+        foreach (var r in Repos)
+        {
+            if (NewlyBehind(r.MainPath, r.Sync) is { } n)
+            {
+                // The open repository shows the new commits already; only the note mentions them.
+                r.HasNewCommits = !r.IsActive;
+                found.Add($"{r.Name} ({n} on {r.Sync!.Upstream})");
+            }
+            foreach (var w in r.Worktrees)
+                if (NewlyBehind(w.Path, w.Sync) is { } m)
+                {
+                    w.HasNewCommits = !w.IsActive;
+                    found.Add($"{w.Name} ({m} on {w.Sync!.Upstream})");
+                }
+        }
+        if (found.Count > 0)
+            _host.Notify($"New commits to pull in {string.Join(", ", found)}.");
+
+        // A row with no count before the fetch was still loading; that isn't news.
+        int? NewlyBehind(string path, SyncStatus? s) =>
+            s is { Behind: > 0 } && before.TryGetValue(path, out var was) && s.Behind > was ? s.Behind - was : null;
     }
 
     internal static bool PathEquals(string a, string b) =>
@@ -369,11 +407,32 @@ public partial class RepoNodeViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SyncCounts), nameof(SyncTooltip))]
     private SyncStatus? _sync;
 
+    /// <summary>Why the last periodic fetch of this repository failed.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncTooltip), nameof(HasFetchError))]
+    private string? _fetchError;
+
+    public bool HasFetchError => FetchError != null;
+
+    /// <summary>The periodic fetch brought in commits to pull that nobody has looked at yet.</summary>
+    [ObservableProperty]
+    private bool _hasNewCommits;
+
     public string SyncCounts => SyncText.Counts(Sync);
-    public string? SyncTooltip => Sync is null ? null : SyncText.Describe(Sync, null, clickable: false);
+    public string? SyncTooltip => Sync is null && FetchError is null ? null : SyncText.Describe(Sync, null, FetchError, clickable: false);
+
+    partial void OnSyncChanged(SyncStatus? value)
+    {
+        if (value is not { Behind: > 0 }) HasNewCommits = false;
+    }
 
     [ObservableProperty]
     private bool _isActive;
+
+    partial void OnIsActiveChanged(bool value)
+    {
+        if (value) HasNewCommits = false;
+    }
 
     public bool HasLinkedWorktrees => Worktrees.Count > 0;
 
@@ -463,7 +522,21 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
     [NotifyPropertyChangedFor(nameof(SyncCounts))]
     private SyncStatus? _sync;
 
+    /// <summary>The periodic fetch brought in commits to pull that nobody has looked at yet.</summary>
+    [ObservableProperty]
+    private bool _hasNewCommits;
+
     public string SyncCounts => SyncText.Counts(Sync);
+
+    partial void OnSyncChanged(SyncStatus? value)
+    {
+        if (value is not { Behind: > 0 }) HasNewCommits = false;
+    }
+
+    partial void OnIsActiveChanged(bool value)
+    {
+        if (value) HasNewCommits = false;
+    }
 
     [RelayCommand]
     private void Open() => repo.OpenPath(Path);

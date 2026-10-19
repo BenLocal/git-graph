@@ -35,8 +35,13 @@ public partial class RepoTabViewModel : TabViewModel
     [ObservableProperty]
     private bool _isSyncing;
 
+    /// <summary>Why the last fetch failed; cleared by the next one that works.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SyncTooltip))]
+    private string? _fetchError;
+
     public string SyncCounts => SyncText.Counts(Sync);
-    public string SyncTooltip => SyncText.Describe(Sync, LastFetched);
+    public string SyncTooltip => SyncText.Describe(Sync, LastFetched, FetchError);
     public bool ShowSync => Sync is { HasRemote: true, Branch: not null };
     public bool CanPublish => Sync?.CanPublish == true;
     public bool IsInSync => ShowSync && !CanPublish && SyncCounts.Length == 0;
@@ -508,17 +513,30 @@ public partial class RepoTabViewModel : TabViewModel
     [RelayCommand]
     private async Task Fetch()
     {
-        await RunAsync(() => _repo.FetchAsync());
-        LastFetched = DateTimeOffset.Now;
+        if (await FetchQuietlyAsync() is { } error) Host.ReportError(error);
+        await RefreshAsync();
     }
 
-    /// <summary>The periodic fetch: quiet, because a network hiccup isn't worth an error bar.</summary>
-    public async Task AutoFetchAsync()
+    /// <summary>The periodic fetch: a failure only shows in the sync tooltip, because a network hiccup isn't worth an error bar.</summary>
+    public async Task<string?> AutoFetchAsync()
     {
-        try { await _repo.FetchAsync(); }
-        catch (GitException) { return; }
-        LastFetched = DateTimeOffset.Now;
+        var error = await FetchQuietlyAsync();
         await RefreshAsync();
+        return error;
+    }
+
+    private async Task<string?> FetchQuietlyAsync()
+    {
+        IsSyncing = true;
+        try
+        {
+            await _repo.FetchAsync();
+            LastFetched = DateTimeOffset.Now;
+            FetchError = null;
+        }
+        catch (GitException e) { FetchError = Trim(e.Message); }
+        finally { IsSyncing = false; }
+        return FetchError;
     }
 
     /// <summary>The sync indicator: publish a branch with no upstream, otherwise pull then push.</summary>
@@ -540,18 +558,31 @@ public partial class RepoTabViewModel : TabViewModel
             return;
         await RunSyncAsync(async () =>
         {
-            await _repo.PullAsync();
+            await _repo.PullAsync(Host.PullMode);
             await _repo.PushAsync();
         });
     }
 
     [RelayCommand]
-    private Task Pull() => RunSyncAsync(() => _repo.PullAsync());
+    private Task Pull() => RunSyncAsync(() => _repo.PullAsync(Host.PullMode));
 
     [RelayCommand]
     private Task Push() => Sync?.CanPublish == true && Sync.Branch is { } b
         ? RunSyncAsync(() => _repo.PublishAsync(Sync.Remotes[0], b))
         : RunSyncAsync(() => _repo.PushAsync());
+
+    /// <summary>Pushes over a rewritten history (after a rebase or amend), unless someone else pushed since the last fetch.</summary>
+    [RelayCommand]
+    private async Task ForcePush()
+    {
+        if (Sync is not { Branch: { } branch, Upstream: { } upstream }) return;
+        if (!await Host.Dialogs.ConfirmAsync("Force push",
+                $"Replace {upstream} with your {branch}? Commits on {upstream} that aren't in {branch} are dropped. "
+                + "The push is refused if someone else pushed to it since your last fetch.",
+                "Force push", destructive: true))
+            return;
+        await RunSyncAsync(() => _repo.PushAsync(forceWithLease: true));
+    }
 
     private async Task RunSyncAsync(Func<Task> action)
     {

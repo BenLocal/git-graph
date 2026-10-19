@@ -15,9 +15,11 @@ public static class SyncText
         return string.Join(" ", parts);
     }
 
+    /// <param name="fetchError">Why the last fetch failed, so the counts may be out of date.</param>
     /// <param name="clickable">Adds what clicking does, for the toolbar's sync button.</param>
-    public static string Describe(SyncStatus? s, DateTimeOffset? lastFetched, bool clickable = true)
+    public static string Describe(SyncStatus? s, DateTimeOffset? lastFetched, string? fetchError = null, bool clickable = true)
     {
+        if (fetchError != null) return $"{Describe(s, lastFetched, null, clickable)}\n\nThe last fetch failed, so this may be out of date:\n{fetchError}".Trim();
         if (s is null) return "";
         if (!s.HasRemote) return "This repository has no remote.";
         if (s.Branch is null) return "Not on a branch (detached HEAD), so there is nothing to pull or push.";

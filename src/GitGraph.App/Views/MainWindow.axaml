@@ -51,8 +51,21 @@
           <MenuItem Header="Compact folders" ToggleType="CheckBox" IsChecked="{Binding CompactFolders, Mode=OneWay}"
                     Command="{Binding ToggleCompactFoldersCommand}"
                     ToolTip.Tip="Show folders that only contain one folder, like src/main/java/com/example, as a single row" />
-          <MenuItem Header="Fetch automatically every 3 minutes" ToggleType="CheckBox" IsChecked="{Binding AutoFetch, Mode=OneWay}"
-                    Command="{Binding ToggleAutoFetchCommand}" />
+          <MenuItem Header="Fetch automatically">
+            <MenuItem Header="Off" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="0"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=0}" />
+            <Separator />
+            <MenuItem Header="Every minute" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="1"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=1}" />
+            <MenuItem Header="Every 3 minutes" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="3"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=3}" />
+            <MenuItem Header="Every 5 minutes" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="5"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=5}" />
+            <MenuItem Header="Every 10 minutes" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="10"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=10}" />
+            <MenuItem Header="Every 30 minutes" ToggleType="Radio" GroupName="fetch" Command="{Binding SetFetchIntervalCommand}" CommandParameter="30"
+                      IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=30}" />
+          </MenuItem>
         </MenuItem>
         <MenuItem Header="T_heme">
           <MenuItem Header="Follow system" ToggleType="Radio" GroupName="theme" IsChecked="{Binding ThemeSystem, Mode=OneWay}"
@@ -78,6 +91,19 @@
           <MenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedRepoTab.PullCommand}" InputGesture="{Binding Keys[Pull], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedRepoTab.PushCommand}" InputGesture="{Binding Keys[Push], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.SyncNowCommand}" InputGesture="{Binding Keys[Sync], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Force push (with lease)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ForcePushCommand}"
+                    ToolTip.Tip="After a rebase or amend: overwrite the remote branch, unless someone else pushed to it since your last fetch" />
+          <MenuItem Header="Pull by">
+            <MenuItem Header="As git config says" ToggleType="Radio" GroupName="pull" Command="{Binding SetPullModeCommand}" CommandParameter="GitConfig"
+                      IsChecked="{Binding PullMode, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=GitConfig}"
+                      ToolTip.Tip="pull.rebase and pull.ff; a merge when neither is set" />
+            <MenuItem Header="Merge" ToggleType="Radio" GroupName="pull" Command="{Binding SetPullModeCommand}" CommandParameter="Merge"
+                      IsChecked="{Binding PullMode, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=Merge}"
+                      ToolTip.Tip="Join the upstream's commits with a merge commit when both sides moved" />
+            <MenuItem Header="Rebase" ToggleType="Radio" GroupName="pull" Command="{Binding SetPullModeCommand}" CommandParameter="Rebase"
+                      IsChecked="{Binding PullMode, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=Rebase}"
+                      ToolTip.Tip="Replay your commits on top of the upstream's, keeping history in one line" />
+          </MenuItem>
           <Separator />
           <MenuItem Header="Show remote branches" ToggleType="CheckBox"
                     IsChecked="{Binding SelectedWorkspace.SelectedRepoTab.ShowRemotes, FallbackValue=False}" />
@@ -170,17 +196,33 @@
       <Border Grid.Row="1" Classes="sheet">
       <Grid RowDefinitions="Auto,*">
 
-      <!-- Git errors surface here, in place, until dismissed -->
-      <Border Grid.Row="0" Background="{DynamicResource DelBgBrush}" Padding="14,8"
-              DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
-              IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
-        <Grid ColumnDefinitions="*,Auto">
-          <SelectableTextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" MaxHeight="120" />
-          <Button Grid.Column="1" Classes="ghost" Command="{Binding DismissErrorCommand}" ToolTip.Tip="Dismiss" VerticalAlignment="Top">
-            <LucideIcon Kind="X" Size="14" />
-          </Button>
-        </Grid>
-      </Border>
+      <StackPanel Grid.Row="0">
+        <!-- Notes such as new commits found by the periodic fetch, until dismissed -->
+        <Border Background="{DynamicResource SignalWashBrush}" Padding="14,8"
+                DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
+                IsVisible="{Binding Notice, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <LucideIcon Kind="BellDot" Size="14" Foreground="{DynamicResource SignalBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+            <SelectableTextBlock Grid.Column="1" Text="{Binding Notice}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"
+                                 VerticalAlignment="Center" MaxHeight="120" />
+            <Button Grid.Column="2" Classes="ghost" Command="{Binding DismissNoticeCommand}" ToolTip.Tip="Dismiss" VerticalAlignment="Top">
+              <LucideIcon Kind="X" Size="14" />
+            </Button>
+          </Grid>
+        </Border>
+
+        <!-- Git errors surface here, in place, until dismissed -->
+        <Border Background="{DynamicResource DelBgBrush}" Padding="14,8"
+                DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
+                IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Grid ColumnDefinitions="*,Auto">
+            <SelectableTextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" MaxHeight="120" />
+            <Button Grid.Column="1" Classes="ghost" Command="{Binding DismissErrorCommand}" ToolTip.Tip="Dismiss" VerticalAlignment="Top">
+              <LucideIcon Kind="X" Size="14" />
+            </Button>
+          </Grid>
+        </Border>
+      </StackPanel>
 
       <v:RepoTabView Grid.Row="1" DataContext="{Binding SelectedRepoTab}"
                      IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" />

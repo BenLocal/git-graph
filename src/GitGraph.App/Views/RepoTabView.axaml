@@ -35,6 +35,8 @@
               </LucideIcon.RenderTransform>
             </LucideIcon>
             <LucideIcon Kind="CloudUpload" Size="14" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
+            <LucideIcon Kind="CloudAlert" Size="14" VerticalAlignment="Center"
+                        IsVisible="{Binding FetchError, Converter={x:Static ObjectConverters.IsNotNull}}" />
             <TextBlock Classes="sync small" Text="{Binding SyncCounts}" VerticalAlignment="Center" IsVisible="{Binding !IsInSync}" />
             <TextBlock Classes="small" Text="Publish branch" VerticalAlignment="Center" IsVisible="{Binding CanPublish}" />
           </StackPanel>

@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitGraph.App.Services;
+using GitGraph.Core.Git;
 using GitGraph.Core.Workspaces;
 
 namespace GitGraph.App.ViewModels;
@@ -19,7 +20,10 @@ public interface IAppHost
     /// <summary>The remembered state of a folder tab; changes are kept by <see cref="SaveState"/>.</summary>
     FolderViewState FolderView(string folder);
     bool CompactFolders { get; }
+    PullMode PullMode { get; }
     void ReportError(string message);
+    /// <summary>A note that isn't an error, such as new commits found by the periodic fetch.</summary>
+    void Notify(string message);
     void SaveState();
 }
 
@@ -139,23 +143,24 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         SaveState();
     }
 
-    public static readonly TimeSpan AutoFetchInterval = TimeSpan.FromMinutes(3);
     private DispatcherTimer? _autoFetch;
 
-    public bool AutoFetch
-    {
-        get => _state.AutoFetch;
-        set
-        {
-            if (_state.AutoFetch == value) return;
-            _state.AutoFetch = value;
-            OnPropertyChanged();
-            SaveState();
-        }
-    }
+    private TimeSpan AutoFetchInterval => TimeSpan.FromMinutes(Math.Max(1, _state.AutoFetchMinutes));
 
+    /// <summary>Minutes between automatic fetches; 0 when they are off.</summary>
+    public int FetchEvery => _state.AutoFetch ? Math.Max(1, _state.AutoFetchMinutes) : 0;
+
+    /// <param name="minutes">"0" turns automatic fetching off.</param>
     [RelayCommand]
-    private void ToggleAutoFetch() => AutoFetch = !AutoFetch;
+    private void SetFetchInterval(string minutes)
+    {
+        var m = int.Parse(minutes, System.Globalization.CultureInfo.InvariantCulture);
+        _state.AutoFetch = m > 0;
+        if (m > 0) _state.AutoFetchMinutes = m;
+        if (_autoFetch != null) _autoFetch.Interval = AutoFetchInterval;
+        OnPropertyChanged(nameof(FetchEvery));
+        SaveState();
+    }
 
     /// <summary>First fetch shortly after start, then every few minutes, for the workspace on screen.</summary>
     private void StartAutoFetch()
@@ -164,10 +169,28 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         _autoFetch.Tick += async (_, _) =>
         {
             _autoFetch.Interval = AutoFetchInterval;
-            if (AutoFetch) await SelectedWorkspace.AutoFetchAsync();
+            if (_state.AutoFetch) await SelectedWorkspace.AutoFetchAsync();
         };
         _autoFetch.Start();
     }
+
+    public PullMode PullMode => Enum.TryParse<PullMode>(_state.PullMode, out var m) ? m : PullMode.GitConfig;
+
+    [RelayCommand]
+    private void SetPullMode(string mode)
+    {
+        _state.PullMode = mode;
+        OnPropertyChanged(nameof(PullMode));
+        SaveState();
+    }
+
+    [ObservableProperty]
+    private string? _notice;
+
+    public void Notify(string message) => Notice = message;
+
+    [RelayCommand]
+    private void DismissNotice() => Notice = null;
 
     [RelayCommand]
     private void TogglePanel() => ShowDetailsPanel = !ShowDetailsPanel;

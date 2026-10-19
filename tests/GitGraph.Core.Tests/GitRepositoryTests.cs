@@ -132,6 +132,40 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Pull_can_rebase_and_push_can_force_with_lease()
+    {
+        var remote = Path.Combine(_root, "remote.git");
+        Git("init", "-q", "--bare", "-b", "main", remote);
+        Git("remote", "add", "origin", remote);
+        var repo = new GitRepository(_repo);
+        await repo.PublishAsync("origin", "main");
+        var clone = Path.Combine(_root, "clone");
+        Git("clone", "-q", remote, clone);
+        string[] identity = ["-c", "user.name=T", "-c", "user.email=t@example.com"];
+        await GitRunner.RunAsync(clone, [.. identity, "commit", "-q", "--allow-empty", "-m", "theirs"]);
+        await GitRunner.RunAsync(clone, ["push", "-q"]);
+
+        // Rebasing puts "mine" on top of "theirs" with no merge commit.
+        Commit("d.txt", "mine\n", "mine");
+        await repo.PullAsync(PullMode.Rebase);
+        var parents = await GitRunner.RunAsync(_repo, ["log", "-1", "--format=%P"]);
+        Assert.Single(parents.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        await repo.PushAsync();
+
+        // A rewritten commit needs a forced push...
+        Git("commit", "-q", "--amend", "-m", "mine, reworded");
+        await Assert.ThrowsAsync<GitException>(() => repo.PushAsync());
+        await repo.PushAsync(forceWithLease: true);
+
+        // ...which is refused when the remote moved since the last fetch.
+        await GitRunner.RunAsync(clone, ["pull", "-q", "--rebase"]);
+        await GitRunner.RunAsync(clone, [.. identity, "commit", "-q", "--allow-empty", "-m", "theirs again"]);
+        await GitRunner.RunAsync(clone, ["push", "-q"]);
+        Git("commit", "-q", "--amend", "-m", "mine, reworded twice");
+        await Assert.ThrowsAsync<GitException>(() => repo.PushAsync(forceWithLease: true));
+    }
+
+    [Fact]
     public async Task Working_tree_changes_include_untracked_files()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "changed\n");
