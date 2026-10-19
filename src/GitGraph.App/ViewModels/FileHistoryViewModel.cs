@@ -13,7 +13,9 @@ namespace GitGraph.App.ViewModels;
 /// </summary>
 public sealed partial class FileHistoryViewModel : ObservableObject
 {
-    private const int MaxCommits = 500;
+    private const int PageSize = 200;
+    // How many commits the next load asks for; it grows a page at a time as the list scrolls.
+    private int _maxCount = PageSize;
     private const int TabSize = 4;
     private readonly GitRepository _repo;
     private readonly IDialogService _dialogs;
@@ -63,17 +65,38 @@ public sealed partial class FileHistoryViewModel : ObservableObject
     [ObservableProperty]
     private string? _diffMessage;
 
+    /// <summary>More commits than loaded so far changed the file; scrolling near the end loads the next page.</summary>
+    [ObservableProperty]
+    private bool _hasMore;
+
+    private bool _loadingHistory;
+
+    /// <summary>
+    /// Loads the first <see cref="_maxCount"/> commits and appends the ones not listed yet. git's --skip doesn't
+    /// combine with --follow (it skips before following renames), so each page re-reads from the top.
+    /// </summary>
     private async Task LoadHistoryAsync()
     {
+        if (_loadingHistory) return;
+        _loadingHistory = true;
         try
         {
-            var history = await _repo.GetFileHistoryAsync(Path, _rev, MaxCommits);
-            foreach (var e in history) Entries.Add(new FileHistoryRowViewModel(e, this));
-            HistoryMessage = history.Count == 0 ? "No commit has changed this file yet."
-                : history.Count == MaxCommits ? $"The latest {MaxCommits} commits that changed this file." : null;
+            var history = await _repo.GetFileHistoryAsync(Path, _rev, _maxCount);
+            foreach (var e in history.Skip(Entries.Count)) Entries.Add(new FileHistoryRowViewModel(e, this));
+            HasMore = history.Count == _maxCount;
+            HistoryMessage = history.Count == 0 ? "No commit has changed this file yet." : null;
             SelectedEntry ??= Entries.FirstOrDefault();
         }
         catch (GitException e) { HistoryMessage = e.Message; }
+        finally { _loadingHistory = false; }
+    }
+
+    /// <summary>The next page of the history, for the window's infinite scroll.</summary>
+    public Task LoadMoreAsync()
+    {
+        if (!HasMore || _loadingHistory) return Task.CompletedTask;
+        _maxCount += PageSize;
+        return LoadHistoryAsync();
     }
 
     partial void OnSelectedEntryChanged(FileHistoryRowViewModel? value)
@@ -151,17 +174,14 @@ public sealed partial class FileHistoryViewModel : ObservableObject
 
     /// <summary>From a blame line to its commit in the history.</summary>
     [RelayCommand]
-    private void ShowCommit(BlameRowViewModel line)
+    private async Task ShowCommit(BlameRowViewModel line)
     {
         if (!line.Commit.IsCommitted) return;
-        if (Entries.FirstOrDefault(e => e.Entry.Commit.Hash == line.Commit.Hash) is not { } entry)
-        {
-            HistoryMessage = $"{line.Commit.Hash[..7]} is older than the commits listed here.";
-            SelectedTabIndex = 0;
-            return;
-        }
         SelectedTabIndex = 0;
-        SelectedEntry = entry;
+        // An old commit may be further down than loaded so far: load pages until it turns up.
+        while (Entries.All(e => e.Entry.Commit.Hash != line.Commit.Hash) && HasMore) await LoadMoreAsync();
+        if (Entries.FirstOrDefault(e => e.Entry.Commit.Hash == line.Commit.Hash) is { } entry) SelectedEntry = entry;
+        else HistoryMessage = $"{line.Commit.Hash[..7]} isn't in this file's history as git follows it.";
     }
 
     [RelayCommand]

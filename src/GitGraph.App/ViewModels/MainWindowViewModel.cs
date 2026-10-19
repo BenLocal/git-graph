@@ -48,6 +48,7 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         };
         foreach (var w in _state.Workspaces) Workspaces.Add(new WorkspaceViewModel(w, this));
         _selectedWorkspace = Workspaces.FirstOrDefault(w => w.Config.Id == _state.ActiveWorkspaceId) ?? Workspaces[0];
+        _selectedWorkspace.IsCurrent = true;
         _selectedWorkspace.EnsureScanned();
         ApplyTheme();
         StartAutoFetch();
@@ -242,6 +243,15 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         "Light" => "Day",
         _ => "Follow system",
     };
+
+    partial void OnSelectedWorkspaceChanged(WorkspaceViewModel? oldValue, WorkspaceViewModel newValue)
+    {
+        if (oldValue != null) oldValue.IsCurrent = false;
+        if (newValue is null) return;
+        newValue.IsCurrent = true;
+        // Its open tab may have gone stale while another workspace was shown.
+        newValue.SelectedTab?.EnsureLoaded();
+    }
 
     partial void OnSelectedWorkspaceChanged(WorkspaceViewModel value)
     {

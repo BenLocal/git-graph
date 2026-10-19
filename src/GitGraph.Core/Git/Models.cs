@@ -92,6 +92,9 @@ public sealed record DiffTarget(string From, string? To)
     public bool IsWorkingTree => To is null;
 }
 
+/// <summary>What the uncommitted changes row needs: how many paths changed, and which are untracked.</summary>
+public sealed record UncommittedSummary(int Count, IReadOnlyList<string> Untracked);
+
 /// <summary>Uncommitted changes split the way the index sees them; see <see cref="GitRepository.GetWorkingChangesAsync"/>.</summary>
 public sealed record WorkingChanges(IReadOnlyList<FileChange> Staged, IReadOnlyList<FileChange> Unstaged, IReadOnlyList<FileChange> Conflicted)
 {

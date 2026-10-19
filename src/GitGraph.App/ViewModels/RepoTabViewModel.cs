@@ -56,6 +56,9 @@ public partial class RepoTabViewModel : TabViewModel
     private List<WorktreeInfo> _worktrees = [];
     private List<StashEntry> _stashes = [];
     private bool _rebuilding;
+    // From the last refresh's status: untracked files, and when it ran.
+    private IReadOnlyList<string> _untracked = [];
+    private DateTime _lastRefresh;
     private string? _commonDir;
 
     public RepoTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host) : base(path, workspace)
@@ -70,7 +73,7 @@ public partial class RepoTabViewModel : TabViewModel
         _debounce.Tick += (_, _) =>
         {
             _debounce.Stop();
-            _ = RefreshAsync();
+            _ = RefreshWhenShownAsync();
         };
     }
 
@@ -163,10 +166,34 @@ public partial class RepoTabViewModel : TabViewModel
 
     public override void EnsureLoaded()
     {
-        if (_loaded) return;
+        if (_loaded)
+        {
+            // Shown again after changes it skipped while hidden.
+            if (_stale) _ = RefreshAsync();
+            return;
+        }
         _loaded = true;
         _ = InitAsync();
     }
+
+    // Changes noticed while the tab wasn't on screen; it refreshes when shown.
+    private bool _stale;
+
+    private bool IsOnScreen => _workspace.IsCurrent && _workspace.SelectedTab == this;
+
+    /// <summary>
+    /// Refreshes a tab on screen; one that isn't (another tab or workspace is shown) only notes that it is out of
+    /// date, so background tabs don't each reload their graph on every file change and fetch.
+    /// </summary>
+    public Task RefreshWhenShownAsync()
+    {
+        if (IsOnScreen) return RefreshAsync();
+        _stale = true;
+        return Task.CompletedTask;
+    }
+
+    // What the last rebuild showed; a refresh that reads the same skips rebuilding the rows.
+    private string? _shownSignature;
 
     private async Task InitAsync()
     {
@@ -216,6 +243,7 @@ public partial class RepoTabViewModel : TabViewModel
         _loadCts?.Cancel();
         var cts = _loadCts = new CancellationTokenSource();
         var ct = cts.Token;
+        _stale = false;
         IsLoading = true;
         try
         {
@@ -223,7 +251,7 @@ public partial class RepoTabViewModel : TabViewModel
             var headTask = _repo.GetHeadAsync(ct);
             var refsTask = _repo.GetRefsAsync(ct);
             var wtTask = _repo.GetWorktreesAsync(ct);
-            var countTask = _repo.CountUncommittedAsync(ct);
+            var countTask = _repo.GetUncommittedAsync(ct);
             var commitsTask = _repo.GetCommitsAsync(_maxCount, filter, ShowRemotes, CurrentFilter(), ct);
             var syncTask = _repo.GetSyncStatusAsync(ct);
             var stashTask = _repo.GetStashesAsync(ct);
@@ -247,7 +275,20 @@ public partial class RepoTabViewModel : TabViewModel
             UpdateBranchOptions(refsTask.Result);
             _stashes = stashTask.Result;
             Operation = opTask.Result;
-            Build(commitsTask.Result, refsTask.Result, head, countTask.Result);
+            // Most refreshes (a file saved, the window focused, a fetch that found nothing) read exactly what is shown.
+            var (uncommitted, untracked) = countTask.Result;
+            _untracked = untracked;
+            _lastRefresh = DateTime.UtcNow;
+            var signature = Signature(commitsTask.Result, refsTask.Result, head, uncommitted);
+            if (signature == _shownSignature && Rows.Count > 0)
+            {
+                // The working tree can change without changing the count; the details check their own list.
+                if (SelectedRow is { IsUncommitted: true }) ShowDetails(fromRefresh: true);
+                LoadError = null;
+                return;
+            }
+            _shownSignature = signature;
+            Build(commitsTask.Result, refsTask.Result, head, uncommitted);
             if (_showConflicts)
             {
                 _showConflicts = false;
@@ -271,6 +312,19 @@ public partial class RepoTabViewModel : TabViewModel
     {
         _maxCount += PageSize;
         await RefreshAsync();
+    }
+
+    /// <summary>Everything the rows are built from, as one string to compare with the last build.</summary>
+    private string Signature(List<CommitInfo> commits, List<GitRef> refs, HeadInfo head, int uncommitted)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append(head.Hash).Append('|').Append(head.Branch).Append('|').Append(uncommitted).Append('|').Append(ShowRemotes)
+            .Append('|').Append(CurrentFilter()).Append('\n');
+        foreach (var c in commits) sb.Append(c.Hash).Append(' ').AppendJoin(',', c.Parents).Append('\n');
+        foreach (var r in refs) sb.Append(r.FullName).Append(' ').Append(r.Target).Append(' ').Append(r.Upstream).Append(r.IsHead).Append('\n');
+        foreach (var st in _stashes) sb.Append(st.Name).Append(' ').Append(st.Hash).Append('\n');
+        foreach (var w in _worktrees) sb.Append(w.Path).Append(' ').Append(w.Head).Append('\n');
+        return sb.ToString();
     }
 
     private void Build(List<CommitInfo> commits, List<GitRef> refs, HeadInfo head, int uncommitted)
@@ -372,7 +426,7 @@ public partial class RepoTabViewModel : TabViewModel
         }
         finally { _rebuilding = false; }
         // Once, for the row selected after the rebuild; the same commit as before keeps its details as they are.
-        ShowDetails();
+        ShowDetails(fromRefresh: true);
         ApplyFind(jump: false);
     }
 
@@ -394,7 +448,11 @@ public partial class RepoTabViewModel : TabViewModel
 
     // ---- Selection, compare, find --------------------------------------------------------------
 
-    private void ShowDetails()
+    /// <param name="fromRefresh">
+    /// Right after a refresh, its list of untracked files is current and saves the details finding them again. When
+    /// the user picks the row, the list may be old (new files don't touch .git, so nothing refreshed), so they look.
+    /// </param>
+    private void ShowDetails(bool fromRefresh = false)
     {
         var row = SelectedRow;
         if (row is null)
@@ -409,7 +467,7 @@ public partial class RepoTabViewModel : TabViewModel
             Details.ShowCompare(older.Commit, newer.IsUncommitted ? null : newer.Commit);
             return;
         }
-        if (row.IsUncommitted) Details.ShowUncommitted(row.Commit.Parents.Count > 0 ? "HEAD" : GitRepository.EmptyTree);
+        if (row.IsUncommitted) Details.ShowUncommitted(row.Commit.Parents.Count > 0 ? "HEAD" : GitRepository.EmptyTree, fromRefresh ? _untracked : null);
         else if (row.Stash is { } stash) Details.ShowStash(stash);
         else Details.ShowCommit(row.Commit);
     }
@@ -476,510 +534,6 @@ public partial class RepoTabViewModel : TabViewModel
         }
     }
 
-    // ---- Commands from rows and badges --------------------------------------------------------
-
-    private string? _headBranch;
-
-    /// <summary>What a merge or cherry-pick lands on, for dialog text.</summary>
-    private string CurrentLabel => _headBranch ?? "the detached HEAD";
-
-    public async Task MergeAsync(string target, string label)
-    {
-        var res = await Host.Dialogs.PromptAsync("Merge", $"Merge {label} into {CurrentLabel}.",
-            [
-                new PromptField("Always create a merge commit, even when a fast-forward is possible", "false", IsCheckbox: true),
-                new PromptField("Squash the changes into the working tree without committing", "false", IsCheckbox: true),
-            ],
-            "Merge");
-        if (res is null) return;
-        await RunOperationAsync(() => _repo.MergeAsync(target, res[0] == "true", res[1] == "true"));
-    }
-
-    public async Task CherryPickAsync(CommitRowViewModel row)
-    {
-        if (row.IsUncommitted) return;
-        var message = row.Commit.IsMerge
-            ? $"Apply the changes of merge {row.ShortHash} \"{row.Subject}\" onto {CurrentLabel}, relative to its first parent."
-            : $"Apply {row.ShortHash} \"{row.Subject}\" onto {CurrentLabel}.";
-        var res = await Host.Dialogs.PromptAsync("Cherry-pick", message,
-            [
-                new PromptField("Add \"cherry picked from commit …\" to the message", "false", IsCheckbox: true),
-                new PromptField("Apply the changes without committing", "false", IsCheckbox: true),
-            ],
-            "Cherry-pick");
-        if (res is null) return;
-        await RunOperationAsync(() => _repo.CherryPickAsync(row.Hash, row.Commit.IsMerge, res[0] == "true", res[1] == "true"));
-    }
-
-    public async Task RevertAsync(CommitRowViewModel row)
-    {
-        var message = row.Commit.IsMerge
-            ? $"Undo merge {row.ShortHash} \"{row.Subject}\" on {CurrentLabel} with a new commit, relative to its first parent."
-            : $"Undo {row.ShortHash} \"{row.Subject}\" on {CurrentLabel} with a new commit.";
-        var res = await Host.Dialogs.PromptAsync("Revert", message,
-            [new PromptField("Undo the changes without committing", "false", IsCheckbox: true)], "Revert");
-        if (res is null) return;
-        await RunOperationAsync(() => _repo.RevertAsync(row.Hash, row.Commit.IsMerge, res[0] == "true"));
-    }
-
-    public async Task ResetAsync(CommitRowViewModel row, ResetMode mode)
-    {
-        var (what, destructive) = mode switch
-        {
-            ResetMode.Soft => ("The commits after it stay as staged changes.", false),
-            ResetMode.Mixed => ("The commits after it, and anything staged, stay as unstaged changes.", false),
-            _ => ("The commits after it and all uncommitted changes to tracked files are thrown away. This can't be undone from here.", true),
-        };
-        if (!await Host.Dialogs.ConfirmAsync($"Reset ({mode.ToString().ToLowerInvariant()})",
-                $"Move {CurrentLabel} to {row.ShortHash} \"{row.Subject}\". {what}", "Reset", destructive))
-            return;
-        await RunAsync(() => _repo.ResetAsync(row.Hash, mode));
-    }
-
-    public async Task RebaseAsync(string onto, string label)
-    {
-        var res = await Host.Dialogs.PromptAsync("Rebase",
-            $"Replay the commits of {CurrentLabel} that aren't in {label} on top of it. This rewrites those commits: "
-            + "if they were pushed already, pushing again needs a force push.",
-            [new PromptField("Stash uncommitted changes first and bring them back afterwards", "true", IsCheckbox: true)], "Rebase");
-        if (res is null) return;
-        await RunOperationAsync(() => _repo.RebaseAsync(onto, res[0] == "true"));
-    }
-
-    /// <summary>
-    /// Runs a merge, cherry-pick, revert or rebase. If it stops on conflicts, the banner above the graph offers to
-    /// continue or abort, and the conflicted files show under the uncommitted changes.
-    /// </summary>
-    private async Task RunOperationAsync(Func<Task> action)
-    {
-        try
-        {
-            await action();
-        }
-        catch (GitException e)
-        {
-            if (await _repo.GetOperationInProgressAsync() is null) Host.ReportError(e.Message);
-            else _showConflicts = true;
-        }
-        await RefreshAsync();
-        await _workspace.RefreshRepoAsync(Path);
-    }
-
-    private static string Trim(string message)
-    {
-        var lines = message.Split('\n');
-        return lines.Length <= 8 ? message : string.Join('\n', lines.Take(8)) + "\n…";
-    }
-
-    private async Task RunAsync(Func<Task> action)
-    {
-        try
-        {
-            await action();
-        }
-        catch (GitException e) { Host.ReportError(e.Message); }
-        await RefreshAsync();
-    }
-
-    // ---- An operation stopped part-way ------------------------------------------------------
-
-    /// <summary>A merge, cherry-pick, revert or rebase waiting to be continued or aborted.</summary>
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasOperation), nameof(OperationText))]
-    private GitOperation? _operation;
-
-    // After an operation stops, the uncommitted changes (with the conflicts) are selected once the graph reloads.
-    private bool _showConflicts;
-
-    public bool HasOperation => Operation != null;
-
-    public string OperationText => Operation switch
-    {
-        null => "",
-        var op => $"{OperationName(op.Value) switch { var n => char.ToUpperInvariant(n[0]) + n[1..] }} in progress. Resolve the conflicts "
-            + "(under Merge conflicts in the uncommitted changes), stage the files, then continue. Or abort to go back to where you were.",
-    };
-
-    private static string OperationName(GitOperation op) => op switch
-    {
-        GitOperation.Merge => "merge",
-        GitOperation.CherryPick => "cherry-pick",
-        GitOperation.Revert => "revert",
-        _ => "rebase",
-    };
-
-    [RelayCommand]
-    private async Task ContinueOperation()
-    {
-        if (Operation is not { } op) return;
-        await RunOperationAsync(() => _repo.ContinueAsync(op));
-    }
-
-    [RelayCommand]
-    private async Task AbortOperation()
-    {
-        if (Operation is not { } op) return;
-        var name = OperationName(op);
-        if (!await Host.Dialogs.ConfirmAsync($"Abort {name}", $"Stop the {name} and go back to how things were before it started? "
-                + "Conflict resolutions made so far are lost.", $"Abort {name}", destructive: true))
-            return;
-        await RunAsync(() => _repo.AbortAsync(op));
-    }
-
-    [RelayCommand]
-    private void ShowConflicts()
-    {
-        if (Rows.FirstOrDefault(r => r.IsUncommitted) is not { } row) return;
-        SelectedRow = row;
-        Details.SelectedTabIndex = 1;
-        if (!Host.ShowDetailsPanel) Host.ShowDetailsPanel = true;
-    }
-
-    [RelayCommand]
-    private async Task Fetch()
-    {
-        if (await FetchQuietlyAsync() is { } error) Host.ReportError(error);
-        await RefreshAsync();
-    }
-
-    /// <summary>The periodic fetch: a failure only shows in the sync tooltip, because a network hiccup isn't worth an error bar.</summary>
-    public async Task<string?> AutoFetchAsync()
-    {
-        var error = await FetchQuietlyAsync();
-        await RefreshAsync();
-        return error;
-    }
-
-    private async Task<string?> FetchQuietlyAsync()
-    {
-        IsSyncing = true;
-        try
-        {
-            await _repo.FetchAsync();
-            LastFetched = DateTimeOffset.Now;
-            FetchError = null;
-        }
-        catch (GitException e) { FetchError = Trim(e.Message); }
-        finally { IsSyncing = false; }
-        return FetchError;
-    }
-
-    /// <summary>The sync indicator: publish a branch with no upstream, otherwise pull then push.</summary>
-    [RelayCommand]
-    private async Task SyncNow()
-    {
-        if (Sync is not { Branch: { } branch } s || IsSyncing) return;
-        if (s.CanPublish)
-        {
-            if (!await Host.Dialogs.ConfirmAsync("Publish branch", $"Push {branch} to {s.Remotes[0]} and track it there?", "Publish"))
-                return;
-            await RunSyncAsync(() => _repo.PublishAsync(s.Remotes[0], branch));
-            return;
-        }
-        if (s.Upstream is null) return;
-        if (!await Host.Dialogs.ConfirmAsync("Sync",
-                $"Pull {(s.Behind > 0 ? $"{s.Behind} commit(s)" : "any new commits")} from {s.Upstream} into {branch}, then push {(s.Ahead > 0 ? $"{s.Ahead} commit(s)" : "anything new")}.",
-                "Sync"))
-            return;
-        await RunSyncAsync(async () =>
-        {
-            await _repo.PullAsync(Host.PullMode);
-            await _repo.PushAsync();
-        });
-    }
-
-    [RelayCommand]
-    private Task Pull() => RunSyncAsync(() => _repo.PullAsync(Host.PullMode));
-
-    [RelayCommand]
-    private Task Push() => Sync?.CanPublish == true && Sync.Branch is { } b
-        ? RunSyncAsync(() => _repo.PublishAsync(Sync.Remotes[0], b))
-        : RunSyncAsync(() => _repo.PushAsync());
-
-    /// <summary>Pushes over a rewritten history (after a rebase or amend), unless someone else pushed since the last fetch.</summary>
-    [RelayCommand]
-    private async Task ForcePush()
-    {
-        if (Sync is not { Branch: { } branch, Upstream: { } upstream }) return;
-        if (!await Host.Dialogs.ConfirmAsync("Force push",
-                $"Replace {upstream} with your {branch}? Commits on {upstream} that aren't in {branch} are dropped. "
-                + "The push is refused if someone else pushed to it since your last fetch.",
-                "Force push", destructive: true))
-            return;
-        await RunSyncAsync(() => _repo.PushAsync(forceWithLease: true));
-    }
-
-    private async Task RunSyncAsync(Func<Task> action)
-    {
-        IsSyncing = true;
-        try { await RunAsync(action); }
-        finally { IsSyncing = false; }
-        LastFetched = DateTimeOffset.Now;
-        await _workspace.RefreshRepoAsync(Path);
-    }
-
-    // ---- Filters -----------------------------------------------------------------------------
-
-    public static IReadOnlyList<string> SinceOptions { get; } = ["Any time", "Last week", "Last month", "Last 3 months", "Last year"];
-
-    /// <summary>The row of filter fields under the toolbar; hiding it clears the filters.</summary>
-    [ObservableProperty]
-    private bool _showFilters;
-
-    [ObservableProperty]
-    private string _authorFilter = "";
-
-    [ObservableProperty]
-    private string _pathFilter = "";
-
-    [ObservableProperty]
-    private string _sinceFilter = SinceOptions[0];
-
-    private DispatcherTimer? _filterDebounce;
-
-    public bool IsFiltered => CurrentFilter() != null;
-
-    private CommitFilter? CurrentFilter()
-    {
-        DateTimeOffset? since = SinceFilter switch
-        {
-            "Last week" => DateTimeOffset.Now.AddDays(-7),
-            "Last month" => DateTimeOffset.Now.AddMonths(-1),
-            "Last 3 months" => DateTimeOffset.Now.AddMonths(-3),
-            "Last year" => DateTimeOffset.Now.AddYears(-1),
-            _ => null,
-        };
-        var filter = new CommitFilter(AuthorFilter.Trim(), since, PathFilter.Trim().Replace('\\', '/'));
-        return filter.IsEmpty ? null : filter;
-    }
-
-    // Typing waits for a pause before reloading; picking a period reloads at once.
-    partial void OnAuthorFilterChanged(string value) => ApplyFiltersSoon();
-    partial void OnPathFilterChanged(string value) => ApplyFiltersSoon();
-    partial void OnSinceFilterChanged(string value) => ApplyFilters();
-
-    partial void OnShowFiltersChanged(bool value)
-    {
-        if (value || !IsFiltered) return;
-        _authorFilter = "";
-        _pathFilter = "";
-        _sinceFilter = SinceOptions[0];
-        OnPropertyChanged(nameof(AuthorFilter));
-        OnPropertyChanged(nameof(PathFilter));
-        OnPropertyChanged(nameof(SinceFilter));
-        ApplyFilters();
-    }
-
-    private void ApplyFiltersSoon()
-    {
-        if (_filterDebounce is null)
-        {
-            _filterDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-            _filterDebounce.Tick += (_, _) =>
-            {
-                _filterDebounce.Stop();
-                ApplyFilters();
-            };
-        }
-        _filterDebounce.Stop();
-        _filterDebounce.Start();
-    }
-
-    private void ApplyFilters()
-    {
-        _filterDebounce?.Stop();
-        _maxCount = PageSize;
-        OnPropertyChanged(nameof(IsFiltered));
-        _ = RefreshAsync();
-    }
-
-    [RelayCommand]
-    private void ToggleFilters() => ShowFilters = !ShowFilters;
-
-    // ---- Stash -------------------------------------------------------------------------------
-
-    [RelayCommand]
-    private async Task StashChanges()
-    {
-        var r = await Host.Dialogs.PromptAsync("Stash changes",
-            "Save the uncommitted changes in a stash and clean the working tree. The stash shows in the graph above the commit it was made on; apply or pop it from there.",
-            [new PromptField("Message", "", "Optional, to tell stashes apart"), new PromptField("Include untracked files", "true", IsCheckbox: true)],
-            "Stash");
-        if (r is null) return;
-        await RunAsync(() => _repo.StashAsync(r[0], r[1] == "true"));
-    }
-
-    [RelayCommand]
-    private async Task PopLatestStash()
-    {
-        if (_stashes.Count == 0)
-        {
-            Host.ReportError("There are no stashes to pop.");
-            return;
-        }
-        await RunAsync(() => _repo.ApplyStashAsync(_stashes[0].Name, pop: true, restoreIndex: false));
-    }
-
-    /// <param name="pop">Drop the stash after it applied cleanly; on conflicts git keeps it.</param>
-    public Task ApplyStashAsync(StashEntry stash, bool pop) => RunAsync(() => _repo.ApplyStashAsync(stash.Name, pop, restoreIndex: false));
-
-    public async Task DropStashAsync(StashEntry stash)
-    {
-        if (!await Host.Dialogs.ConfirmAsync("Drop stash", $"Delete {stash.Name} (\"{stash.Message}\")? Its changes are lost.", "Drop stash", destructive: true))
-            return;
-        await RunAsync(() => _repo.DropStashAsync(stash.Name));
-    }
-
-    public async Task StashBranchAsync(StashEntry stash)
-    {
-        var r = await Host.Dialogs.PromptAsync("Create branch from stash",
-            $"Create a branch at the commit {stash.Name} was made on, check it out, and apply the stash there. The stash is dropped if it applies cleanly.",
-            [new PromptField("Branch name", "", "e.g. feature/resume-work")], "Create branch");
-        if (r is null || string.IsNullOrWhiteSpace(r[0])) return;
-        await RunAsync(() => _repo.StashBranchAsync(r[0].Trim(), stash.Name));
-    }
-
-    public async Task CheckoutCommitAsync(CommitRowViewModel row)
-    {
-        if (row.IsUncommitted) return;
-        if (!await Host.Dialogs.ConfirmAsync("Check out commit",
-                $"Check out {row.ShortHash} in {Title}? You will be on a detached HEAD until you switch to a branch.", "Check out"))
-            return;
-        await RunAsync(() => _repo.CheckoutAsync(row.Hash));
-        await _workspace.RefreshRepoAsync(Path);
-    }
-
-    public async Task CheckoutRefAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { } r) return;
-        if (r.Kind == RefKind.RemoteBranch)
-        {
-            var localName = r.Name[(r.Remote!.Length + 1)..];
-            var refs = await _repo.GetRefsAsync();
-            await RunAsync(() => refs.Any(x => x.Kind == RefKind.LocalBranch && x.Name == localName)
-                ? _repo.CheckoutAsync(localName)
-                : GitRunner.RunAsync(Path, ["checkout", "--track", r.Name]));
-        }
-        else await RunAsync(() => _repo.CheckoutAsync(r.Name));
-        await _workspace.RefreshRepoAsync(Path);
-    }
-
-    public async Task DeleteRefAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { } r) return;
-        if (r.Kind == RefKind.Tag)
-        {
-            if (!await Host.Dialogs.ConfirmAsync("Delete tag", $"Delete the tag {r.Name}? Remote copies are not touched.", "Delete tag", true)) return;
-            await RunAsync(() => _repo.DeleteTagAsync(r.Name));
-            return;
-        }
-        if (!await Host.Dialogs.ConfirmAsync("Delete branch", $"Delete the branch {r.Name}?", "Delete branch", true)) return;
-        try
-        {
-            await _repo.DeleteBranchAsync(r.Name, force: false);
-        }
-        catch (GitException e) when (e.Message.Contains("not fully merged", StringComparison.OrdinalIgnoreCase))
-        {
-            if (await Host.Dialogs.ConfirmAsync("Branch is not merged",
-                    $"{r.Name} has commits that are not on any other branch. Deleting it may lose them.", "Delete anyway", true))
-            {
-                try { await _repo.DeleteBranchAsync(r.Name, force: true); }
-                catch (GitException e2) { Host.ReportError(e2.Message); }
-            }
-        }
-        catch (GitException e) { Host.ReportError(e.Message); }
-        await RefreshAsync();
-    }
-
-    public async Task RenameBranchAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { Kind: RefKind.LocalBranch } r) return;
-        var res = await Host.Dialogs.PromptAsync("Rename branch", $"Rename the branch {r.Name}. Its remote copies keep their name.",
-            [new PromptField("New name", r.Name)], "Rename");
-        if (res is null || string.IsNullOrWhiteSpace(res[0]) || res[0].Trim() == r.Name) return;
-        await RunAsync(() => _repo.RenameBranchAsync(r.Name, res[0].Trim()));
-    }
-
-    public async Task SetUpstreamAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { Kind: RefKind.LocalBranch } r) return;
-        var remote = Sync?.Remotes.FirstOrDefault() ?? "origin";
-        var res = await Host.Dialogs.PromptAsync("Set upstream",
-            $"Track a remote branch with {r.Name}, so pull, push and the ↓↑ counts use it. Fetch first if the remote branch is new.",
-            [new PromptField("Remote branch", r.Upstream ?? $"{remote}/{r.Name}")], "Set upstream");
-        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
-        await RunAsync(() => _repo.SetUpstreamAsync(r.Name, res[0].Trim()));
-    }
-
-    public async Task DeleteRemoteBranchAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { Kind: RefKind.RemoteBranch, Remote: { } remote } r) return;
-        var branch = r.Name[(remote.Length + 1)..];
-        if (!await Host.Dialogs.ConfirmAsync("Delete remote branch",
-                $"Delete {branch} from {remote}? Everyone using {remote} loses it; local branches are not touched.", "Delete from remote", true))
-            return;
-        await RunSyncAsync(() => _repo.DeleteRemoteBranchAsync(remote, branch));
-    }
-
-    public async Task PushTagAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { Kind: RefKind.Tag } r) return;
-        var remotes = Sync?.Remotes ?? [];
-        if (remotes.Count == 0)
-        {
-            Host.ReportError("This repository has no remote to push the tag to.");
-            return;
-        }
-        var res = await Host.Dialogs.PromptAsync("Push tag", $"Push the tag {r.Name} to a remote.",
-            [new PromptField("Remote", remotes[0], Hint: remotes.Count > 1 ? $"One of {string.Join(", ", remotes)}" : null)], "Push tag");
-        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
-        await RunSyncAsync(() => _repo.PushTagAsync(res[0].Trim(), r.Name));
-    }
-
-    public async Task CreateBranchAsync(CommitRowViewModel row)
-    {
-        var res = await Host.Dialogs.PromptAsync("Create branch", $"Start a new branch at {row.ShortHash}.",
-            [new PromptField("Branch name", "", "feature/my-change"), new PromptField("Check it out", "true", IsCheckbox: true)],
-            "Create branch");
-        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
-        await RunAsync(() => _repo.CreateBranchAsync(res[0].Trim(), row.Hash, res[1] == "true"));
-        await _workspace.RefreshRepoAsync(Path);
-    }
-
-    public async Task CreateTagAsync(CommitRowViewModel row)
-    {
-        var res = await Host.Dialogs.PromptAsync("Create tag", $"Tag {row.ShortHash}.",
-            [new PromptField("Tag name", "", "v1.0.0"), new PromptField("Message", "", "Leave empty for a lightweight tag")],
-            "Create tag");
-        if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
-        await RunAsync(() => _repo.CreateTagAsync(res[0].Trim(), row.Hash, res[1]));
-    }
-
-    public async Task AddWorktreeAtAsync(CommitRowViewModel row, string? branch)
-    {
-        var main = _worktrees.FirstOrDefault(w => w.IsMain)?.Path ?? Path;
-        await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), row.IsUncommitted ? "HEAD" : row.Hash, branch);
-        await RefreshAsync();
-    }
-
-    public async Task AddWorktreeForBranchAsync(RefBadgeViewModel badge)
-    {
-        if (badge.Ref is not { } r) return;
-        var main = _worktrees.FirstOrDefault(w => w.IsMain)?.Path ?? Path;
-        if (r.Kind == RefKind.RemoteBranch)
-        {
-            await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), r.Name, null);
-        }
-        else await WorktreeActions.AddAsync(_workspace, main, System.IO.Path.GetFileName(main), r.Name, r.Name);
-        await RefreshAsync();
-    }
-
-    public void OpenWorktreeByName(string name)
-    {
-        var wt = _worktrees.FirstOrDefault(w => System.IO.Path.GetFileName(w.Path) == name);
-        if (wt != null) _workspace.OpenTab(wt.Path, pin: true);
-    }
-
     // ---- File watching -----------------------------------------------------------------------
 
     private void StartWatching(params string?[] dirs)
@@ -1021,10 +575,13 @@ public partial class RepoTabViewModel : TabViewModel
         });
     }
 
-    /// <summary>Cheap refresh for when the window regains focus: files may have been edited elsewhere.</summary>
+    /// <summary>
+    /// Cheap refresh for when the window regains focus: files may have been edited elsewhere. Switching back and
+    /// forth quickly doesn't refresh each time.
+    /// </summary>
     public override void OnActivated()
     {
-        if (_loaded) _ = RefreshAsync();
+        if (_loaded && DateTime.UtcNow - _lastRefresh > TimeSpan.FromSeconds(3)) _ = RefreshAsync();
     }
 
     public override void Dispose()

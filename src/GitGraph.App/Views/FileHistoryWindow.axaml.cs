@@ -13,6 +13,7 @@ public partial class FileHistoryWindow : Window
     {
         InitializeComponent();
         Opened += (_, _) => Motion.FadeIn(Content as Control);
+        HistoryList.AddHandler(ScrollViewer.ScrollChangedEvent, OnHistoryScrolled);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -22,6 +23,13 @@ public partial class FileHistoryWindow : Window
     }
 
     private void OnClose(object? sender, RoutedEventArgs e) => Close();
+
+    /// <summary>Infinite scroll: the next page loads before the end of the list comes into view.</summary>
+    private void OnHistoryScrolled(object? sender, ScrollChangedEventArgs e)
+    {
+        if (e.Source is ScrollViewer sv && DataContext is FileHistoryViewModel vm && sv.Offset.Y + sv.Viewport.Height >= sv.Extent.Height - 400)
+            _ = vm.LoadMoreAsync();
+    }
 
     private void OnBlameTapped(object? sender, TappedEventArgs e)
     {

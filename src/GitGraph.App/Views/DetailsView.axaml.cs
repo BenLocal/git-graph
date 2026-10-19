@@ -51,7 +51,30 @@ public partial class DetailsView : UserControl
 
     private void OnWorkingFileTapped(object? sender, TappedEventArgs e)
     {
-        if (DataContext is DetailsViewModel vm && (sender as Control)?.DataContext is FileChangeViewModel file) vm.SelectedFile = file;
+        if (DataContext is not DetailsViewModel vm || (sender as Control)?.DataContext is not FileChangeViewModel file) return;
+        var mods = e.KeyModifiers;
+        vm.SelectWorkingFile(file, toggle: mods.HasFlag(KeyModifiers.Control) || mods.HasFlag(KeyModifiers.Meta), range: mods.HasFlag(KeyModifiers.Shift));
+        WorkingList.Focus();
+    }
+
+    /// <summary>Keys in the uncommitted list: arrows move (Shift to extend), Enter opens, Space stages, Delete discards.</summary>
+    private void OnWorkingListKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not DetailsViewModel vm) return;
+        var extend = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        switch (e.Key)
+        {
+            case Key.Up: vm.MoveWorkingSelection(-1, extend); break;
+            case Key.Down: vm.MoveWorkingSelection(1, extend); break;
+            case Key.Enter: vm.OpenFullDiffCommand.Execute(null); break;
+            case Key.Space: _ = vm.ToggleStageSelectedAsync(); break;
+            case Key.Delete: _ = vm.DiscardSelectedAsync(); break;
+            default: return;
+        }
+        e.Handled = true;
+        // Keep the selected row in view as the arrows move past the edge.
+        WorkingList.GetVisualDescendants().OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("filerow") && b.DataContext == vm.SelectedFile)?.BringIntoView();
     }
 
     private void OnWorkingFileDoubleTapped(object? sender, TappedEventArgs e)

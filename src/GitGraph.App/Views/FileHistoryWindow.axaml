@@ -35,7 +35,7 @@
             <Grid RowDefinitions="Auto,*">
               <TextBlock Classes="muted small" Text="{Binding HistoryMessage}" TextWrapping="Wrap" Margin="16,8,16,4"
                          IsVisible="{Binding HistoryMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              <ListBox Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
+              <ListBox x:Name="HistoryList" Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry}"
                        ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileHistoryRowViewModel">

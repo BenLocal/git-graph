@@ -4,6 +4,7 @@
     <Project Path="src/GitGraph.Core/GitGraph.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/GitGraph.App.Tests/GitGraph.App.Tests.csproj" />
     <Project Path="tests/GitGraph.Core.Tests/GitGraph.Core.Tests.csproj" />
   </Folder>
 </Solution>

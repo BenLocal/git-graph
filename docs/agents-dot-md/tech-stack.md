@@ -7,8 +7,8 @@ Structure and design trade-offs are in `architecture.md`.
 ## 1. Overview
 
 - What it is: an Avalonia desktop git history viewer modelled on the VS Code extension vscode-git-graph: commit graph, history, diffs, worktrees, multiple workspaces.
-- Layout: `GitGraph.slnx` with three projects: `src/GitGraph.Core`, `src/GitGraph.App`, `tests/GitGraph.Core.Tests`.
-- Remote: https://github.com/BenLocal/git-graph (private).
+- Layout: `GitGraph.slnx` with four projects: `src/GitGraph.Core`, `src/GitGraph.App`, `tests/GitGraph.Core.Tests`, `tests/GitGraph.App.Tests`. View model logic (selection, refresh, staging) gets a test in `GitGraph.App.Tests` with `FakeHost`; screenshots only check how it looks.
+- Remote: https://github.com/BenLocal/git-graph (public). Releases are built by `.github/workflows/release.yml` from `v*` tags (`make tag VERSION=x.y.z`).
 
 ## 2. Stack
 
@@ -22,7 +22,7 @@ Structure and design trade-offs are in `architecture.md`.
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
 | Fonts | IBM Plex Sans (UI); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
 | Icons | Lucide.Avalonia (`<LucideIcon Kind="GitBranch" Size="14" />`) | 0.2.24 | default size, stroke and colour set by the `LucideIcon` style in `Controls.axaml` |
-| Code viewer | AvaloniaEdit + AvaloniaEdit.TextMate | 12.0.0 | read-only file view in folder tabs; Dark+/Light+ follow the theme |
+| Code viewer | AvaloniaEdit + AvaloniaEdit.TextMate | 12.0.0 | read-only file view in folder tabs; Dark+/Light+ follow the theme. Its TextMateSharp grammars also colour diffs and blame (`Services/SyntaxHighlighter.cs`) |
 
 ## 3. Conventions
 
@@ -37,7 +37,8 @@ Structure and design trade-offs are in `architecture.md`.
 ## 4. Build and verification
 
 ```bash
-make build      # expect 0 errors; one known warning about obsolete Bitmap.Save
+make lint       # dotnet format --verify-no-changes, as CI runs it
+make build      # expect 0 errors and 0 warnings
 make test       # expect all tests to pass
 make run
 ```
@@ -48,7 +49,9 @@ For UI changes, check a snapshot. On GNOME Wayland `grim` doesn't work, so use t
 make snapshot SELECT=3 COMPARE=6 THEME=Light SHOT=.demo/light.png
 ```
 
-This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and three seconds after loading the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). It only captures the main window, not dialogs.
+This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and three seconds after loading the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). More `GITGRAPH_SNAPSHOT_*` variables (listed at the top of that file) pick a changed file, a details tab, the panel and sidebar layout, or render the full diff, file history, keyboard shortcuts or About window instead.
+
+Behaviour that a picture can't show (no flicker, a refresh that skips work, timings) is checked by temporarily adding code to the snapshot hook that drives the view models and prints what it measured, then removing it. Measure each stage with a Stopwatch before optimizing.
 
 New make targets go in a topic file under `mk/` with a `## description` comment so `make help` lists them; scripts they call go in `scripts/`.
 

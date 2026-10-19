@@ -96,11 +96,11 @@ public sealed class GitRepositoryTests : IDisposable
         var repo = new GitRepository(_repo);
 
         await Assert.ThrowsAsync<GitException>(() => repo.CherryPickAsync(clash, isMerge: false, recordOrigin: false, noCommit: false));
-        Assert.True(await repo.IsInProgressAsync(GitOperation.CherryPick));
+        Assert.Equal(GitOperation.CherryPick, await repo.GetOperationInProgressAsync());
 
         await repo.AbortAsync(GitOperation.CherryPick);
-        Assert.False(await repo.IsInProgressAsync(GitOperation.CherryPick));
-        Assert.Equal(0, await repo.CountUncommittedAsync());
+        Assert.Null(await repo.GetOperationInProgressAsync());
+        Assert.Equal(0, (await repo.GetUncommittedAsync()).Count);
     }
 
     [Fact]
@@ -423,7 +423,13 @@ public sealed class GitRepositoryTests : IDisposable
         File.WriteAllText(Path.Combine(_repo, "new.txt"), "hello\n");
         var repo = new GitRepository(_repo);
 
-        Assert.Equal(2, await repo.CountUncommittedAsync());
+        var summary = await repo.GetUncommittedAsync();
+        Assert.Equal(2, summary.Count);
+        Assert.Equal(["new.txt"], summary.Untracked);
+        // Handing over the untracked files gives the same changes as finding them again.
+        var known = await repo.GetWorkingChangesAsync(summary.Untracked);
+        var found = await repo.GetWorkingChangesAsync();
+        Assert.Equal(found.Unstaged.Select(c => (c.Path, c.Kind)), known.Unstaged.Select(c => (c.Path, c.Kind)));
         var changes = await repo.GetChangesAsync(new DiffTarget("HEAD", null));
         Assert.Contains(changes, c => c is { Path: "a.txt", Kind: ChangeKind.Modified });
         var untracked = Assert.Single(changes, c => c.Kind == ChangeKind.Untracked);

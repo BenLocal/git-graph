@@ -89,6 +89,9 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
 
     partial void OnIsScanningChanged(bool value) => OnPropertyChanged(nameof(HasNoRepos));
 
+    /// <summary>The workspace on screen; tabs of the others put off refreshing until they are shown.</summary>
+    public bool IsCurrent { get; set; }
+
     partial void OnSelectedTabChanged(TabViewModel? value)
     {
         Config.ActiveTab = value?.StateKey;
@@ -334,7 +337,7 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
                     }
                     catch (GitException e) { r.FetchError = e.Message.Trim(); }
                 }
-                foreach (var t in Tabs.OfType<RepoTabViewModel>().Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshAsync();
+                foreach (var t in Tabs.OfType<RepoTabViewModel>().Where(t => r.Contains(t.Path) && t != tab)) await t.RefreshWhenShownAsync();
             }
             await LoadSyncAsync();
             ReportNewCommits(before);

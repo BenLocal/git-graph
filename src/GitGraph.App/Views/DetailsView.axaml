@@ -113,7 +113,8 @@
               </Border>
 
               <!-- Uncommitted files by group, each with stage, unstage and discard buttons -->
-              <ScrollViewer Grid.Row="1" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
+              <ScrollViewer x:Name="WorkingList" Grid.Row="1" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0"
+                            Focusable="True" KeyDown="OnWorkingListKeyDown">
                 <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,8">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:FileGroupViewModel">

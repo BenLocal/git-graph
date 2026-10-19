@@ -86,20 +86,25 @@ public sealed class GitRepository(string path)
     public async Task<CommitDetail?> GetCommitDetailAsync(string hash, CancellationToken ct = default) =>
         GitParsers.ParseDetail(await Git(ct, "show", "-s", $"--format={GitParsers.DetailFormat}", hash, "--"));
 
-    /// <summary>True when the working tree or index differs from HEAD, including untracked files.</summary>
-    public async Task<int> CountUncommittedAsync(CancellationToken ct = default)
+    /// <summary>
+    /// How many paths differ from HEAD (in the index or the working tree, untracked files included), and the
+    /// untracked ones: finding those is the slow part of status, so <see cref="GetWorkingChangesAsync"/> can reuse them.
+    /// </summary>
+    public async Task<UncommittedSummary> GetUncommittedAsync(CancellationToken ct = default)
     {
         var o = await Git(ct, "status", "--porcelain=v1", "-z", "--untracked-files=all");
         var count = 0;
+        var untracked = new List<string>();
         var parts = o.Split('\0');
         for (var i = 0; i < parts.Length; i++)
         {
             if (parts[i].Length < 3) continue;
             count++;
+            if (parts[i].StartsWith("?? ", StringComparison.Ordinal)) untracked.Add(parts[i][3..]);
             // Rename entries carry the original path in the next field.
             if (parts[i][0] is 'R' or 'C') i++;
         }
-        return count;
+        return new UncommittedSummary(count, untracked);
     }
 
     public async Task<List<FileChange>> GetChangesAsync(DiffTarget target, CancellationToken ct = default)
@@ -124,19 +129,20 @@ public sealed class GitRepository(string path)
     /// The working tree's changes as git's staging sees them: staged (HEAD → index), unstaged (index → working
     /// tree, with untracked files) and conflicted. A file can be both staged and unstaged.
     /// </summary>
-    public async Task<WorkingChanges> GetWorkingChangesAsync(CancellationToken ct = default)
+    /// <param name="untracked">Untracked files from a <see cref="GetUncommittedAsync"/> just made, to skip finding them again.</param>
+    public async Task<WorkingChanges> GetWorkingChangesAsync(IReadOnlyList<string>? untracked = null, CancellationToken ct = default)
     {
         // Without HEAD (no commits yet), "diff --cached" compares the index with the empty tree.
         var stagedStatus = Git(ct, "diff", "--cached", "--name-status", "-z", "-M", "--");
         var stagedStat = Git(ct, "diff", "--cached", "--numstat", "-z", "-M", "--");
         var unstagedStatus = Git(ct, "diff", "--name-status", "-z", "--");
         var unstagedStat = Git(ct, "diff", "--numstat", "-z", "--");
-        var untracked = Git(ct, "ls-files", "--others", "--exclude-standard", "-z");
-        await Task.WhenAll(stagedStatus, stagedStat, unstagedStatus, unstagedStat, untracked);
+        var untrackedTask = untracked is null ? Git(ct, "ls-files", "--others", "--exclude-standard", "-z") : Task.FromResult("");
+        await Task.WhenAll(stagedStatus, stagedStat, unstagedStatus, unstagedStat, untrackedTask);
 
         var staged = GitParsers.ParseChanges(stagedStatus.Result, stagedStat.Result);
         var unstaged = GitParsers.ParseChanges(unstagedStatus.Result, unstagedStat.Result);
-        foreach (var p in GitParsers.SplitZ(untracked.Result))
+        foreach (var p in untracked ?? GitParsers.SplitZ(untrackedTask.Result).ToList())
             unstaged.Add(new FileChange(ChangeKind.Untracked, p, null, null, null));
         // An unmerged file shows on both sides; it belongs only with the conflicts.
         var conflicted = staged.Concat(unstaged).Where(c => c.Kind == ChangeKind.Conflicted).DistinctBy(c => c.Path).ToList();
@@ -368,10 +374,6 @@ public sealed class GitRepository(string path)
     /// <param name="autostash">Stash uncommitted changes first and bring them back afterwards.</param>
     public Task RebaseAsync(string onto, bool autostash, CancellationToken ct = default) =>
         autostash ? Git(ct, "rebase", "--autostash", onto) : Git(ct, "rebase", onto);
-
-    /// <summary>Whether an operation stopped part-way, for example on conflicts.</summary>
-    public async Task<bool> IsInProgressAsync(GitOperation op, CancellationToken ct = default) =>
-        await GetOperationInProgressAsync(ct) == op;
 
     /// <summary>The merge, cherry-pick, revert or rebase waiting to be continued or aborted, if any.</summary>
     public async Task<GitOperation?> GetOperationInProgressAsync(CancellationToken ct = default)
