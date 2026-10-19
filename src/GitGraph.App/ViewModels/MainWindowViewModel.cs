@@ -257,12 +257,23 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         SaveState();
     }
 
+    public bool ThemeSystem => _state.Theme is not ("Dark" or "Light");
+    public bool ThemeDark => _state.Theme == "Dark";
+    public bool ThemeLight => _state.Theme == "Light";
+
     [RelayCommand]
-    private void CycleTheme()
+    private void CycleTheme() => SetTheme(_state.Theme switch { "System" => "Dark", "Dark" => "Light", _ => "System" });
+
+    /// <param name="theme">System, Dark or Light.</param>
+    [RelayCommand]
+    private void SetTheme(string theme)
     {
-        _state.Theme = _state.Theme switch { "System" => "Dark", "Dark" => "Light", _ => "System" };
+        _state.Theme = theme;
         ApplyTheme();
         OnPropertyChanged(nameof(ThemeLabel));
+        OnPropertyChanged(nameof(ThemeSystem));
+        OnPropertyChanged(nameof(ThemeDark));
+        OnPropertyChanged(nameof(ThemeLight));
         SaveState();
     }
 

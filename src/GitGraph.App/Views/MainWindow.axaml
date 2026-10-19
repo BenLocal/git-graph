@@ -53,8 +53,17 @@
                     ToolTip.Tip="Show folders that only contain one folder, like src/main/java/com/example, as a single row" />
           <MenuItem Header="Fetch automatically every 3 minutes" ToggleType="CheckBox" IsChecked="{Binding AutoFetch, Mode=OneWay}"
                     Command="{Binding ToggleAutoFetchCommand}" />
+        </MenuItem>
+        <MenuItem Header="T_heme">
+          <MenuItem Header="Follow system" ToggleType="Radio" GroupName="theme" IsChecked="{Binding ThemeSystem, Mode=OneWay}"
+                    Command="{Binding SetThemeCommand}" CommandParameter="System"
+                    ToolTip.Tip="Night or day, whichever the system is set to" />
+          <MenuItem Header="Night" ToggleType="Radio" GroupName="theme" IsChecked="{Binding ThemeDark, Mode=OneWay}"
+                    Command="{Binding SetThemeCommand}" CommandParameter="Dark" />
+          <MenuItem Header="Day" ToggleType="Radio" GroupName="theme" IsChecked="{Binding ThemeLight, Mode=OneWay}"
+                    Command="{Binding SetThemeCommand}" CommandParameter="Light" />
           <Separator />
-          <MenuItem Header="{Binding ThemeLabel, StringFormat='Theme: {0}'}" Command="{Binding CycleThemeCommand}" InputGesture="{Binding Keys[CycleTheme], Source={x:Static svc:ShortcutService.Instance}}" />
+          <MenuItem Header="Switch theme" Command="{Binding CycleThemeCommand}" InputGesture="{Binding Keys[CycleTheme], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
         <MenuItem Header="_Repository">
           <MenuItem Header="Find commits" Tag="Find" Click="OnMenuCommand" InputGesture="{Binding Keys[Find], Source={x:Static svc:ShortcutService.Instance}}" />
