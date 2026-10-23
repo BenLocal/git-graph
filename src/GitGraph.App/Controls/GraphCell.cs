@@ -88,16 +88,13 @@ public sealed class GraphCell : Control
         ActualThemeVariantChanged += (_, _) => InvalidateVisual();
     }
 
-    private IBrush Resource(string key, IBrush fallback) =>
-        this.TryFindResource(key, ActualThemeVariant, out var v) && v is IBrush b ? b : fallback;
-
     public override void Render(DrawingContext ctx)
     {
         var row = Row;
         if (row is null) return;
         var h = Bounds.Height;
         var mid = h / 2;
-        var canvas = Resource("CanvasBrush", Brushes.Black);
+        var canvas = this.Brush("CanvasBrush", Brushes.Black);
 
         foreach (var s in row.Segments)
         {
@@ -120,12 +117,12 @@ public sealed class GraphCell : Control
         var lane = LanePalette.Brush(row.NodeColor);
         if (row.NodeDashed)
         {
-            var muted = Resource("MutedBrush", Brushes.Gray);
+            var muted = this.Brush("MutedBrush", Brushes.Gray);
             ctx.DrawEllipse(canvas, new Pen(muted, 1.6, new DashStyle([2, 1.5], 0)), c, 4.5, 4.5);
         }
         else if (IsHead)
         {
-            var signal = Resource("SignalBrush", Brushes.Orange);
+            var signal = this.Brush("SignalBrush", Brushes.Orange);
             if (Ripple < 1)
             {
                 // A ring that spreads out from the halo and fades, once per load.

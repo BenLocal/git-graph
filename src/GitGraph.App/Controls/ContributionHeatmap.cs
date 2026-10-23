@@ -51,16 +51,13 @@ public sealed class ContributionHeatmap : Control
         return new Size(Left + weeks * (Cell + Gap), Top + 7 * (Cell + Gap) + LegendHeight);
     }
 
-    private IBrush Resource(string key) =>
-        this.TryFindResource(key, ActualThemeVariant, out var v) && v is IBrush b ? b : Brushes.Gray;
-
     /// <summary>Five shades: none, then four steps up to the busiest days (quartiles of the days with commits).</summary>
     private (IBrush[] Shades, int[] Steps) Scale()
     {
-        var signal = (Resource("SignalBrush") as ISolidColorBrush)?.Color ?? Colors.Orange;
+        var signal = (this.Brush("SignalBrush", Brushes.Gray) as ISolidColorBrush)?.Color ?? Colors.Orange;
         IBrush[] shades =
         [
-            Resource("RaisedBrush"),
+            this.Brush("RaisedBrush", Brushes.Gray),
             new SolidColorBrush(signal, 0.3), new SolidColorBrush(signal, 0.5),
             new SolidColorBrush(signal, 0.75), new SolidColorBrush(signal, 1),
         ];
@@ -76,7 +73,7 @@ public sealed class ContributionHeatmap : Control
     {
         var (start, weeks) = Range();
         var (shades, steps) = Scale();
-        var muted = Resource("MutedBrush");
+        var muted = this.Brush("MutedBrush", Brushes.Gray);
         var typeface = new Typeface(FontFamily.Default);
         var today = DateOnly.FromDateTime(DateTime.Now);
         FormattedText Text(string s) => new(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, GitGraph.App.Services.FontScale.Of(10.5), muted);
@@ -106,7 +103,7 @@ public sealed class ContributionHeatmap : Control
                 var rect = new Rect(x, Top + d * (Cell + Gap), Cell, Cell);
                 ctx.DrawRectangle(shades[Level(count, steps)], null, new RoundedRect(rect, 2.5));
                 if (_hover == (w, d))
-                    ctx.DrawRectangle(null, new Pen(Resource("TextBrush"), 1.2), new RoundedRect(rect.Deflate(0.6), 2.5));
+                    ctx.DrawRectangle(null, new Pen(this.Brush("TextBrush", Brushes.Gray), 1.2), new RoundedRect(rect.Deflate(0.6), 2.5));
             }
         }
 

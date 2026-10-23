@@ -2,7 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using GitGraph.App.Services;
+using GitGraph.App.ViewModels;
 using Lucide.Avalonia;
 
 namespace GitGraph.App.Views;
@@ -37,8 +39,7 @@ public partial class AboutWindow : Window
         await clipboard.SetTextAsync(AppInfo.Summary);
         // The icon turns into a check for a moment to confirm the copy.
         CopyIcon.Kind = LucideIconKind.Check;
-        await Task.Delay(1400);
-        CopyIcon.Kind = LucideIconKind.Copy;
+        DispatcherTimer.RunOnce(() => CopyIcon.Kind = LucideIconKind.Copy, CopyNote.Duration);
     }
 
     private string? _downloadUrl;

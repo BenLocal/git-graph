@@ -44,19 +44,19 @@ public sealed class DiffOverview : Control
     public override void Render(DrawingContext dc)
     {
         var (w, h) = (Bounds.Width, Bounds.Height);
-        dc.FillRectangle(Brush("SurfaceBrush"), new Rect(Bounds.Size));
+        dc.FillRectangle(this.Brush("SurfaceBrush"), new Rect(Bounds.Size));
         var half = w / 2;
         foreach (var b in _blocks)
         {
             if (!b.Changed) continue;
             var key = b.OldCount == 0 ? "AddFgBrush" : b.NewCount == 0 ? "DelFgBrush" : "HunkFgBrush";
-            var brush = Brush(key);
+            var brush = this.Brush(key);
             dc.FillRectangle(brush, Mark(b.OldStart, b.OldCount, _oldCount, 1, h, half - 1));
             dc.FillRectangle(brush, Mark(b.NewStart, b.NewCount, _newCount, half + 1, h, half - 2));
         }
         var top = _viewTop * h;
         var frame = new Rect(0.5, top + 0.5, w - 1, Math.Max(4, (_viewBottom - _viewTop) * h) - 1);
-        dc.DrawRectangle(Brush("HoverWashBrush"), new Pen(Brush("MutedBrush"), 1), frame);
+        dc.DrawRectangle(this.Brush("HoverWashBrush"), new Pen(this.Brush("MutedBrush"), 1), frame);
     }
 
     // A change on one half, at least 2px tall so a one-line change in a long file still shows.
@@ -90,7 +90,4 @@ public sealed class DiffOverview : Control
         if (Bounds.Height > 0) Navigate?.Invoke(Math.Clamp(e.GetPosition(this).Y / Bounds.Height, 0, 1));
         e.Handled = true;
     }
-
-    private IBrush Brush(string key) =>
-        this.TryFindResource(key, ActualThemeVariant, out var value) && value is IBrush brush ? brush : Brushes.Transparent;
 }

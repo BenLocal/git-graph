@@ -36,7 +36,7 @@ public sealed class DiffConnector : Control
     {
         if (_left is null || _right is null) return;
         var width = Bounds.Width;
-        dc.FillRectangle(Brush("CanvasBrush"), new Rect(Bounds.Size));
+        dc.FillRectangle(this.Brush("CanvasBrush"), new Rect(Bounds.Size));
         // Each side's text area may sit lower than this strip's top (the editors' padding); measure from there.
         var leftTop = _left.TextView.TranslatePoint(default, this)?.Y ?? 0;
         var rightTop = _right.TextView.TranslatePoint(default, this)?.Y ?? 0;
@@ -61,7 +61,7 @@ public sealed class DiffConnector : Control
             // Deleted lines only: red; added only: green; replaced: the hunk colours.
             var (fill, edge) = b.OldCount == 0 ? ("AddBgBrush", "AddFgBrush") : b.NewCount == 0 ? ("DelBgBrush", "DelFgBrush") : ("HunkBgBrush", "HunkFgBrush");
             var current = ReferenceEquals(b, _left.Current);
-            dc.DrawGeometry(Brush(fill), new Pen(Brush(current ? "SignalBrush" : edge), current ? 1.5 : 1), band);
+            dc.DrawGeometry(this.Brush(fill), new Pen(this.Brush(current ? "SignalBrush" : edge), current ? 1.5 : 1), band);
         }
     }
 
@@ -71,7 +71,4 @@ public sealed class DiffConnector : Control
         var offset = pane.TextView.VerticalOffset;
         return (pane.Top(span.Start) - offset + origin, pane.Top(span.Start + span.Count) - offset + origin);
     }
-
-    private IBrush Brush(string key) =>
-        this.TryFindResource(key, ActualThemeVariant, out var value) && value is IBrush brush ? brush : Brushes.Transparent;
 }

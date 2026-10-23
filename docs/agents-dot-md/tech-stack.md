@@ -49,7 +49,7 @@ For UI changes, check a snapshot. On GNOME Wayland `grim` doesn't work, so use t
 make snapshot SELECT=3 COMPARE=6 THEME=Light SHOT=.demo/light.png
 ```
 
-This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and three seconds after loading the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). More `GITGRAPH_SNAPSHOT_*` variables (listed at the top of that file) pick a changed file, a details tab, the panel and sidebar layout, or render the full diff, file history, keyboard shortcuts or About window instead.
+This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and once what is on screen has loaded (it waits for the loads, not for a set time) the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). More `GITGRAPH_SNAPSHOT_*` variables (listed at the top of that file) pick a changed file, a details tab, the panel and sidebar layout, or render the full diff, file history, keyboard shortcuts or About window instead.
 
 Behaviour that a picture can't show (no flicker, a refresh that skips work, timings) is checked by temporarily adding code to the snapshot hook that drives the view models and prints what it measured, then removing it. Measure each stage with a Stopwatch before optimizing.
 

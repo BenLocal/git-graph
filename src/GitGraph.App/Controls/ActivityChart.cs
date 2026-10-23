@@ -74,9 +74,6 @@ public sealed class ActivityChart : Control
         return 10 * p;
     }
 
-    private IBrush Resource(string key) =>
-        this.TryFindResource(key, ActualThemeVariant, out var v) && v is IBrush b ? b : Brushes.Gray;
-
     public override void Render(DrawingContext ctx)
     {
         var values = Values;
@@ -85,8 +82,8 @@ public sealed class ActivityChart : Control
         if (width <= 0 || height <= 4) return;
         ctx.FillRectangle(Background ?? Brushes.Transparent, new Rect(Bounds.Size));
 
-        var rule = Resource("RuleBrush");
-        var muted = Resource("MutedBrush");
+        var rule = this.Brush("RuleBrush", Brushes.Gray);
+        var muted = this.Brush("MutedBrush", Brushes.Gray);
         var typeface = new Typeface(FontFamily.Default);
         if (ShowGrid)
         {
@@ -101,7 +98,7 @@ public sealed class ActivityChart : Control
             }
         }
 
-        var color = (Stroke as ISolidColorBrush)?.Color ?? ((Resource("SignalBrush") as ISolidColorBrush)?.Color ?? Colors.Orange);
+        var color = (Stroke as ISolidColorBrush)?.Color ?? ((this.Brush("SignalBrush", Brushes.Gray) as ISolidColorBrush)?.Color ?? Colors.Orange);
         var rest = new SolidColorBrush(color, _hover >= 0 ? 0.55 : 0.85);
         var hot = new SolidColorBrush(color);
         var barWidth = Math.Max(1, slot * (slot > 6 ? 0.68 : 0.8));

@@ -67,17 +67,3 @@ internal sealed class TempRepo : IDisposable
         try { Directory.Delete(Path, true); } catch { /* best effort */ }
     }
 }
-
-internal static class Wait
-{
-    /// <summary>View models load in the background; wait for the state a test expects (or fail after a while).</summary>
-    public static async Task Until(Func<bool> condition, string what)
-    {
-        for (var i = 0; i < 200; i++)
-        {
-            if (condition()) return;
-            await Task.Delay(25);
-        }
-        Assert.Fail($"Timed out waiting for {what}.");
-    }
-}

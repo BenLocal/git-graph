@@ -132,8 +132,8 @@ public sealed partial class FullDiffViewModel : ObservableObject
         }
     }
 
-    [ObservableProperty]
-    private bool _isCopied;
+    /// <summary>The copy button's check mark.</summary>
+    public CopyNote Copied { get; } = new();
 
     [RelayCommand]
     private Task CopyPath() => CopyAsync(Path);
@@ -144,10 +144,7 @@ public sealed partial class FullDiffViewModel : ObservableObject
     private async Task CopyAsync(string text)
     {
         await _dialogs.CopyTextAsync(text);
-        // The copy button shows a check mark for a moment.
-        IsCopied = true;
-        await Task.Delay(1400);
-        IsCopied = false;
+        Copied.Show();
     }
 
     [RelayCommand]

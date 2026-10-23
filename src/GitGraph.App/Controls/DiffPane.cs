@@ -63,17 +63,11 @@ public sealed class DiffPane
     public double Top(int line) =>
         line < _editor.Document.LineCount ? TextView.GetVisualTopByDocumentLine(line + 1) : TextView.DocumentHeight;
 
-    internal IBrush Brush(string key) =>
-        _editor.TryFindResource(key, _editor.ActualThemeVariant, out var value) && value is IBrush brush ? brush : Brushes.Transparent;
+    internal IBrush Brush(string key) => _editor.Brush(key);
 
     private void ApplyTheme()
     {
-        // The app's canvas and line-number colours, and the code viewer's selection, on which text keeps its colours.
-        _editor.Background = Brush("CanvasBrush");
-        _editor.LineNumbersForeground = Brush("MutedBrush");
-        _editor.TextArea.SelectionBrush = Brush("EditorSelectionBrush");
-        _editor.TextArea.SelectionForeground = null;
-        _editor.TextArea.SelectionBorder = null;
+        ResourceBrushes.ApplyEditorTheme(_editor);
         TextView.Redraw();
     }
 

@@ -80,6 +80,9 @@ public partial class RepoTabViewModel : TabViewModel
     public IAppHost Host { get; }
     public DetailsViewModel Details { get; }
 
+    /// <summary>The graph's loads and refreshes, and the contributors view's; the details pane has its own.</summary>
+    public PendingLoads Loads { get; } = new();
+
     /// <summary>Who contributed, shown in place of the graph while <see cref="ShowStats"/> is on.</summary>
     public RepoStatsViewModel Stats { get; }
 
@@ -90,7 +93,7 @@ public partial class RepoTabViewModel : TabViewModel
 
     partial void OnShowStatsChanged(bool value)
     {
-        if (value) _ = Stats.EnsureLoadedAsync(_headBranch);
+        if (value) _ = Loads.Track(Stats.EnsureLoadedAsync(_headBranch));
     }
 
     [RelayCommand]
@@ -173,7 +176,7 @@ public partial class RepoTabViewModel : TabViewModel
             return;
         }
         _loaded = true;
-        _ = InitAsync();
+        _ = Loads.Track(InitAsync());
     }
 
     // Changes noticed while the tab wasn't on screen; it refreshes when shown.
@@ -238,7 +241,9 @@ public partial class RepoTabViewModel : TabViewModel
     // ---- Loading -----------------------------------------------------------------------------
 
     [RelayCommand]
-    public async Task RefreshAsync()
+    public Task RefreshAsync() => Loads.Track(LoadRowsAsync());
+
+    private async Task LoadRowsAsync()
     {
         _loadCts?.Cancel();
         var cts = _loadCts = new CancellationTokenSource();
@@ -268,7 +273,7 @@ public partial class RepoTabViewModel : TabViewModel
             {
                 _statsHead = head.Hash;
                 Stats.Invalidate();
-                if (ShowStats) _ = Stats.EnsureLoadedAsync(head.Branch);
+                if (ShowStats) _ = Loads.Track(Stats.EnsureLoadedAsync(head.Branch));
             }
             _workspace.UpdateSync(Path, Sync);
             BranchLabel = head.Branch ?? (head.Hash is { } h ? $"detached at {h[..7]}" : "no commits yet");

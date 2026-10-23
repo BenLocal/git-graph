@@ -65,7 +65,7 @@ public partial class DetailsViewModel
     {
         OnPropertyChanged(nameof(CanOpenSelected));
         if (value is null) return;
-        _ = LoadDiffAsync(value);
+        _ = Loads.Track(LoadDiffAsync(value));
     }
 
     private async Task LoadDiffAsync(FileChangeViewModel fileVm)
@@ -96,7 +96,7 @@ public partial class DetailsViewModel
             SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
             DiffMessage = null;
             HasDiff = true;
-            _ = ColourAsync(target, file, loaded, cts.Token);
+            _ = Loads.Track(ColourAsync(target, file, loaded, cts.Token));
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is GitException or IOException)

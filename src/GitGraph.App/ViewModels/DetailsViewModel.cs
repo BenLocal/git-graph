@@ -126,7 +126,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     {
         _shown = null;
         OnPropertyChanged(nameof(WrapLines));
-        if (SelectedFile is { } file) _ = LoadDiffAsync(file);
+        if (SelectedFile is { } file) _ = Loads.Track(LoadDiffAsync(file));
     }
 
     /// <summary>The selected file exists in the working tree, so it can open in an editor.</summary>
@@ -201,7 +201,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         CommitterText = null;
         ParentsText = null;
         RangeText = null;
-        _ = LoadAsync(GitRepository.TargetForCommit(c), async ct =>
+        _ = Loads.Track(LoadAsync(GitRepository.TargetForCommit(c), async ct =>
         {
             var d = await _repo.GetCommitDetailAsync(c.Hash, ct);
             // A newer selection may have replaced this one while git was running.
@@ -224,7 +224,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
                 1 => $"Parent {d.Parents[0][..7]}",
                 _ => $"Merge of {string.Join(" and ", d.Parents.Select(p => p[..7]))}. Changes shown against the first parent.",
             };
-        });
+        }));
     }
 
     public void ShowStash(StashEntry stash)
@@ -245,7 +245,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         ParentsText = $"{stash.Name}, made on {stash.BaseHash[..7]}. Changes shown against that commit"
             + (stash.HasUntracked ? ", with the untracked files it saved." : ".");
         RangeText = null;
-        _ = LoadAsync(new DiffTarget(stash.BaseHash, stash.Hash), null, stash);
+        _ = Loads.Track(LoadAsync(new DiffTarget(stash.BaseHash, stash.Hash), null, stash));
     }
 
     /// <param name="untracked">Untracked files a refresh just found, so they aren't looked for again.</param>
@@ -267,7 +267,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         RangeText = null;
         _headRev = from;
         IsStaging = true;
-        _ = LoadWorkingAsync(untracked);
+        _ = Loads.Track(LoadWorkingAsync(untracked));
     }
 
     public void ShowCompare(CommitInfo older, CommitInfo? newer)
@@ -288,7 +288,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         RangeText = newer is null
             ? $"From \"{older.Subject}\" to uncommitted changes"
             : $"From \"{older.Subject}\" to \"{newer.Subject}\"";
-        _ = LoadAsync(new DiffTarget(older.Hash, newer?.Hash), null);
+        _ = Loads.Track(LoadAsync(new DiffTarget(older.Hash, newer?.Hash), null));
     }
 
     /// <param name="stash">Adds the untracked files a stash saved, which aren't in the stash commit itself.</param>
@@ -313,7 +313,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             var signature = $"{target}\n{string.Join('\n', changes)}\n{string.Join('\n', untracked)}";
             if (signature == _listSignature && Files.Count > 0)
             {
-                if (SelectedFile is { } current) _ = LoadDiffAsync(current);
+                if (SelectedFile is { } current) _ = Loads.Track(LoadDiffAsync(current));
                 return;
             }
             _listSignature = signature;
@@ -361,7 +361,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
                 .Select((list, i) => string.Join('\n', list.Select(c => $"{i}|{c}"))));
             if (signature == _workingSignature && Files.Count > 0)
             {
-                if (SelectedFile is { } current) _ = LoadDiffAsync(current);
+                if (SelectedFile is { } current) _ = Loads.Track(LoadDiffAsync(current));
                 return;
             }
             _workingSignature = signature;
@@ -428,13 +428,10 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     // ---- Copying -----------------------------------------------------------------------------
 
     /// <summary>Confirms a copy in a small note that fades out on its own.</summary>
-    [ObservableProperty]
-    private string? _copiedNote;
+    public CopyNote CopyNote { get; } = new();
 
-    [ObservableProperty]
-    private bool _isCopiedNoteVisible;
-
-    private int _copyCount;
+    /// <summary>The file list, diff and colours being loaded for what is selected.</summary>
+    public PendingLoads Loads { get; } = new();
 
     [RelayCommand]
     private Task CopyPath(FileChangeViewModel? file) =>
@@ -459,11 +456,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     {
         if (string.IsNullOrEmpty(text)) return;
         await _host.Dialogs.CopyTextAsync(text);
-        CopiedNote = note;
-        IsCopiedNoteVisible = true;
-        var count = ++_copyCount;
-        await Task.Delay(1600);
-        if (count == _copyCount) IsCopiedNoteVisible = false;
+        CopyNote.Show(note);
     }
 
     private static string RangeLabel(DiffTarget t)

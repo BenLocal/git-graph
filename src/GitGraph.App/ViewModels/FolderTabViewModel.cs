@@ -78,7 +78,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
         _loaded = true;
         Root.IsExpanded = true;
         RestoreState();
-        _ = LoadStatusAsync();
+        _ = Loads.Track(LoadStatusAsync());
     }
 
     // ---- Git state of files, for colouring the tree as VS Code's explorer does
@@ -219,7 +219,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
             _state.Selected = value.RelativePath;
             _host.SaveState();
         }
-        if (!value.IsDirectory) _ = LoadFileAsync(value);
+        if (!value.IsDirectory) _ = Loads.Track(LoadFileAsync(value));
     }
 
     private async Task LoadFileAsync(FileNodeViewModel node)
@@ -307,8 +307,8 @@ public sealed partial class FolderTabViewModel : TabViewModel
     private void RefreshTree()
     {
         Root.Reload();
-        _ = LoadStatusAsync();
-        if (SelectedNode is { IsDirectory: false } file) _ = LoadFileAsync(file);
+        _ = Loads.Track(LoadStatusAsync());
+        if (SelectedNode is { IsDirectory: false } file) _ = Loads.Track(LoadFileAsync(file));
     }
 
     public override void OnActivated() => RefreshTree();
@@ -351,23 +351,17 @@ public sealed partial class FolderTabViewModel : TabViewModel
     [RelayCommand]
     private Task CopyContents() => CopyAsync(FileText, "Contents copied");
 
-    [ObservableProperty]
-    private string? _copiedNote;
+    /// <summary>Confirms a copy in a small note that fades out on its own.</summary>
+    public CopyNote CopyNote { get; } = new();
 
-    [ObservableProperty]
-    private bool _isCopiedNoteVisible;
-
-    private int _copyCount;
+    /// <summary>The git status and the open file being loaded.</summary>
+    public PendingLoads Loads { get; } = new();
 
     private async Task CopyAsync(string? text, string note)
     {
         if (string.IsNullOrEmpty(text)) return;
         await _host.Dialogs.CopyTextAsync(text);
-        CopiedNote = note;
-        IsCopiedNoteVisible = true;
-        var count = ++_copyCount;
-        await Task.Delay(1600);
-        if (count == _copyCount) IsCopiedNoteVisible = false;
+        CopyNote.Show(note);
     }
 
     public override void Dispose() => _fileCts?.Cancel();

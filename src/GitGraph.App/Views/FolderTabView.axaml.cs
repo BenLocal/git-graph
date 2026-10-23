@@ -52,24 +52,44 @@ public partial class FolderTabView : UserControl
         if (_vm != null) Columns.ColumnDefinitions[0].Width = new Avalonia.Controls.GridLength(_vm.TreeWidth);
         // The tree resets each new row's selection (and the binding copies that back), and its SelectedItem
         // doesn't reach nested rows; so once the rows exist, select the remembered file's row directly.
-        if (_vm?.SelectedNode is { } node)
-            Avalonia.Threading.DispatcherTimer.RunOnce(() =>
-            {
-                if (_vm?.SelectedNode != node || Tree.TreeContainerFromItem(node) is not TreeViewItem row) return;
-                row.IsSelected = true;
-                CenterInTree(row);
-                // On a slow first layout the tree may not know its full height yet; center again once it does.
-                Avalonia.Threading.DispatcherTimer.RunOnce(() => CenterInTree(row), TimeSpan.FromMilliseconds(400));
-            }, TimeSpan.FromMilliseconds(150));
+        Tree.LayoutUpdated -= RestoreSelection;
+        _restoring = _vm?.SelectedNode;
+        _restoredY = null;
+        if (_restoring != null) Tree.LayoutUpdated += RestoreSelection;
+    }
+
+    // The remembered file being selected, and where its row was last scrolled to; the restore is done once a layout
+    // pass leaves the row there, or as soon as another file is picked.
+    private FileNodeViewModel? _restoring;
+    private double? _restoredY;
+
+    /// <summary>
+    /// After each layout pass until the tree settles: selects the remembered file's row once it exists, and scrolls it
+    /// to the middle (the tree may not know its full height on the first passes, so the middle moves until then).
+    /// </summary>
+    private void RestoreSelection(object? sender, EventArgs e)
+    {
+        if (_restoring is not { } node || _vm?.SelectedNode != node)
+        {
+            Tree.LayoutUpdated -= RestoreSelection;
+            return;
+        }
+        if (Tree.TreeContainerFromItem(node) is not TreeViewItem row) return;
+        row.IsSelected = true;
+        var y = CenterInTree(row);
+        if (y is null || y == _restoredY) Tree.LayoutUpdated -= RestoreSelection;
+        _restoredY = y;
     }
 
     /// <summary>Scrolls a restored selection to the middle of the tree rather than just inside its edge.</summary>
-    private void CenterInTree(TreeViewItem row)
+    /// <returns>The offset scrolled to, or null when the row can't be placed.</returns>
+    private double? CenterInTree(TreeViewItem row)
     {
-        if (Tree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is not { Content: Visual content } sv) return;
-        if (row.TranslatePoint(new Point(0, 0), content) is not { } at) return;
-        var target = at.Y - (sv.Viewport.Height - row.Bounds.Height) / 2;
-        sv.Offset = sv.Offset.WithY(Math.Clamp(target, 0, Math.Max(0, sv.Extent.Height - sv.Viewport.Height)));
+        if (Tree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is not { Content: Visual content } sv) return null;
+        if (row.TranslatePoint(new Point(0, 0), content) is not { } at) return null;
+        var target = Math.Clamp(at.Y - (sv.Viewport.Height - row.Bounds.Height) / 2, 0, Math.Max(0, sv.Extent.Height - sv.Viewport.Height));
+        sv.Offset = sv.Offset.WithY(target);
+        return target;
     }
 
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
@@ -95,15 +115,6 @@ public partial class FolderTabView : UserControl
         if (variant == _appliedTheme) return;
         _appliedTheme = variant;
         _textMate.SetTheme(_grammars.LoadTheme(variant == ThemeVariant.Light ? ThemeName.LightPlus : ThemeName.DarkPlus));
-        // Keep the app's own canvas and line-number colours rather than the TextMate theme's.
-        if (this.TryFindResource("CanvasBrush", variant, out var bg) && bg is IBrush canvas) Editor.Background = canvas;
-        if (this.TryFindResource("MutedBrush", variant, out var fg) && fg is IBrush muted) Editor.LineNumbersForeground = muted;
-        // Otherwise the selection takes the app's amber accent, and selected text can't be read on it.
-        if (this.TryFindResource("EditorSelectionBrush", variant, out var sel) && sel is IBrush selection)
-        {
-            Editor.TextArea.SelectionBrush = selection;
-            Editor.TextArea.SelectionForeground = null;
-            Editor.TextArea.SelectionBorder = null;
-        }
+        ResourceBrushes.ApplyEditorTheme(Editor);
     }
 }

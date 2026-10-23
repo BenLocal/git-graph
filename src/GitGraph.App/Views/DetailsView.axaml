@@ -319,11 +319,11 @@
     </Panel>
 
     <!-- Confirms a copy, then fades out. -->
-    <Border Classes="toast" Classes.show="{Binding IsCopiedNoteVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+    <Border Classes="toast" Classes.show="{Binding CopyNote.IsVisible}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
             Margin="0,0,16,16" IsHitTestVisible="False">
       <StackPanel Orientation="Horizontal" Spacing="6">
         <LucideIcon Kind="Check" Size="13" VerticalAlignment="Center" Foreground="{DynamicResource AddFgBrush}" />
-        <TextBlock Classes="small" Text="{Binding CopiedNote}" VerticalAlignment="Center" />
+        <TextBlock Classes="small" Text="{Binding CopyNote.Text}" VerticalAlignment="Center" />
       </StackPanel>
     </Border>
 

@@ -24,6 +24,9 @@ public sealed class DetailsViewModelTests : IDisposable
 
     public void Dispose() => _repo.Dispose();
 
+    // The loads the last action started, with a limit so a stuck one fails the test instead of hanging it.
+    private Task Settled() => _vm.Loads.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
     private static string[] Paths(DetailsViewModel vm, FileGroup group) =>
         vm.Files.Where(f => f.Group == group).Select(f => f.Change.Path).Order().ToArray();
 
@@ -36,7 +39,7 @@ public sealed class DetailsViewModelTests : IDisposable
         _repo.Write("new.txt", "new\n");
 
         _vm.ShowUncommitted("HEAD");
-        await Wait.Until(() => _vm.Groups.Count == 2, "the staged and unstaged groups");
+        await Settled();
         Assert.Equal(["Staged changes", "Changes"], _vm.Groups.Select(g => g.Title));
         Assert.Equal(["a.txt"], Paths(_vm, FileGroup.Staged));
         Assert.Equal(["b.txt", "new.txt"], Paths(_vm, FileGroup.Unstaged));
@@ -46,7 +49,7 @@ public sealed class DetailsViewModelTests : IDisposable
         var rebuilt = 0;
         _vm.Files.CollectionChanged += (_, _) => rebuilt++;
         _vm.ShowUncommitted("HEAD");
-        await Task.Delay(500);
+        await Settled();
         Assert.Equal(0, rebuilt);
     }
 
@@ -57,7 +60,7 @@ public sealed class DetailsViewModelTests : IDisposable
         _repo.Write("y.txt", "y\n");
         _repo.Write("b.txt", "bee, changed\n");
         _vm.ShowUncommitted("HEAD");
-        await Wait.Until(() => _vm.Files.Count == 3, "three changed files");
+        await Settled();
 
         FileChangeViewModel File(string path) => _vm.Files.Single(f => f.Change.Path == path);
         _vm.SelectWorkingFile(File("x.txt"), toggle: false, range: false);
@@ -65,7 +68,7 @@ public sealed class DetailsViewModelTests : IDisposable
         Assert.Equal(["x.txt", "y.txt"], _vm.Files.Where(f => f.IsSelected).Select(f => f.Change.Path).Order());
 
         await _vm.StageCommand.ExecuteAsync(File("x.txt"));
-        await Wait.Until(() => Paths(_vm, FileGroup.Staged).Length == 2, "both selected files staged");
+        await Settled();
         Assert.Equal(["x.txt", "y.txt"], Paths(_vm, FileGroup.Staged));
         Assert.Equal(["b.txt"], Paths(_vm, FileGroup.Unstaged));
         // The diff stays on the file last picked, now in its staged group.
@@ -77,12 +80,12 @@ public sealed class DetailsViewModelTests : IDisposable
     {
         _repo.Write("a.txt", "one\n  two\nthree\n");
         _vm.ShowUncommitted("HEAD");
-        await Wait.Until(() => _vm.DiffLines.Any(l => l.IsHunk), "the diff of a.txt");
+        await Settled();
         Assert.NotNull(_vm.DiffLines.First(l => l.IsHunk).Hunk);
 
         _host.IgnoreWhitespace = true;
         _vm.DiffOptionsChanged();
-        await Wait.Until(() => _vm.DiffLines.Any(l => l.IsHunk) && _vm.DiffLines.First(l => l.IsHunk).Hunk is null, "a diff without hunk buttons");
+        await Settled();
         // Only "three" was added; the re-indented line counts as unchanged.
         Assert.Single(_vm.DiffLines, l => l.IsAdded);
     }
@@ -93,7 +96,7 @@ public sealed class DetailsViewModelTests : IDisposable
         _repo.Write("b.txt", "bee, changed\n");
         _repo.Write("new.txt", "new\n");
         _vm.ShowUncommitted("HEAD");
-        await Wait.Until(() => _vm.Files.Count == 2, "two changed files");
+        await Settled();
 
         _vm.CommitMessage = "Everything at once";
         await _vm.CommitCommand.ExecuteAsync(null);

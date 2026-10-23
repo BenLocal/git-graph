@@ -23,6 +23,9 @@ public sealed partial class FileHistoryViewModel : ObservableObject
     private bool _blameLoaded;
     private CancellationTokenSource? _diffCts;
 
+    /// <summary>The history, diff and blame being loaded.</summary>
+    public PendingLoads Loads { get; } = new();
+
     /// <param name="path">Relative to the repository's top level.</param>
     /// <param name="rev">The commit to start from and to blame; null for the working tree.</param>
     public FileHistoryViewModel(GitRepository repo, string path, string? rev, IDialogService dialogs, bool blame)
@@ -33,8 +36,8 @@ public sealed partial class FileHistoryViewModel : ObservableObject
         Path = path;
         RevText = rev is null ? "Working tree" : $"At {rev[..Math.Min(7, rev.Length)]}";
         _selectedTabIndex = blame ? 1 : 0;
-        _ = LoadHistoryAsync();
-        if (blame) _ = LoadBlameAsync();
+        _ = Loads.Track(LoadHistoryAsync());
+        if (blame) _ = Loads.Track(LoadBlameAsync());
     }
 
     public string Path { get; }
@@ -46,7 +49,7 @@ public sealed partial class FileHistoryViewModel : ObservableObject
 
     partial void OnSelectedTabIndexChanged(int value)
     {
-        if (value == 1) _ = LoadBlameAsync();
+        if (value == 1) _ = Loads.Track(LoadBlameAsync());
     }
 
     // ---- History ---------------------------------------------------------------------------
@@ -101,7 +104,7 @@ public sealed partial class FileHistoryViewModel : ObservableObject
 
     partial void OnSelectedEntryChanged(FileHistoryRowViewModel? value)
     {
-        if (value != null) _ = LoadDiffAsync(value);
+        if (value != null) _ = Loads.Track(LoadDiffAsync(value));
     }
 
     private async Task LoadDiffAsync(FileHistoryRowViewModel row)

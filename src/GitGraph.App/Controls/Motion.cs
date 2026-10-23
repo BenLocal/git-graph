@@ -7,11 +7,12 @@ namespace GitGraph.App.Controls;
 
 /// <summary>
 /// Short, cheap animations that answer a user action. Set GITGRAPH_REDUCED_MOTION=1 to turn them off;
-/// Avalonia doesn't expose the desktop's reduced-motion setting.
+/// Avalonia doesn't expose the desktop's reduced-motion setting. Snapshots have none, so they never catch a frame mid-fade.
 /// </summary>
 public static class Motion
 {
-    public static bool Enabled { get; } = Environment.GetEnvironmentVariable("GITGRAPH_REDUCED_MOTION") != "1";
+    public static bool Enabled { get; } = Environment.GetEnvironmentVariable("GITGRAPH_REDUCED_MOTION") != "1"
+                                          && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITGRAPH_SNAPSHOT"));
 
     private static readonly Animation FadeAnimation = new()
     {

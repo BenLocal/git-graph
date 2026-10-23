@@ -19,8 +19,8 @@
         <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*">
           <Button Classes="ghost" Padding="4" Margin="-8,0,4,0" Command="{Binding CopyPathCommand}" ToolTip.Tip="Copy path">
             <Panel>
-              <LucideIcon Kind="Copy" Size="14" IsVisible="{Binding !IsCopied}" />
-              <LucideIcon Kind="Check" Size="14" IsVisible="{Binding IsCopied}" Foreground="{DynamicResource AddFgBrush}" />
+              <LucideIcon Kind="Copy" Size="14" IsVisible="{Binding !Copied.IsVisible}" />
+              <LucideIcon Kind="Check" Size="14" IsVisible="{Binding Copied.IsVisible}" Foreground="{DynamicResource AddFgBrush}" />
             </Panel>
           </Button>
           <TextBlock Grid.Column="1" Classes="title mono" Text="{Binding Path}" VerticalAlignment="Center" Background="Transparent"

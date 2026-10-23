@@ -85,6 +85,9 @@ public static partial class AvatarService
     [GeneratedRegex(@"^([^@+]+)@users\.noreply\.github\.com$", RegexOptions.IgnoreCase)]
     private static partial Regex GitHubUserNoReply();
 
+    /// <summary>Waits for every avatar asked for so far (for the snapshot hook).</summary>
+    public static Task WhenLoadedAsync() => Task.WhenAll(Loaded.Values);
+
     public static Task<Bitmap?> GetAsync(string email)
     {
         if (!UseImages) return Task.FromResult<Bitmap?>(null);
