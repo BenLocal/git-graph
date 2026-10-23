@@ -113,7 +113,8 @@ public partial class MainWindow
         if (typing) return;
 
         var single = svc.Commands.FirstOrDefault(c => svc.Parts(c.Id) is { Count: 1 } p && p[0].Matches(e));
-        if (single != null)
+        // Commands of other windows (the diff window's) don't take the key here.
+        if (single != null && _actions?.ContainsKey(single.Id) == true)
         {
             RunShortcut(single.Id);
             e.Handled = true;

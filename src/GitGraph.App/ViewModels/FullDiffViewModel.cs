@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitGraph.App.Services;
@@ -8,13 +7,16 @@ using GitGraph.Core.Git;
 namespace GitGraph.App.ViewModels;
 
 /// <summary>
-/// A file's diff shown side by side in its own window: the whole file, with long unchanged
-/// stretches folded into rows the user can open and close.
+/// A file's diff in its own window, as in Beyond Compare or Meld: each side shows its whole file, and the changes are
+/// joined across the middle. Long unchanged stretches fold; the keyboard moves from one change to the next.
 /// </summary>
 public sealed partial class FullDiffViewModel : ObservableObject
 {
     private readonly Services.IDialogService _dialogs;
     private readonly string _fullPath;
+    private readonly IReadOnlyList<SplitDiffRow> _rows;
+    // The row of each line of each side, to find a line's counterpart.
+    private readonly int[] _oldRow, _newRow;
 
     public FullDiffViewModel(FileChange file, string range, FileDiff diff, DiffSyntax syntax, string? message, Services.IDialogService dialogs, string fullPath)
     {
@@ -26,21 +28,29 @@ public sealed partial class FullDiffViewModel : ObservableObject
         AddText = diff.Additions > 0 ? $"+{diff.Additions}" : null;
         DelText = diff.Deletions > 0 ? $"−{diff.Deletions}" : null;
         Message = message;
-        foreach (var (start, count, foldable) in TextDiff.Sections(diff.AllRows))
-        {
-            var rows = diff.AllRows.Skip(start).Take(count).Select(r => new SplitRowViewModel(r, syntax)).ToList();
-            if (foldable)
-            {
-                var fold = new FoldViewModel(rows);
-                _folds.Add(fold);
-                Items.Add(fold);
-            }
-            else
-                foreach (var r in rows) Items.Add(r);
-        }
-    }
+        Syntax = syntax;
 
-    private readonly List<FoldViewModel> _folds = [];
+        _rows = diff.AllRows;
+        var oldLines = new List<DiffLine>();
+        var newLines = new List<DiffLine>();
+        var oldRow = new List<int>();
+        var newRow = new List<int>();
+        for (var i = 0; i < _rows.Count; i++)
+        {
+            if (_rows[i].Left is { } left) { oldLines.Add(left); oldRow.Add(i); }
+            if (_rows[i].Right is { } right) { newLines.Add(right); newRow.Add(i); }
+        }
+        OldLines = oldLines;
+        NewLines = newLines;
+        _oldRow = [.. oldRow];
+        _newRow = [.. newRow];
+        Blocks = TextDiff.Blocks(_rows);
+        Changes = Blocks.Where(b => b.Changed).ToList();
+        // Foldable stretches are unchanged, so both sides have the same lines there.
+        Folds = TextDiff.Sections(_rows).Where(s => s.Foldable)
+            .Select(s => new FoldViewModel(_rows[s.Start].Left!.OldLine!.Value - 1, _rows[s.Start].Right!.NewLine!.Value - 1, s.Count))
+            .ToList();
+    }
 
     public string Path { get; }
     public string? OldPath { get; }
@@ -50,10 +60,77 @@ public sealed partial class FullDiffViewModel : ObservableObject
     public string? DelText { get; }
     public string? Message { get; }
     public bool HasMessage => Message != null;
-    public bool HasFolds => _folds.Count > 0;
 
-    /// <summary>Diff rows and fold rows in display order; opening a fold inserts its rows after it.</summary>
-    public ObservableCollection<object> Items { get; } = [];
+    public DiffSyntax Syntax { get; }
+    /// <summary>Each side's file, line by line (tabs expanded).</summary>
+    public IReadOnlyList<DiffLine> OldLines { get; }
+    public IReadOnlyList<DiffLine> NewLines { get; }
+    public IReadOnlyList<DiffBlock> Blocks { get; }
+    public IReadOnlyList<DiffBlock> Changes { get; }
+    public IReadOnlyList<FoldViewModel> Folds { get; }
+    public bool HasFolds => Folds.Count > 0;
+    public bool HasChanges => Changes.Count > 0;
+
+    /// <summary>The change being looked at, an index into <see cref="Changes"/>; -1 before the first.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ChangePosition))]
+    private int _currentChange = -1;
+
+    public string ChangePosition => Changes.Count == 0 ? "No changes"
+        : CurrentChange < 0 ? $"{Changes.Count} changes"
+        : $"{CurrentChange + 1} of {Changes.Count}";
+
+    /// <summary>Asks the view to scroll a change into view and put the caret on it.</summary>
+    public event Action<DiffBlock>? RevealRequested;
+
+    [RelayCommand]
+    private void NextChange() => GoToChange(CurrentChange + 1);
+
+    [RelayCommand]
+    private void PreviousChange() => GoToChange(CurrentChange < 0 ? -1 : CurrentChange - 1);
+
+    /// <summary>Moves to a change; past either end it wraps around, as in VS Code.</summary>
+    public void GoToChange(int index)
+    {
+        if (Changes.Count == 0) return;
+        CurrentChange = (index % Changes.Count + Changes.Count) % Changes.Count;
+        RevealRequested?.Invoke(Changes[CurrentChange]);
+    }
+
+    // The caret's line and its counterpart on the other side, one above the other (Beyond Compare's line details).
+    [ObservableProperty]
+    private DiffLine? _detailOld;
+
+    [ObservableProperty]
+    private DiffLine? _detailNew;
+
+    public string DetailOldNo => DetailOld?.OldLine?.ToString() ?? "";
+    public string DetailNewNo => DetailNew?.NewLine?.ToString() ?? "";
+    public SyntaxSpan[]? DetailOldSyntax => DetailOld?.OldLine is { } n ? Syntax.Line(true, n) : null;
+    public SyntaxSpan[]? DetailNewSyntax => DetailNew?.NewLine is { } n ? Syntax.Line(false, n) : null;
+    public bool IsDetailDeleted => DetailOld?.Kind == DiffLineKind.Deleted;
+    public bool IsDetailAdded => DetailNew?.Kind == DiffLineKind.Added;
+
+    /// <summary>The caret moved to <paramref name="line"/> (0-based) of one side.</summary>
+    public void SetCaret(bool old, int line)
+    {
+        var rows = old ? _oldRow : _newRow;
+        if (line < 0 || line >= rows.Length) return;
+        var row = _rows[rows[line]];
+        DetailOld = row.Left;
+        DetailNew = row.Right;
+        OnPropertyChanged(nameof(DetailOldNo));
+        OnPropertyChanged(nameof(DetailNewNo));
+        OnPropertyChanged(nameof(DetailOldSyntax));
+        OnPropertyChanged(nameof(DetailNewSyntax));
+        OnPropertyChanged(nameof(IsDetailDeleted));
+        OnPropertyChanged(nameof(IsDetailAdded));
+        for (var i = 0; i < Changes.Count; i++)
+        {
+            var (start, count) = old ? (Changes[i].OldStart, Changes[i].OldCount) : (Changes[i].NewStart, Changes[i].NewCount);
+            if (line >= start && line < start + count) CurrentChange = i;
+        }
+    }
 
     [ObservableProperty]
     private bool _isCopied;
@@ -74,42 +151,26 @@ public sealed partial class FullDiffViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void ToggleFold(FoldViewModel fold) => SetExpanded(fold, !fold.IsExpanded);
-
-    [RelayCommand]
     private void ExpandAll()
     {
-        foreach (var f in _folds) SetExpanded(f, true);
+        foreach (var f in Folds) f.IsExpanded = true;
     }
 
     [RelayCommand]
     private void CollapseAll()
     {
-        foreach (var f in _folds) SetExpanded(f, false);
-    }
-
-    private void SetExpanded(FoldViewModel fold, bool expanded)
-    {
-        if (fold.IsExpanded == expanded) return;
-        var index = Items.IndexOf(fold);
-        if (expanded)
-            for (var i = 0; i < fold.Rows.Count; i++) Items.Insert(index + 1 + i, fold.Rows[i]);
-        else
-            for (var i = 0; i < fold.Rows.Count; i++) Items.RemoveAt(index + 1);
-        fold.IsExpanded = expanded;
+        foreach (var f in Folds) f.IsExpanded = false;
     }
 }
 
-/// <summary>A stretch of unchanged lines that can be shown or hidden.</summary>
-public sealed partial class FoldViewModel(IReadOnlyList<SplitRowViewModel> rows) : ObservableObject
+/// <summary>A stretch of unchanged lines that can be shown or hidden, starting at these 0-based lines of each side.</summary>
+public sealed partial class FoldViewModel(int oldStart, int newStart, int count) : ObservableObject
 {
-    public IReadOnlyList<SplitRowViewModel> Rows { get; } = rows;
+    public int OldStart { get; } = oldStart;
+    public int NewStart { get; } = newStart;
+    public int Count { get; } = count;
+    public string Label => $"{Count} unchanged lines";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(Label))]
     private bool _isExpanded;
-
-    public string Label => IsExpanded
-        ? $"Hide {Rows.Count} unchanged lines"
-        : $"{Rows.Count} unchanged lines";
 }

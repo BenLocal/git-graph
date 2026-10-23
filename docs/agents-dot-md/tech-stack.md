@@ -22,7 +22,7 @@ Structure and design trade-offs are in `architecture.md`.
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
 | Fonts | IBM Plex Sans (UI); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
 | Icons | Lucide.Avalonia (`<LucideIcon Kind="GitBranch" Size="14" />`) | 0.2.24 | default size, stroke and colour set by the `LucideIcon` style in `Controls.axaml` |
-| Code viewer | AvaloniaEdit + AvaloniaEdit.TextMate | 12.0.0 | read-only file view in folder tabs; Dark+/Light+ follow the theme. Its TextMateSharp grammars also colour diffs and blame (`Services/SyntaxHighlighter.cs`) |
+| Code viewer | AvaloniaEdit + AvaloniaEdit.TextMate | 12.0.0 | read-only file view in folder tabs and both sides of the full diff window; Dark+/Light+ follow the theme. Its TextMateSharp grammars also colour diffs and blame (`Services/SyntaxHighlighter.cs`) |
 
 ## 3. Conventions
 

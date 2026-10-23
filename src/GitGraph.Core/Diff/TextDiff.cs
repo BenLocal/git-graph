@@ -17,6 +17,12 @@ public sealed record DiffLine(DiffLineKind Kind, int? OldLine, int? NewLine, str
 /// <summary>One row of a side-by-side view. Either side is null where the other side has lines with no counterpart.</summary>
 public sealed record SplitDiffRow(DiffLine? Left, DiffLine? Right, bool IsHunk);
 
+/// <summary>
+/// A run of <see cref="FileDiff.AllRows"/>: unchanged on both sides, or one change with its lines on each side (either
+/// side may have none). Starts are 0-based line indices in that side's file.
+/// </summary>
+public sealed record DiffBlock(bool Changed, int OldStart, int OldCount, int NewStart, int NewCount);
+
 public sealed class FileDiff
 {
     public required IReadOnlyList<DiffLine> Lines { get; init; }
@@ -209,6 +215,25 @@ public static class TextDiff
             start = i;
         }
         return sections;
+    }
+
+    /// <summary>Splits <see cref="FileDiff.AllRows"/> into alternating unchanged and changed blocks.</summary>
+    public static List<DiffBlock> Blocks(IReadOnlyList<SplitDiffRow> rows)
+    {
+        var blocks = new List<DiffBlock>();
+        int oldLine = 0, newLine = 0;
+        foreach (var row in rows)
+        {
+            var changed = row.Left?.Kind != DiffLineKind.Context;
+            int o = row.Left != null ? 1 : 0, n = row.Right != null ? 1 : 0;
+            if (blocks.Count > 0 && blocks[^1].Changed == changed)
+                blocks[^1] = blocks[^1] with { OldCount = blocks[^1].OldCount + o, NewCount = blocks[^1].NewCount + n };
+            else
+                blocks.Add(new DiffBlock(changed, oldLine, o, newLine, n));
+            oldLine += o;
+            newLine += n;
+        }
+        return blocks;
     }
 
     /// <summary>Row ranges [start, end) that contain changes plus their surrounding context, merged when they touch.</summary>

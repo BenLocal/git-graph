@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:GitGraph.App.ViewModels"
         xmlns:ctl="using:GitGraph.App.Controls"
+        xmlns:v="using:GitGraph.App.Views"
+        xmlns:svc="using:GitGraph.App.Services"
         x:Class="GitGraph.App.Views.DiffWindow"
         x:DataType="vm:FullDiffViewModel"
         Title="{Binding Path, StringFormat='{}{0} – Git Graph'}"
@@ -9,7 +11,7 @@
         Width="1280" Height="800" MinWidth="640" MinHeight="400"
         WindowState="Maximized" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource CanvasBrush}">
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
     <!-- File and range -->
     <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
       <Grid ColumnDefinitions="*,Auto">
@@ -39,6 +41,17 @@
                      IsVisible="{Binding HasOldPath}" TextTrimming="LeadingCharacterEllipsis" ToolTip.Tip="{Binding OldPath}" />
         </Grid>
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+          <!-- Step through the changes; the current one is outlined on both sides -->
+          <TextBlock Classes="muted small" Text="{Binding ChangePosition}" VerticalAlignment="Center" Margin="0,0,4,0" />
+          <Button Classes="ghost" Command="{Binding PreviousChangeCommand}" IsEnabled="{Binding HasChanges}"
+                  ToolTip.Tip="{Binding Tips[PreviousChange], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="ArrowUp" Size="14" />
+          </Button>
+          <Button Classes="ghost" Command="{Binding NextChangeCommand}" IsEnabled="{Binding HasChanges}"
+                  ToolTip.Tip="{Binding Tips[NextChange], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="ArrowDown" Size="14" />
+          </Button>
+          <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
           <Button Classes="ghost text" Command="{Binding ExpandAllCommand}" IsVisible="{Binding HasFolds}"
                   ToolTip.Tip="Show every unchanged line">
             <StackPanel Orientation="Horizontal" Spacing="6">
@@ -62,30 +75,31 @@
     </Border>
 
     <!-- Which side is which -->
-    <Grid Grid.Row="1" ColumnDefinitions="*,1,*" Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding !HasMessage}">
-      <TextBlock Classes="section" Text="Before" Margin="58,6" />
-      <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
-      <TextBlock Grid.Column="2" Classes="section" Text="After" Margin="58,6" />
+    <Grid Grid.Row="1" ColumnDefinitions="*,56,*,14" Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding !HasMessage}">
+      <TextBlock Classes="section" Text="Before" Margin="12,6" />
+      <TextBlock Grid.Column="2" Classes="section" Text="After" Margin="12,6" />
     </Grid>
 
     <TextBlock Grid.Row="2" Classes="muted" Text="{Binding Message}" Margin="20" IsVisible="{Binding HasMessage}" />
-    <ListBox Grid.Row="2" Classes="dense plain" ItemsSource="{Binding Items}" IsVisible="{Binding !HasMessage}"
-             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-      <ListBox.DataTemplates>
-        <DataTemplate DataType="vm:SplitRowViewModel">
-          <ContentControl Content="{Binding}" ContentTemplate="{StaticResource SplitRowTemplate}" />
-        </DataTemplate>
-        <!-- A folded stretch of unchanged lines; click to open or close it. -->
-        <DataTemplate DataType="vm:FoldViewModel">
-          <Button Classes="fold" Command="{Binding $parent[Window].((vm:FullDiffViewModel)DataContext).ToggleFoldCommand}"
-                  CommandParameter="{Binding}">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <LucideIcon Kind="ChevronDown" Size="14" Classes="chevron" Classes.flipped="{Binding IsExpanded}" VerticalAlignment="Center" />
-              <TextBlock Classes="small" Text="{Binding Label}" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-        </DataTemplate>
-      </ListBox.DataTemplates>
-    </ListBox>
+    <v:CompareView Grid.Row="2" IsVisible="{Binding !HasMessage}" />
+
+    <!-- The caret's line above its counterpart, with the changed words marked -->
+    <Border Grid.Row="3" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0"
+            Padding="0,4" IsVisible="{Binding !HasMessage}">
+      <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <StackPanel>
+          <Grid Classes="diffline" Classes.del="{Binding IsDetailDeleted}" ColumnDefinitions="64,*">
+            <TextBlock Classes="lineno" Text="{Binding DetailOldNo}" />
+            <ctl:DiffText Grid.Column="1" Line="{Binding DetailOld.Text, FallbackValue={x:Null}}" Segments="{Binding DetailOld.Segments, FallbackValue={x:Null}}"
+                          Syntax="{Binding DetailOldSyntax}" IsAdded="False" Margin="8,0,16,0" />
+          </Grid>
+          <Grid Classes="diffline" Classes.add="{Binding IsDetailAdded}" ColumnDefinitions="64,*">
+            <TextBlock Classes="lineno" Text="{Binding DetailNewNo}" />
+            <ctl:DiffText Grid.Column="1" Line="{Binding DetailNew.Text, FallbackValue={x:Null}}" Segments="{Binding DetailNew.Segments, FallbackValue={x:Null}}"
+                          Syntax="{Binding DetailNewSyntax}" IsAdded="True" Margin="8,0,16,0" />
+          </Grid>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
   </Grid>
 </Window>

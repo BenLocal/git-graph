@@ -198,6 +198,23 @@ public class ParserTests
     }
 
     [Fact]
+    public void Blocks_give_each_change_its_lines_on_both_sides()
+    {
+        // keep | old value → new value + extra | tail | gone (deleted) | end | last (added at the end)
+        var diff = TextDiff.Build("keep\nold value\ntail\ngone\nend\n", "keep\nnew value\nextra\ntail\nend\nlast\n");
+
+        Assert.Equal(
+        [
+            new DiffBlock(false, 0, 1, 0, 1),
+            new DiffBlock(true, 1, 1, 1, 2),
+            new DiffBlock(false, 2, 1, 3, 1),
+            new DiffBlock(true, 3, 1, 4, 0),
+            new DiffBlock(false, 4, 1, 4, 1),
+            new DiffBlock(true, 5, 0, 5, 1),
+        ], TextDiff.Blocks(diff.AllRows));
+    }
+
+    [Fact]
     public void TextDiff_reports_binary_content()
     {
         Assert.True(TextDiff.Build("a\0b", "a").IsBinary);

@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:ctl="using:GitGraph.App.Controls"
+             xmlns:ae="using:AvaloniaEdit"
+             x:Class="GitGraph.App.Views.CompareView"
+             x:DataType="vm:FullDiffViewModel">
+  <!-- Old file | bands joining each change | new file | map of all changes -->
+  <Grid ColumnDefinitions="*,56,*,14">
+    <ae:TextEditor x:Name="OldEditor" IsReadOnly="True" ShowLineNumbers="True"
+                   FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeCode}"
+                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Hidden" Padding="8,0,0,0" />
+    <ctl:DiffConnector x:Name="Connector" Grid.Column="1" />
+    <ae:TextEditor x:Name="NewEditor" Grid.Column="2" IsReadOnly="True" ShowLineNumbers="True"
+                   FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeCode}"
+                   HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8,0,0,0" />
+    <ctl:DiffOverview x:Name="Overview" Grid.Column="3" ToolTip.Tip="All changes in the file; click to go there" />
+  </Grid>
+</UserControl>

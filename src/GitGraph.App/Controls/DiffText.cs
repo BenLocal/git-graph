@@ -10,9 +10,9 @@ namespace GitGraph.App.Controls;
 
 /// <summary>
 /// A diff line's text, coloured by <see cref="Syntax"/>. When the line has word-level segments, the changed
-/// words get a stronger added or deleted background than the line itself.
+/// words get a stronger added or deleted background than the line itself. Its text can be selected and copied.
 /// </summary>
-public sealed class DiffText : TextBlock
+public sealed class DiffText : SelectableTextBlock
 {
     public static readonly StyledProperty<string?> LineProperty =
         AvaloniaProperty.Register<DiffText, string?>(nameof(Line));
@@ -26,10 +26,16 @@ public sealed class DiffText : TextBlock
     public static readonly StyledProperty<SyntaxSpan[]?> SyntaxProperty =
         AvaloniaProperty.Register<DiffText, SyntaxSpan[]?>(nameof(Syntax));
 
-    public DiffText() => ActualThemeVariantChanged += (_, _) => { if (Syntax != null) Rebuild(); };
+    public DiffText()
+    {
+        ActualThemeVariantChanged += (_, _) => { if (Syntax != null) Rebuild(); };
+        // The code viewer's selection colour, and selected text keeps its syntax colours, as in VS Code.
+        Bind(SelectionBrushProperty, this.GetResourceObservable("EditorSelectionBrush"));
+        SelectionForegroundBrush = null;
+    }
 
-    // Styled like any other TextBlock (font, size, line height of diff lines).
-    protected override Type StyleKeyOverride => typeof(TextBlock);
+    // Styled like any other SelectableTextBlock (font, size, line height of diff lines; I-beam and Copy menu).
+    protected override Type StyleKeyOverride => typeof(SelectableTextBlock);
 
     /// <summary>The plain line text, shown when there are no segments. Use this instead of Text.</summary>
     public string? Line

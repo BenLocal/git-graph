@@ -22,6 +22,9 @@ public sealed class DiffSyntax(IReadOnlyDictionary<int, SyntaxSpan[]> oldLines, 
         { Kind: DiffLineKind.Added or DiffLineKind.Context, NewLine: { } n } => newLines.GetValueOrDefault(n),
         _ => null,
     };
+
+    /// <summary>The spans of line <paramref name="number"/> (1-based) of the old or the new file.</summary>
+    public SyntaxSpan[]? Line(bool old, int number) => (old ? oldLines : newLines).GetValueOrDefault(number);
 }
 
 /// <summary>

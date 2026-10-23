@@ -40,6 +40,8 @@ public sealed class ShortcutService
         new("NextTab", "Tabs", "Next tab", "Ctrl+PageDown"),
         new("PreviousTab", "Tabs", "Previous tab", "Ctrl+PageUp"),
         .. Enumerable.Range(1, 9).Select(n => new ShortcutCommand($"Tab{n}", "Tabs", $"Go to tab {n}", $"Alt+D{n}")),
+        new("NextChange", "Diff window", "Next change", "F7"),
+        new("PreviousChange", "Diff window", "Previous change", "Shift+F7"),
         new("AddFolder", "Workspace", "Add folder to workspace", null),
         new("NewWorkspace", "Workspace", "New workspace", null),
         new("KeyboardShortcuts", "App", "Keyboard shortcuts", "Ctrl+K Ctrl+S"),
