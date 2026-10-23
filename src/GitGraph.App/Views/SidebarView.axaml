@@ -78,8 +78,14 @@
       <StackPanel Margin="8,4,8,12" Spacing="2">
 
         <!-- Folders -->
-        <Grid ColumnDefinitions="*,Auto" Margin="6,8,0,2">
-          <TextBlock Classes="section" Text="Folders" VerticalAlignment="Center" />
+        <!-- Each section folds away from its heading -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,2">
+          <Button Classes="ghost sectionhead" Command="{Binding ToggleFoldersSectionCommand}" ToolTip.Tip="Show or hide folders">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <LucideIcon Kind="ChevronDown" Size="13" Classes="chevron" Classes.collapsed="{Binding !ShowFolders}" VerticalAlignment="Center" />
+              <TextBlock Classes="section" Text="Folders" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
           <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding AddFolderCommand}" ToolTip.Tip="Add folder">
             <LucideIcon Kind="FolderPlus" Size="15" />
           </Button>
@@ -89,6 +95,7 @@
           repository below). Worktrees elsewhere are reached from the Repositories section's context menu.
           A single click previews a folder's files in a tab; a double-click keeps the tab.
         -->
+        <StackPanel Spacing="2" IsVisible="{Binding ShowFolders}">
         <ItemsControl ItemsSource="{Binding FolderNodes}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:FolderNodeViewModel">
@@ -109,14 +116,21 @@
         </ItemsControl>
         <TextBlock Classes="muted small" Margin="6,2,6,0" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
                    Text="No folders yet. Add one to find the repositories inside it." />
+        </StackPanel>
 
         <!-- Repositories and their worktrees -->
-        <Grid ColumnDefinitions="*,Auto" Margin="6,16,0,2">
-          <TextBlock Classes="section" Text="Repositories" VerticalAlignment="Center" />
+        <Grid ColumnDefinitions="*,Auto" Margin="0,16,0,2">
+          <Button Classes="ghost sectionhead" Command="{Binding ToggleReposSectionCommand}" ToolTip.Tip="Show or hide repositories">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <LucideIcon Kind="ChevronDown" Size="13" Classes="chevron" Classes.collapsed="{Binding !ShowRepos}" VerticalAlignment="Center" />
+              <TextBlock Classes="section" Text="Repositories" VerticalAlignment="Center" />
+            </StackPanel>
+          </Button>
           <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding ScanCommand}" ToolTip.Tip="Rescan folders">
             <LucideIcon Kind="RotateCw" Size="14" />
           </Button>
         </Grid>
+        <StackPanel Spacing="2" IsVisible="{Binding ShowRepos}">
         <TextBlock Classes="muted small" Margin="6,0" Text="Looking for repositories…" IsVisible="{Binding IsScanning}" />
         <TextBlock Classes="muted small" Margin="6,0" TextWrapping="Wrap" IsVisible="{Binding HasNoRepos}"
                    Text="No repositories in these folders. Repositories up to three levels deep are found." />
@@ -188,6 +202,7 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        </StackPanel>
       </StackPanel>
     </ScrollViewer>
   </DockPanel>

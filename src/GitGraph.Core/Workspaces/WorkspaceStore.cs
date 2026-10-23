@@ -16,6 +16,9 @@ public sealed class WorkspaceConfig
     public string? PreviewTab { get; set; }
     /// <summary>Sidebar folders whose worktree list is folded away.</summary>
     public List<string> CollapsedFolders { get; set; } = [];
+    /// <summary>The sidebar's Folders and Repositories sections folded away.</summary>
+    public bool FoldersSectionCollapsed { get; set; }
+    public bool ReposSectionCollapsed { get; set; }
 }
 
 public sealed class AppState

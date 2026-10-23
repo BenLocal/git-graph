@@ -62,6 +62,27 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         foreach (var folder in FolderNodes) folder.NotifyWorktreesChanged();
     }
 
+    /// <summary>The sidebar's Folders section is open; clicking its heading folds it away, remembered per workspace.</summary>
+    public bool ShowFolders => !Config.FoldersSectionCollapsed;
+
+    public bool ShowRepos => !Config.ReposSectionCollapsed;
+
+    [RelayCommand]
+    private void ToggleFoldersSection()
+    {
+        Config.FoldersSectionCollapsed = !Config.FoldersSectionCollapsed;
+        OnPropertyChanged(nameof(ShowFolders));
+        _host.SaveState();
+    }
+
+    [RelayCommand]
+    private void ToggleReposSection()
+    {
+        Config.ReposSectionCollapsed = !Config.ReposSectionCollapsed;
+        OnPropertyChanged(nameof(ShowRepos));
+        _host.SaveState();
+    }
+
     internal bool IsFolderCollapsed(string path) => Config.CollapsedFolders.Any(p => PathEquals(p, path));
 
     internal void SetFolderCollapsed(string path, bool collapsed)
