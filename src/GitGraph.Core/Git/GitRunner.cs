@@ -11,7 +11,10 @@ public sealed class GitException(string message, int exitCode, string args) : Ex
 
 public sealed record GitResult(int ExitCode, string StdOut, string StdErr);
 
-/// <summary>Runs the git CLI. Every call is a separate process; output is decoded as UTF-8.</summary>
+/// <summary>
+/// Runs the git CLI. Every call is a separate process; output is decoded as UTF-8. Disposing a Process doesn't close
+/// streams read through StandardOutput/StandardError, so each call disposes them, or the pipes stay open until the GC.
+/// </summary>
 public static class GitRunner
 {
     public static string GitPath { get; set; } = "git";
@@ -19,8 +22,10 @@ public static class GitRunner
     public static async Task<GitResult> RunRawAsync(string workDir, IEnumerable<string> args, CancellationToken ct = default)
     {
         using var proc = Start(workDir, args);
-        var stdout = proc.StandardOutput.ReadToEndAsync(ct);
-        var stderr = proc.StandardError.ReadToEndAsync(ct);
+        using var output = proc.StandardOutput;
+        using var error = proc.StandardError;
+        var stdout = output.ReadToEndAsync(ct);
+        var stderr = error.ReadToEndAsync(ct);
         await WaitAsync(proc, ct);
         return new GitResult(proc.ExitCode, await stdout, await stderr);
     }
@@ -29,9 +34,11 @@ public static class GitRunner
     public static async Task<byte[]> RunBytesAsync(string workDir, IReadOnlyList<string> args, CancellationToken ct = default)
     {
         using var proc = Start(workDir, args);
+        using var output = proc.StandardOutput;
+        using var error = proc.StandardError;
         using var buffer = new MemoryStream();
-        var stdout = proc.StandardOutput.BaseStream.CopyToAsync(buffer, ct);
-        var stderr = proc.StandardError.ReadToEndAsync(ct);
+        var stdout = output.BaseStream.CopyToAsync(buffer, ct);
+        var stderr = error.ReadToEndAsync(ct);
         await WaitAsync(proc, ct);
         await stdout;
         if (proc.ExitCode != 0) throw new GitException((await stderr).Trim(), proc.ExitCode, string.Join(' ', args));
