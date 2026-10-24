@@ -159,6 +159,47 @@ public partial class RepoTabViewModel
         }
     }
 
+    /// <summary>Folds the staged changes into an earlier commit, after saying which commits get new hashes.</summary>
+    public async Task FoldStagedIntoAsync(CommitRowViewModel row)
+    {
+        try
+        {
+            if (await _repo.GetOperationInProgressAsync() is { } op)
+            {
+                Host.ReportError($"A {OperationName(op)} is in progress. Continue or abort it first.");
+                return;
+            }
+            if (!await _repo.HasStagedChangesAsync())
+            {
+                Host.ReportError($"Nothing is staged. Stage the changes that belong in {row.ShortHash} first, then fold them in.");
+                return;
+            }
+            if (!await _repo.IsAncestorAsync(row.Hash, "HEAD"))
+            {
+                Host.ReportError($"{row.ShortHash} isn't in {CurrentLabel}'s history, so the changes can't be folded into it.");
+                return;
+            }
+            var after = await _repo.GetRebaseCommitsAsync(row.Hash);
+            if (after.FirstOrDefault(c => c.Commit.IsMerge) is { } merge)
+            {
+                Host.ReportError($"The commits after {row.ShortHash} include the merge {merge.Commit.ShortHash}, which a rebase would flatten. " +
+                                 "Fold into a commit after the merge instead.");
+                return;
+            }
+            var rewritten = after.Count == 0 ? "It gets a new hash" : $"It and the {(after.Count == 1 ? "commit" : $"{after.Count} commits")} after it get new hashes";
+            var pushed = await _repo.IsPushedAsync(row.Hash) ? " It is already pushed, so the branch will need a force push." : "";
+            if (!await Host.Dialogs.ConfirmAsync("Fold staged changes",
+                    $"Add the staged changes to {row.ShortHash} \"{row.Subject}\"? {rewritten}; unstaged changes are kept.{pushed}", "Fold in"))
+                return;
+        }
+        catch (GitException e)
+        {
+            Host.ReportError(e.Message);
+            return;
+        }
+        await RunOperationAsync(() => _repo.FoldStagedIntoAsync(row.Hash));
+    }
+
     /// <summary>Runs a planned rebase; a conflict stops it, and the banner above the graph continues or aborts it.</summary>
     public async Task RunInteractiveRebaseAsync(string onto, IReadOnlyList<RebaseStep> steps)
     {

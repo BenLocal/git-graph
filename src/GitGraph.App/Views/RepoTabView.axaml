@@ -33,6 +33,8 @@
       <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
       <MenuItem Header="Interactive rebase from here…" Command="{Binding InteractiveRebaseCommand}" IsVisible="{Binding CanApply}"
                 ToolTip.Tip="Reorder, reword, squash, fix up or drop the commits after this one" />
+      <MenuItem Header="Fold staged changes into this commit…" Command="{Binding FoldStagedIntoCommand}" IsVisible="{Binding IsCommit}"
+                ToolTip.Tip="Add what is staged to this earlier commit, as if it had been there all along (a fixup and an autosquash rebase)" />
       <Separator IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
                 ToolTip.Tip="Undo its changes with a new commit" />

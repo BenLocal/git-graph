@@ -89,6 +89,9 @@ public partial class CommitRowViewModel : ObservableObject
     [RelayCommand]
     private Task InteractiveRebase() => _owner.InteractiveRebaseAsync(this);
 
+    [RelayCommand]
+    private Task FoldStagedInto() => _owner.FoldStagedIntoAsync(this);
+
     /// <summary>Merging or picking HEAD onto itself does nothing, so those menu items hide there.</summary>
     public bool CanApply => IsCommit && !IsHead;
 

@@ -471,6 +471,34 @@ public sealed class GitRepository(string path)
         Directory.Delete(dir, recursive: true);
     }
 
+    public async Task<bool> HasStagedChangesAsync(CancellationToken ct = default) =>
+        (await GitRunner.RunRawAsync(Path, ["diff", "--cached", "--quiet", "--"], ct)).ExitCode == 1;
+
+    /// <summary>Whether the checked-out branch's upstream already has <paramref name="hash"/>, so rewriting it needs a force push.</summary>
+    public async Task<bool> IsPushedAsync(string hash, CancellationToken ct = default)
+    {
+        var upstream = await GitRunner.RunRawAsync(Path, ["rev-parse", "--verify", "-q", "@{upstream}"], ct);
+        return upstream.ExitCode == 0 && await IsAncestorAsync(hash, upstream.StdOut.Trim(), ct);
+    }
+
+    /// <summary>
+    /// Folds the staged changes into <paramref name="target"/>, an earlier commit of the checked-out branch, as
+    /// lazygit's "amend to commit" does: a fixup commit, then an autosquash rebase that needs no editor. Into HEAD
+    /// itself it is a plain amend. Unstaged changes are stashed and brought back; a conflict stops the rebase.
+    /// </summary>
+    public async Task FoldStagedIntoAsync(string target, CancellationToken ct = default)
+    {
+        if ((await GetHeadAsync(ct)).Hash == target)
+        {
+            await Git(ct, "commit", "--amend", "--no-edit");
+            return;
+        }
+        await Git(ct, "commit", "--no-edit", $"--fixup={target}");
+        var parent = await GitRunner.RunRawAsync(Path, ["rev-parse", "--verify", "-q", $"{target}^"], ct);
+        await Git(ct, "-c", "sequence.editor=true", "-c", "core.editor=true", "rebase", "-i", "--autosquash", "--autostash",
+            parent.ExitCode == 0 ? parent.StdOut.Trim() : "--root");
+    }
+
     /// <summary>Replays the checked-out branch's own commits on top of <paramref name="onto"/>.</summary>
     /// <param name="autostash">Stash uncommitted changes first and bring them back afterwards.</param>
     public Task RebaseAsync(string onto, bool autostash, CancellationToken ct = default) =>

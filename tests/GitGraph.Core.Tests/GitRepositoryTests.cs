@@ -465,6 +465,36 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Staged_changes_fold_into_an_earlier_commit_and_unstaged_ones_stay()
+    {
+        var (repo, _) = await FourCommitsAsync();
+        var b = (await repo.GetRebaseCommitsAsync("HEAD~4"))[1].Commit;
+        Assert.False(await repo.HasStagedChangesAsync());
+        File.WriteAllText(Path.Combine(_repo, "B.txt"), "B, fixed\n");
+        Git("add", "B.txt");
+        File.WriteAllText(Path.Combine(_repo, "D.txt"), "D, still editing\n");
+        Assert.True(await repo.HasStagedChangesAsync());
+
+        await repo.FoldStagedIntoAsync(b.Hash);
+
+        // Same four commits on top of the merge; B now holds the fix, and the unstaged edit is still there.
+        Assert.Equal(["D", "C", "B", "A", "merge feature"], Subjects(5));
+        Assert.Equal("B, fixed\n", await GitRunner.RunAsync(_repo, ["show", "HEAD~2:B.txt"]));
+        Assert.Equal("D, still editing\n", File.ReadAllText(Path.Combine(_repo, "D.txt")));
+        Assert.False(await repo.HasStagedChangesAsync());
+        Assert.Null(await repo.GetOperationInProgressAsync());
+
+        // Into HEAD itself it is a plain amend.
+        File.WriteAllText(Path.Combine(_repo, "A.txt"), "A, again\n");
+        Git("add", "A.txt");
+        await repo.FoldStagedIntoAsync((await repo.GetHeadAsync()).Hash!);
+        Assert.Equal(["D", "C", "B", "A"], Subjects(4));
+        Assert.Equal("A, again\n", await GitRunner.RunAsync(_repo, ["show", "HEAD:A.txt"]));
+        // Without an upstream nothing counts as pushed.
+        Assert.False(await repo.IsPushedAsync("HEAD"));
+    }
+
+    [Fact]
     public async Task Rebase_stops_on_conflicts_then_continues_or_aborts()
     {
         var repo = new GitRepository(_repo);
