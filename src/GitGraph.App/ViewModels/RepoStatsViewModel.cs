@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using Avalonia.Media;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GitGraph.App.Controls;
 using GitGraph.App.Services;
@@ -194,11 +195,22 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
             : null;
         MoreNote = people > MaxCards ? $"Showing the top {MaxCards} of {people:N0} people." : null;
 
+        // Up to 100 cards took over a second to lay out in one go, freezing the window; a few at a time, with layout
+        // and drawing in between, the top ones show at once and the window keeps responding. A newer rebuild stops this one.
+        var version = ++_fillVersion;
         Contributors.Clear();
         var rank = 0;
         foreach (var p in ranked.Take(MaxCards))
+        {
             Contributors.Add(new ContributorCardViewModel(p, ++rank, report.TotalCommits, IsCountingLines));
+            if (rank % CardsPerPass != 0) continue;
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            if (version != _fillVersion) return;
+        }
     }
+
+    private const int CardsPerPass = 4;
+    private int _fillVersion;
 }
 
 public sealed class ContributorCardViewModel(ContributorSummary person, int rank, int totalCommits, bool countingLines)

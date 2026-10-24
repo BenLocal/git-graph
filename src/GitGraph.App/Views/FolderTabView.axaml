@@ -6,6 +6,15 @@
              x:Class="GitGraph.App.Views.FolderTabView"
              x:DataType="vm:FolderTabViewModel">
   <UserControl.Resources>
+    <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
+    <MenuFlyout x:Key="FileNodeMenu" x:DataType="vm:FileNodeViewModel">
+      <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
+      <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
+      <Separator />
+      <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+    </MenuFlyout>
     <!-- The selected file gets the same amber wash as selections elsewhere. -->
     <!-- Deep folders stay readable in a narrow tree: a smaller indent, and names trim instead of scrolling sideways. -->
     <x:Double x:Key="TreeViewItemIndent">12</x:Double>
@@ -78,17 +87,7 @@
               <Grid ColumnDefinitions="Auto,*,Auto" Background="Transparent" ToolTip.Tip="{Binding StatusTooltip}"
                     Classes="gitstate" Classes.modified="{Binding IsModified}" Classes.added="{Binding IsAdded}"
                     Classes.untracked="{Binding IsUntracked}" Classes.deleted="{Binding IsDeleted}"
-                    Classes.conflict="{Binding IsConflict}" Classes.ignored="{Binding IsIgnored}">
-                <Grid.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
-                    <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
-                    <Separator />
-                    <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
-                  </ContextMenu>
-                </Grid.ContextMenu>
+                    Classes.conflict="{Binding IsConflict}" Classes.ignored="{Binding IsIgnored}" ContextFlyout="{StaticResource FileNodeMenu}">
                 <Panel Margin="0,0,7,0">
                   <LucideIcon Kind="Folder" Size="14" VerticalAlignment="Center" IsVisible="{Binding IsDirectory}" />
                   <LucideIcon Kind="File" Size="14" VerticalAlignment="Center" IsVisible="{Binding IsFile}" />

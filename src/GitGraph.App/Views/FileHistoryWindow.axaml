@@ -9,6 +9,12 @@
         Width="1280" Height="800" MinWidth="640" MinHeight="400"
         WindowState="Maximized" WindowStartupLocation="CenterOwner"
         Background="{DynamicResource SurfaceBrush}">
+  <Window.Resources>
+    <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
+    <MenuFlyout x:Key="HistoryEntryMenu" x:DataType="vm:FileHistoryRowViewModel">
+      <MenuItem Header="Copy commit hash" Command="{Binding Owner.CopyHashCommand}" CommandParameter="{Binding Hash}" />
+    </MenuFlyout>
+  </Window.Resources>
   <Grid RowDefinitions="Auto,*">
     <!-- The file, and where its blame is taken from -->
     <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
@@ -40,12 +46,7 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileHistoryRowViewModel">
                     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto,Auto" Margin="12,6,12,6" Background="Transparent"
-                          ToolTip.Tip="{Binding Hash}">
-                      <Grid.ContextMenu>
-                        <ContextMenu>
-                          <MenuItem Header="Copy commit hash" Command="{Binding Owner.CopyHashCommand}" CommandParameter="{Binding Hash}" />
-                        </ContextMenu>
-                      </Grid.ContextMenu>
+                          ToolTip.Tip="{Binding Hash}" ContextFlyout="{StaticResource HistoryEntryMenu}">
                       <ctl:Avatar Grid.RowSpan="2" Email="{Binding AuthorEmail}" AuthorName="{Binding Author}" Width="24" Height="24"
                                   VerticalAlignment="Top" Margin="0,1,10,0" />
                       <TextBlock Grid.Column="1" Text="{Binding Subject}" TextTrimming="CharacterEllipsis" />

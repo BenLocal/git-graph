@@ -6,6 +6,39 @@
              x:Class="GitGraph.App.Views.DetailsView"
              x:DataType="vm:DetailsViewModel"
              Background="{DynamicResource SurfaceBrush}">
+  <UserControl.Resources>
+    <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
+    <MenuFlyout x:Key="WorkingFileMenu" x:DataType="vm:FileChangeViewModel">
+      <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
+      <Separator />
+      <MenuItem Header="Stage" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanStage}" />
+      <MenuItem Header="Unstage" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanUnstage}" />
+      <MenuItem Header="{Binding DiscardTip, StringFormat='{}{0}…'}" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
+                IsVisible="{Binding CanDiscard}" />
+      <MenuItem Header="Keep current version (ours)" Command="{Binding Owner.TakeOursCommand}" CommandParameter="{Binding}"
+                IsVisible="{Binding IsConflicted}"
+                ToolTip.Tip="The checked-out branch's version; during a rebase, the branch you are rebasing onto" />
+      <MenuItem Header="Take incoming version (theirs)" Command="{Binding Owner.TakeTheirsCommand}" CommandParameter="{Binding}"
+                IsVisible="{Binding IsConflicted}"
+                ToolTip.Tip="The version being merged, picked or reverted; during a rebase, your commit being replayed" />
+      <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}"
+                IsVisible="{Binding CanOpen}" />
+      <Separator />
+      <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+    </MenuFlyout>
+    <MenuFlyout x:Key="ChangedFileMenu" x:DataType="vm:FileChangeViewModel">
+      <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}"
+                CommandParameter="{Binding}" InputGesture="Enter" />
+      <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
+      <Separator />
+      <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+    </MenuFlyout>
+  </UserControl.Resources>
   <Panel>
     <TextBlock Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding !HasContent}"
                Text="Select a commit to see what it changed. Ctrl+click a second one to compare the two." />
@@ -143,30 +176,7 @@
                           <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:FileChangeViewModel">
                               <Border Classes="filerow" Classes.selected="{Binding IsSelected}" Tapped="OnWorkingFileTapped"
-                                      DoubleTapped="OnWorkingFileDoubleTapped" ToolTip.Tip="{Binding Tooltip}">
-                                <Border.ContextMenu>
-                                  <ContextMenu>
-                                    <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}" CommandParameter="{Binding}" />
-                                    <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
-                                    <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
-                                    <Separator />
-                                    <MenuItem Header="Stage" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanStage}" />
-                                    <MenuItem Header="Unstage" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanUnstage}" />
-                                    <MenuItem Header="{Binding DiscardTip, StringFormat='{}{0}…'}" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
-                                              IsVisible="{Binding CanDiscard}" />
-                                    <MenuItem Header="Keep current version (ours)" Command="{Binding Owner.TakeOursCommand}" CommandParameter="{Binding}"
-                                              IsVisible="{Binding IsConflicted}"
-                                              ToolTip.Tip="The checked-out branch's version; during a rebase, the branch you are rebasing onto" />
-                                    <MenuItem Header="Take incoming version (theirs)" Command="{Binding Owner.TakeTheirsCommand}" CommandParameter="{Binding}"
-                                              IsVisible="{Binding IsConflicted}"
-                                              ToolTip.Tip="The version being merged, picked or reverted; during a rebase, your commit being replayed" />
-                                    <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}"
-                                              IsVisible="{Binding CanOpen}" />
-                                    <Separator />
-                                    <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
-                                    <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
-                                  </ContextMenu>
-                                </Border.ContextMenu>
+                                      DoubleTapped="OnWorkingFileDoubleTapped" ToolTip.Tip="{Binding Tooltip}" ContextFlyout="{StaticResource WorkingFileMenu}">
                                 <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="10,0,6,0">
                                   <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
                                              Text="{Binding Status}" VerticalAlignment="Center" />
@@ -209,18 +219,7 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="vm:FileChangeViewModel">
                     <Grid ColumnDefinitions="Auto,*,Auto,Auto" Height="24" Margin="16,0,12,0" Background="Transparent"
-                          ToolTip.Tip="{Binding Tooltip}">
-                      <Grid.ContextMenu>
-                        <ContextMenu>
-                          <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}"
-                                    CommandParameter="{Binding}" InputGesture="Enter" />
-                          <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" />
-                          <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" />
-                          <Separator />
-                          <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
-                          <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
-                        </ContextMenu>
-                      </Grid.ContextMenu>
+                          ToolTip.Tip="{Binding Tooltip}" ContextFlyout="{StaticResource ChangedFileMenu}">
                       <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
                                  Text="{Binding Status}" VerticalAlignment="Center" />
                       <!-- Name and folder share one line that trims at the end, so the counts always stay visible. -->

@@ -6,6 +6,58 @@
              xmlns:svc="using:GitGraph.App.Services"
              x:Class="GitGraph.App.Views.RepoTabView"
              x:DataType="vm:RepoTabViewModel">
+  <UserControl.Resources>
+    <!-- One menu for every row, and one for every ref label: a flyout is built when it opens and takes the row it
+         opened on as its data. A ContextMenu in the row template was built (and styled) for each row as the list
+         scrolled, which made scrolling stutter. -->
+    <MenuFlyout x:Key="CommitMenu" x:DataType="vm:CommitRowViewModel">
+      <MenuItem Header="Stash changes…" Command="{Binding StashChangesCommand}" IsVisible="{Binding IsUncommitted}" />
+      <MenuItem Header="Apply stash" Command="{Binding ApplyStashCommand}" IsVisible="{Binding IsStash}"
+                ToolTip.Tip="Apply the changes and keep the stash" />
+      <MenuItem Header="Pop stash" Command="{Binding PopStashCommand}" IsVisible="{Binding IsStash}"
+                ToolTip.Tip="Apply the changes, then drop the stash if they applied cleanly" />
+      <MenuItem Header="Create branch from stash…" Command="{Binding StashBranchCommand}" IsVisible="{Binding IsStash}" />
+      <MenuItem Header="Drop stash…" Command="{Binding DropStashCommand}" IsVisible="{Binding IsStash}" />
+      <MenuItem Header="Copy stash name" Command="{Binding CopyStashNameCommand}" IsVisible="{Binding IsStash}" />
+      <Separator IsVisible="{Binding !IsCommit}" />
+      <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
+                ToolTip.Tip="Or Ctrl+click a second commit" />
+      <Separator IsVisible="{Binding !IsStash}" />
+      <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding !IsStash}" />
+      <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsCommit}" />
+      <Separator IsVisible="{Binding CanApply}" />
+      <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
+      <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
+      <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
+      <Separator IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
+                ToolTip.Tip="Undo its changes with a new commit" />
+      <MenuItem Header="Reset current branch to here" IsVisible="{Binding CanApply}">
+        <MenuItem Header="Soft: keep the changes staged…" Command="{Binding ResetCommand}" CommandParameter="Soft" />
+        <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding ResetCommand}" CommandParameter="Mixed" />
+        <MenuItem Header="Hard: discard the changes…" Command="{Binding ResetCommand}" CommandParameter="Hard" />
+      </MenuItem>
+      <Separator IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding IsCommit}" />
+    </MenuFlyout>
+    <MenuFlyout x:Key="RefMenu" x:DataType="vm:RefBadgeViewModel">
+      <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
+      <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanMerge}" />
+      <MenuItem Header="Rebase current branch onto this…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanMerge}" />
+      <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
+      <MenuItem Header="Open worktree" Command="{Binding OpenWorktreeCommand}" IsVisible="{Binding IsWorktree}" />
+      <MenuItem Header="Rename…" Command="{Binding RenameCommand}" IsVisible="{Binding IsLocal}" />
+      <MenuItem Header="Set upstream…" Command="{Binding SetUpstreamCommand}" IsVisible="{Binding IsLocal}" />
+      <MenuItem Header="Push to remote…" Command="{Binding PushTagCommand}" IsVisible="{Binding IsTag}" />
+      <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
+      <Separator IsVisible="{Binding HasDeleteItem}" />
+      <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+      <MenuItem Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
+    </MenuFlyout>
+  </UserControl.Resources>
   <UserControl.KeyBindings>
     <KeyBinding Gesture="Escape" Command="{Binding ClearCompareCommand}" />
   </UserControl.KeyBindings>
@@ -156,42 +208,7 @@
           <DataTemplate x:DataType="vm:CommitRowViewModel">
             <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.stash="{Binding IsStash}" Classes.match="{Binding IsMatch}"
                   Classes.compare="{Binding IsCompareTarget}"
-                  ColumnDefinitions="Auto,*,140,150,84" Height="{DynamicResource RowHeight}">
-              <Grid.ContextMenu>
-                <ContextMenu>
-                  <MenuItem Header="Stash changes…" Command="{Binding StashChangesCommand}" IsVisible="{Binding IsUncommitted}" />
-                  <MenuItem Header="Apply stash" Command="{Binding ApplyStashCommand}" IsVisible="{Binding IsStash}"
-                            ToolTip.Tip="Apply the changes and keep the stash" />
-                  <MenuItem Header="Pop stash" Command="{Binding PopStashCommand}" IsVisible="{Binding IsStash}"
-                            ToolTip.Tip="Apply the changes, then drop the stash if they applied cleanly" />
-                  <MenuItem Header="Create branch from stash…" Command="{Binding StashBranchCommand}" IsVisible="{Binding IsStash}" />
-                  <MenuItem Header="Drop stash…" Command="{Binding DropStashCommand}" IsVisible="{Binding IsStash}" />
-                  <MenuItem Header="Copy stash name" Command="{Binding CopyStashNameCommand}" IsVisible="{Binding IsStash}" />
-                  <Separator IsVisible="{Binding !IsCommit}" />
-                  <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
-                            ToolTip.Tip="Or Ctrl+click a second commit" />
-                  <Separator IsVisible="{Binding !IsStash}" />
-                  <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding !IsStash}" />
-                  <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding IsCommit}" />
-                  <MenuItem Header="Create tag here…" Command="{Binding CreateTagCommand}" IsVisible="{Binding IsCommit}" />
-                  <MenuItem Header="Check out this commit…" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsCommit}" />
-                  <Separator IsVisible="{Binding CanApply}" />
-                  <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
-                  <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
-                  <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
-                  <Separator IsVisible="{Binding IsCommit}" />
-                  <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
-                            ToolTip.Tip="Undo its changes with a new commit" />
-                  <MenuItem Header="Reset current branch to here" IsVisible="{Binding CanApply}">
-                    <MenuItem Header="Soft: keep the changes staged…" Command="{Binding ResetCommand}" CommandParameter="Soft" />
-                    <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding ResetCommand}" CommandParameter="Mixed" />
-                    <MenuItem Header="Hard: discard the changes…" Command="{Binding ResetCommand}" CommandParameter="Hard" />
-                  </MenuItem>
-                  <Separator IsVisible="{Binding IsCommit}" />
-                  <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding IsCommit}" />
-                  <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding IsCommit}" />
-                </ContextMenu>
-              </Grid.ContextMenu>
+                  ColumnDefinitions="Auto,*,140,150,84" Height="{DynamicResource RowHeight}" ContextFlyout="{StaticResource CommitMenu}">
 
               <ctl:GraphCell Row="{Binding Graph}" IsHead="{Binding IsHead}"
                              Width="{Binding $parent[ListBox].((vm:RepoTabViewModel)DataContext).GraphWidth}" />
@@ -208,23 +225,7 @@
                     <DataTemplate x:DataType="vm:RefBadgeViewModel">
                       <Border Classes="badge" Classes.local="{Binding IsLocal}" Classes.remote="{Binding IsRemote}"
                               Classes.tag="{Binding IsTag}" Classes.wt="{Binding IsWorktree}" Classes.stash="{Binding IsStash}" Classes.current="{Binding IsCurrent}"
-                              ToolTip.Tip="{Binding Tooltip}">
-                        <Border.ContextMenu>
-                          <ContextMenu>
-                            <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
-                            <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanMerge}" />
-                            <MenuItem Header="Rebase current branch onto this…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanMerge}" />
-                            <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
-                            <MenuItem Header="Open worktree" Command="{Binding OpenWorktreeCommand}" IsVisible="{Binding IsWorktree}" />
-                            <MenuItem Header="Rename…" Command="{Binding RenameCommand}" IsVisible="{Binding IsLocal}" />
-                            <MenuItem Header="Set upstream…" Command="{Binding SetUpstreamCommand}" IsVisible="{Binding IsLocal}" />
-                            <MenuItem Header="Push to remote…" Command="{Binding PushTagCommand}" IsVisible="{Binding IsTag}" />
-                            <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
-                            <Separator IsVisible="{Binding HasDeleteItem}" />
-                            <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
-                            <MenuItem Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
-                          </ContextMenu>
-                        </Border.ContextMenu>
+                              ToolTip.Tip="{Binding Tooltip}" ContextFlyout="{StaticResource RefMenu}">
                         <StackPanel Orientation="Horizontal">
                           <Border Classes="refblock">
                             <Panel>
