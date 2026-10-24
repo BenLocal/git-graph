@@ -121,10 +121,13 @@ public sealed record BlameCommit(string Hash, string AuthorName, string AuthorEm
 
 public sealed record BlameResult(IReadOnlyList<BlameLine> Lines, IReadOnlyDictionary<string, BlameCommit> Commits);
 
-/// <summary>Narrows the commit list. <see cref="Path"/> is relative to the working tree's top level.</summary>
-public sealed record CommitFilter(string? Author, DateTimeOffset? Since, string? Path)
+/// <summary>
+/// Narrows the commit list. <see cref="Path"/> is relative to the working tree's top level. <see cref="Code"/> keeps
+/// commits that change how often that text occurs: the ones that added or removed it (git's pickaxe, <c>-S</c>).
+/// </summary>
+public sealed record CommitFilter(string? Author, DateTimeOffset? Since, string? Path, string? Code = null)
 {
-    public bool IsEmpty => string.IsNullOrWhiteSpace(Author) && Since is null && string.IsNullOrWhiteSpace(Path);
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Author) && Since is null && string.IsNullOrWhiteSpace(Path) && string.IsNullOrWhiteSpace(Code);
     /// <summary>Filters that drop commits without rewriting the parents of the ones left.</summary>
-    public bool DropsParents => !string.IsNullOrWhiteSpace(Author) || Since != null;
+    public bool DropsParents => !string.IsNullOrWhiteSpace(Author) || Since != null || !string.IsNullOrWhiteSpace(Code);
 }

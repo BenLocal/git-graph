@@ -47,6 +47,8 @@ public sealed class GitRepository(string path)
         if (filter is { Author: { Length: > 0 } author })
             args.AddRange(["--regexp-ignore-case", "--fixed-strings", $"--author={author}"]);
         if (filter is { Since: { } since }) args.Add($"--since={since.ToUnixTimeSeconds()}");
+        // Literal text, case included; with an author filter too, git's one --regexp-ignore-case covers both.
+        if (filter is { Code: { Length: > 0 } code } && !string.IsNullOrWhiteSpace(code)) args.Add($"-S{code}");
         // Limiting to a path simplifies history; --parents rewrites each commit's parents to the nearest ones shown.
         if (filter is { Path: { Length: > 0 } }) args.Add("--parents");
         if (branches is { Count: > 0 })

@@ -374,6 +374,20 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Commits_filter_by_code_added_or_removed()
+    {
+        var repo = new GitRepository(_repo);
+        Commit("c.txt", "var needle = 1;\n", "add needle");
+        Commit("c.txt", "var needle = 1;\nvar other = 2;\n", "unrelated edit");
+        Commit("c.txt", "var other = 2;\n", "remove needle");
+
+        var found = await repo.GetCommitsAsync(100, null, true, new CommitFilter(null, null, null, "needle"));
+        Assert.Equal(["remove needle", "add needle"], found.Select(c => c.Subject));
+        // Code is matched as written, case included.
+        Assert.Empty(await repo.GetCommitsAsync(100, null, true, new CommitFilter(null, null, null, "NEEDLE")));
+    }
+
+    [Fact]
     public async Task File_bytes_come_back_unchanged()
     {
         var repo = new GitRepository(_repo);

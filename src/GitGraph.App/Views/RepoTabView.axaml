@@ -157,7 +157,7 @@
         </StackPanel>
       </Grid>
 
-      <!-- Filters: only commits by an author, in a period, or touching a path -->
+      <!-- Filters: only commits by an author, in a period, touching a path, or adding or removing some code -->
       <StackPanel Orientation="Horizontal" Spacing="8" Margin="16,0,12,10" IsVisible="{Binding ShowFilters}">
         <Panel Width="220">
           <TextBox Classes="find" Text="{Binding AuthorFilter}" PlaceholderText="Author name or email" />
@@ -167,6 +167,11 @@
           <TextBox Classes="find" Text="{Binding PathFilter}" PlaceholderText="File or folder, e.g. src/"
                    ToolTip.Tip="Only commits that changed this path, relative to the repository's top folder" />
           <LucideIcon Kind="FileSearch" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
+        </Panel>
+        <Panel Width="260">
+          <TextBox Classes="find" Text="{Binding CodeFilter}" PlaceholderText="Code added or removed"
+                   ToolTip.Tip="Only commits that added or removed this text, matched as written (git log -S). Searching every commit can take a few seconds in a large repository." />
+          <LucideIcon Kind="Code" Size="14" HorizontalAlignment="Left" Margin="9,0,0,0" IsHitTestVisible="False" />
         </Panel>
         <ComboBox ItemsSource="{x:Static vm:RepoTabViewModel.SinceOptions}" SelectedItem="{Binding SinceFilter}" MinWidth="140" />
         <TextBlock Classes="muted small" VerticalAlignment="Center" Text="{Binding Rows.Count, StringFormat='{}{0} rows'}"
@@ -273,9 +278,12 @@
       </ListBox>
 
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" MaxWidth="460" IsVisible="{Binding IsEmpty}">
-        <TextBlock Classes="title" HorizontalAlignment="Center" Text="No commits yet" />
-        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+        <TextBlock Classes="title" HorizontalAlignment="Center" Text="No commits yet" IsVisible="{Binding !IsFiltered}" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding !IsFiltered}"
                    Text="Make the first commit in this repository and its history appears here." />
+        <TextBlock Classes="title" HorizontalAlignment="Center" Text="No matching commits" IsVisible="{Binding IsFiltered}" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" IsVisible="{Binding IsFiltered}"
+                   Text="No commit matches the filters. Change or clear them to see more." />
       </StackPanel>
 
       <Border VerticalAlignment="Top" Background="{DynamicResource DelBgBrush}" Padding="14,8" Margin="12"

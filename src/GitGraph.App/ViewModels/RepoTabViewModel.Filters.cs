@@ -9,7 +9,7 @@ using GitGraph.Core.Graph;
 
 namespace GitGraph.App.ViewModels;
 
-/// <summary>Filters on the commit list: author, period, path.</summary>
+/// <summary>Filters on the commit list: author, period, path, code added or removed.</summary>
 public partial class RepoTabViewModel
 {
     // ---- Filters -----------------------------------------------------------------------------
@@ -25,6 +25,10 @@ public partial class RepoTabViewModel
 
     [ObservableProperty]
     private string _pathFilter = "";
+
+    /// <summary>Text whose introduction or removal to find, as written (spaces and case count).</summary>
+    [ObservableProperty]
+    private string _codeFilter = "";
 
     [ObservableProperty]
     private string _sinceFilter = SinceOptions[0];
@@ -43,13 +47,14 @@ public partial class RepoTabViewModel
             "Last year" => DateTimeOffset.Now.AddYears(-1),
             _ => null,
         };
-        var filter = new CommitFilter(AuthorFilter.Trim(), since, PathFilter.Trim().Replace('\\', '/'));
+        var filter = new CommitFilter(AuthorFilter.Trim(), since, PathFilter.Trim().Replace('\\', '/'), CodeFilter);
         return filter.IsEmpty ? null : filter;
     }
 
     // Typing waits for a pause before reloading; picking a period reloads at once.
     partial void OnAuthorFilterChanged(string value) => ApplyFiltersSoon();
     partial void OnPathFilterChanged(string value) => ApplyFiltersSoon();
+    partial void OnCodeFilterChanged(string value) => ApplyFiltersSoon();
     partial void OnSinceFilterChanged(string value) => ApplyFilters();
 
     partial void OnShowFiltersChanged(bool value)
@@ -57,9 +62,11 @@ public partial class RepoTabViewModel
         if (value || !IsFiltered) return;
         _authorFilter = "";
         _pathFilter = "";
+        _codeFilter = "";
         _sinceFilter = SinceOptions[0];
         OnPropertyChanged(nameof(AuthorFilter));
         OnPropertyChanged(nameof(PathFilter));
+        OnPropertyChanged(nameof(CodeFilter));
         OnPropertyChanged(nameof(SinceFilter));
         ApplyFilters();
     }
