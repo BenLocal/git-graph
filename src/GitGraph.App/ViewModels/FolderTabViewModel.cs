@@ -32,6 +32,11 @@ public sealed partial class FolderTabViewModel : TabViewModel
         _host = host;
         _state = host.FolderView(path);
         Root = new FileNodeViewModel(this, path, "", isDirectory: true);
+        Commands = new RepoCommands(host, path, () =>
+        {
+            RefreshTree();
+            return Task.CompletedTask;
+        });
         Subtitle = "folder";
     }
 
@@ -39,6 +44,9 @@ public sealed partial class FolderTabViewModel : TabViewModel
     public override string StateKey => "folder:" + Path;
 
     public FileNodeViewModel Root { get; }
+
+    /// <summary>The user's custom commands, run in this folder.</summary>
+    public RepoCommands Commands { get; }
 
     [ObservableProperty]
     private FileNodeViewModel? _selectedNode;
@@ -413,6 +421,11 @@ public sealed partial class FileNodeViewModel : ObservableObject
     public bool IsFile => !IsDirectory && !IsPlaceholder;
     public ObservableCollection<FileNodeViewModel> Children { get; } = [];
     public FolderTabViewModel? Owner => _owner;
+
+    /// <summary>The user's custom commands for a file, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> CustomCommands => IsFile && _owner is { } owner
+        ? owner.Commands.For("File", () => new() { ["file"] = RelativePath, ["path"] = FullPath })
+        : [];
 
     [ObservableProperty]
     private bool _isExpanded;

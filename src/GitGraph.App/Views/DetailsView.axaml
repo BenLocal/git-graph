@@ -28,6 +28,8 @@
       <Separator />
       <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
       <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
+                IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>
     <MenuFlyout x:Key="ChangedFileMenu" x:DataType="vm:FileChangeViewModel">
       <MenuItem Header="Open diff in full window" Command="{Binding Owner.OpenFullDiffCommand}"
@@ -37,6 +39,8 @@
       <Separator />
       <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
       <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
+                IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>
   </UserControl.Resources>
   <Panel>

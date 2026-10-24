@@ -2,6 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ctl="using:GitGraph.App.Controls">
 
+  <Styles.Resources>
+    <!-- An item of a "Custom commands" submenu: its name, and running it (a CustomCommandItem) -->
+    <ControlTheme x:Key="CustomCommandItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+      <Setter Property="Header" Value="{ReflectionBinding Name}" />
+      <Setter Property="Command" Value="{ReflectionBinding Run}" />
+    </ControlTheme>
+  </Styles.Resources>
+
   <Style Selector="Window">
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />

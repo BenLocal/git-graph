@@ -85,4 +85,8 @@ public partial class MainWindow : Window, IDialogService
     public void ShowReflog(ReflogViewModel reflog) => new ReflogWindow { DataContext = reflog }.Show(this);
 
     public void ShowInteractiveRebase(InteractiveRebaseViewModel rebase) => new InteractiveRebaseWindow { DataContext = rebase }.ShowDialog(this);
+
+    public void ShowOutput(string title, string text) => new OutputWindow(title, text).Show(this);
+
+    public void ShowCustomCommands(CustomCommandsViewModel commands) => new CustomCommandsWindow { DataContext = commands }.ShowDialog(this);
 }

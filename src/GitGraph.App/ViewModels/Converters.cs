@@ -12,6 +12,9 @@ public static class Converters
         new FuncValueConverter<bool, Avalonia.Controls.Primitives.ScrollBarVisibility>(wrap =>
             wrap ? Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled : Avalonia.Controls.Primitives.ScrollBarVisibility.Auto);
 
+    /// <summary>A menu with items to show: a custom commands submenu hides when there are none.</summary>
+    public static readonly IValueConverter HasItems = new FuncValueConverter<System.Collections.ICollection?, bool>(c => c is { Count: > 0 });
+
     public static readonly IValueConverter DimIfTrue = new FuncValueConverter<bool, double>(b => b ? 0.5 : 1.0);
 
     /// <summary>Checks a radio menu item when the bound value reads the same as the ConverterParameter.</summary>

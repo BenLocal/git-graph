@@ -22,6 +22,8 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public PullMode PullMode => PullMode.GitConfig;
     public bool WrapDiffLines => true;
     public void ReportError(string message) => Errors.Add(message);
+    public List<CustomCommand> CustomCommands { get; } = [];
+    IReadOnlyList<CustomCommand> IAppHost.CustomCommands => CustomCommands;
     public void Notify(string message) { }
     public void SaveState() { }
 
@@ -40,6 +42,8 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public void ShowFileHistory(FileHistoryViewModel history) { }
     public void ShowReflog(ReflogViewModel reflog) { }
     public void ShowInteractiveRebase(InteractiveRebaseViewModel rebase) { }
+    public void ShowOutput(string title, string text) { }
+    public void ShowCustomCommands(CustomCommandsViewModel commands) { }
 }
 
 /// <summary>A throwaway repository with one commit of a.txt and b.txt.</summary>

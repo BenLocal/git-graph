@@ -26,6 +26,8 @@
           <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
           <MenuItem Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
           <Separator />
+          <MenuItem Header="Custom commands…" Command="{Binding EditCustomCommandsCommand}"
+                    ToolTip.Tip="Your own shell commands for the right-click menus of commits, branches and files" />
           <MenuItem Header="Keyboard shortcuts…" Tag="KeyboardShortcuts" Click="OnMenuCommand"
                     ToolTip.Tip="{Binding Tips[KeyboardShortcuts], Source={x:Static svc:ShortcutService.Instance}}" />
           <Separator />
@@ -106,6 +108,9 @@
           <MenuItem Header="Undo last action…" Command="{Binding SelectedWorkspace.SelectedRepoTab.UndoLastActionCommand}"
                     InputGesture="{Binding Keys[UndoLastAction], Source={x:Static svc:ShortcutService.Instance}}"
                     ToolTip.Tip="Take back the last commit, amend, checkout, merge, rebase, pull or reset; it says what it will do first" />
+          <MenuItem Header="Custom commands" ItemsSource="{Binding SelectedWorkspace.SelectedRepoTab.RepoCustomCommands, FallbackValue={x:Null}}"
+                    ItemContainerTheme="{StaticResource CustomCommandItem}"
+                    IsVisible="{Binding SelectedWorkspace.SelectedRepoTab.RepoCustomCommands, FallbackValue={x:Null}, Converter={x:Static vm:Converters.HasItems}}" />
           <MenuItem Header="Reflog…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ShowReflogCommand}"
                     InputGesture="{Binding Keys[ShowReflog], Source={x:Static svc:ShortcutService.Instance}}"
                     ToolTip.Tip="Every recent move of HEAD, to bring back commits a reset or rebase left behind" />

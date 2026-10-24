@@ -65,6 +65,15 @@ public sealed partial class FileChangeViewModel(FileChange change, DetailsViewMo
     public bool IsAdded => Change.Kind is ChangeKind.Added or ChangeKind.Untracked;
     public bool IsDeleted => Change.Kind == ChangeKind.Deleted;
     public bool IsModified => !IsAdded && !IsDeleted;
+
+    /// <summary>The user's custom commands for a file, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> CustomCommands => Owner.Commands?.For("File", () => new()
+    {
+        ["file"] = Change.Path,
+        ["path"] = Owner.FullPathOf(Change.Path),
+        ["sha"] = Target.To ?? "",
+        ["short"] = Target.To is { Length: >= 7 } to ? to[..7] : "",
+    }) ?? [];
 }
 
 public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActions? hunk = null) : ObservableObject

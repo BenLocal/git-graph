@@ -25,4 +25,10 @@ public interface IDialogService
 
     /// <summary>Shows an interactive rebase to plan, in its own window.</summary>
     void ShowInteractiveRebase(ViewModels.InteractiveRebaseViewModel rebase);
+
+    /// <summary>Shows what a command printed.</summary>
+    void ShowOutput(string title, string text);
+
+    /// <summary>Shows the custom commands to add, change or remove.</summary>
+    void ShowCustomCommands(ViewModels.CustomCommandsViewModel commands);
 }

@@ -46,6 +46,8 @@
       <Separator IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Copy subject" Command="{Binding CopySubjectCommand}" IsVisible="{Binding IsCommit}" />
+      <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
+                IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>
     <MenuFlyout x:Key="RefMenu" x:DataType="vm:RefBadgeViewModel">
       <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
@@ -62,6 +64,8 @@
       <Separator IsVisible="{Binding HasDeleteItem}" />
       <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
       <MenuItem Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
+      <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
+                IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>
   </UserControl.Resources>
   <UserControl.KeyBindings>

@@ -24,6 +24,8 @@ public interface IAppHost
     bool IgnoreWhitespace { get; }
     bool WrapDiffLines { get; }
     void ReportError(string message);
+    /// <summary>The user's own commands for the context menus.</summary>
+    IReadOnlyList<CustomCommand> CustomCommands { get; }
     /// <summary>A note that isn't an error, such as new commits found by the periodic fetch.</summary>
     void Notify(string message);
     void SaveState();
@@ -282,6 +284,11 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     }
 
     public void ReportError(string message) => ErrorMessage = message;
+
+    public IReadOnlyList<CustomCommand> CustomCommands => _state.CustomCommands;
+
+    [RelayCommand]
+    private void EditCustomCommands() => Dialogs.ShowCustomCommands(new CustomCommandsViewModel(_state.CustomCommands, SaveState));
 
     [RelayCommand]
     private void DismissError() => ErrorMessage = null;

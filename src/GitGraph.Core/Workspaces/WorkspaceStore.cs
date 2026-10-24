@@ -52,6 +52,22 @@ public sealed class AppState
     public Dictionary<string, FolderViewState> FolderViews { get; set; } = [];
     /// <summary>Show a chain of single-subfolder folders (src/main/java/com/example) as one row, like VS Code's explorer.compactFolders.</summary>
     public bool CompactFolders { get; set; } = true;
+    /// <summary>The user's own commands in the context menus, in the order they appear.</summary>
+    public List<CustomCommand> CustomCommands { get; set; } = [];
+}
+
+/// <summary>
+/// A shell command of the user's in the context menus, as in Fork and Sourcetree. ${sha}, ${short}, ${subject},
+/// ${branch}, ${file}, ${path} and ${repo} in <see cref="Command"/> stand for the commit, branch or file it runs on.
+/// </summary>
+public sealed class CustomCommand
+{
+    public string Name { get; set; } = "";
+    /// <summary>What it runs on, so which menu it is in: "Commit", "Branch", "File" or "Repository".</summary>
+    public string Scope { get; set; } = "Commit";
+    public string Command { get; set; } = "";
+    /// <summary>Show the command and ask before running it.</summary>
+    public bool Confirm { get; set; }
 }
 
 public sealed class FolderViewState

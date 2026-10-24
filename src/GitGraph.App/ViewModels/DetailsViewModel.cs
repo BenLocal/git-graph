@@ -430,6 +430,9 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     /// <summary>Confirms a copy in a small note that fades out on its own.</summary>
     public CopyNote CopyNote { get; } = new();
 
+    /// <summary>The user's custom commands, run in this repository; set by the repository tab.</summary>
+    public RepoCommands? Commands { get; init; }
+
     /// <summary>The file list, diff and colours being loaded for what is selected.</summary>
     public PendingLoads Loads { get; } = new();
 
@@ -449,6 +452,8 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private Task CopyMessage() => CopyAsync(Body is null ? Heading : $"{Heading}\n\n{Body}", "Message copied");
 
     public Task CopyTextAsync(string text) => CopyAsync(text, "Copied");
+
+    internal string FullPathOf(string relative) => FullPath(relative);
 
     private string FullPath(string relative) => System.IO.Path.GetFullPath(System.IO.Path.Combine(_repo.Path, relative));
 

@@ -14,6 +14,8 @@
       <Separator />
       <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />
       <MenuItem Header="Copy full path" Command="{Binding Owner.CopyFullPathCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
+                IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>
     <!-- The selected file gets the same amber wash as selections elsewhere. -->
     <!-- Deep folders stay readable in a narrow tree: a smaller indent, and names trim instead of scrolling sideways. -->

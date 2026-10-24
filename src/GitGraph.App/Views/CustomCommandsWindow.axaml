@@ -1,0 +1,59 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGraph.App.ViewModels"
+        x:Class="GitGraph.App.Views.CustomCommandsWindow"
+        x:DataType="vm:CustomCommandsViewModel"
+        Title="Custom commands – Git Graph"
+        Icon="/Assets/Icons/gitgraph-256.png"
+        Width="920" Height="560" MinWidth="640" MinHeight="400"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,12">
+      <StackPanel Spacing="3">
+        <TextBlock Classes="title" Text="Custom commands" />
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="Your own shell commands, in the right-click menu of a commit, branch or file, or in the Repository menu. They run in the repository's folder; what they print is shown afterwards. Changes are saved as you type." />
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="240,1,*">
+      <ListBox Classes="dense pills" ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}" Margin="0,6">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CustomCommandEditViewModel">
+            <StackPanel Margin="10,4">
+              <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="muted small" Text="{Binding Scope}" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+      <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+
+      <TextBlock Grid.Column="2" Classes="muted" Margin="20" TextWrapping="Wrap" IsVisible="{Binding !HasSelection}"
+                 Text="No custom commands yet. Add one to run, say, your tests on a commit or a linter on a file." />
+      <Panel Grid.Column="2" IsVisible="{Binding HasSelection}">
+      <StackPanel Margin="20,14" Spacing="8" DataContext="{Binding Selected}" x:DataType="vm:CustomCommandEditViewModel">
+        <TextBlock Classes="section" Text="Name" />
+        <TextBox Text="{Binding Name}" />
+        <TextBlock Classes="section" Text="In the menu of" Margin="0,6,0,0" />
+        <ComboBox ItemsSource="{x:Static vm:CustomCommandsViewModel.Scopes}" SelectedItem="{Binding Scope}" MinWidth="160" />
+        <TextBlock Classes="section" Text="Command" Margin="0,6,0,0" />
+        <TextBox Text="{Binding Text}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="90" VerticalContentAlignment="Top"
+                 FontFamily="{StaticResource CodeFont}" />
+        <TextBlock Classes="muted small" TextWrapping="Wrap"
+                   Text="${sha}, ${short}, ${subject} (commit), ${branch} (branch, or the one checked out), ${file} (relative) and ${path} (full) for a file, ${repo} (the folder). Each value is put in quotes for you, so write echo ${subject}, not echo &quot;${subject}&quot;. They are also in GITGRAPH_SHA, GITGRAPH_FILE and so on." />
+        <CheckBox Content="Show the command and ask before running it" IsChecked="{Binding Confirm}" Margin="0,4,0,0" />
+      </StackPanel>
+      </Panel>
+    </Grid>
+
+    <Border Grid.Row="2" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0" Padding="20,10">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+        <Button Content="Add" Command="{Binding AddCommand}" Margin="0,0,8,0" />
+        <Button Grid.Column="1" Content="Remove" Command="{Binding RemoveCommand}" />
+        <Button Grid.Column="3" Classes="primary" Content="Done" Click="OnClose" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -67,7 +67,8 @@ public partial class RepoTabViewModel : TabViewModel
         _workspace = workspace;
         _repo = new GitRepository(path);
         _showRemotes = host.ShowRemoteBranches;
-        Details = new DetailsViewModel(_repo, host) { RepoChanged = RefreshAsync };
+        Commands = new RepoCommands(host, path, RefreshAsync);
+        Details = new DetailsViewModel(_repo, host) { RepoChanged = RefreshAsync, Commands = Commands };
         Stats = new RepoStatsViewModel(_repo);
         _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _debounce.Tick += (_, _) =>
@@ -79,6 +80,16 @@ public partial class RepoTabViewModel : TabViewModel
 
     public IAppHost Host { get; }
     public DetailsViewModel Details { get; }
+
+    /// <summary>The user's custom commands, run in this repository.</summary>
+    public RepoCommands Commands { get; }
+
+    /// <summary>The Repository menu's custom commands.</summary>
+    public IReadOnlyList<CustomCommandItem> RepoCustomCommands =>
+        Commands.For("Repository", () => new() { ["branch"] = _headBranch ?? "", ["sha"] = _headHash ?? "", ["short"] = _headHash?[..7] ?? "" });
+
+    public string? HeadBranch => _headBranch;
+    private string? _headHash;
 
     /// <summary>The graph's loads and refreshes, and the contributors view's; the details pane has its own.</summary>
     public PendingLoads Loads { get; } = new();
@@ -267,6 +278,8 @@ public partial class RepoTabViewModel : TabViewModel
             var head = headTask.Result;
             _worktrees = wtTask.Result;
             _headBranch = head.Branch;
+            _headHash = head.Hash;
+            OnPropertyChanged(nameof(RepoCustomCommands));
             Sync = syncTask.Result;
             // Contributor numbers only change when HEAD moves; reading them is a full log, so not on every refresh.
             if (head.Hash != _statsHead)

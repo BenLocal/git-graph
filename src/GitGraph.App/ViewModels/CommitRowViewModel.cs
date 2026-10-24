@@ -96,6 +96,11 @@ public partial class CommitRowViewModel : ObservableObject
     [RelayCommand]
     private Task FoldStagedInto() => _owner.FoldStagedIntoAsync(this);
 
+    /// <summary>The user's custom commands for a commit, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> CustomCommands => IsCommit
+        ? _owner.Commands.For("Commit", () => new() { ["sha"] = Hash, ["short"] = ShortHash, ["subject"] = Subject, ["branch"] = _owner.HeadBranch ?? "" })
+        : [];
+
     /// <summary>Merging or picking HEAD onto itself does nothing, so those menu items hide there.</summary>
     public bool CanApply => IsCommit && !IsHead;
 
@@ -173,6 +178,11 @@ public partial class RefBadgeViewModel : ObservableObject
     private void Highlight() => _owner.HighlightBranch(this);
 
     public bool CanHighlight => Ref != null;
+
+    /// <summary>The user's custom commands for a branch or tag, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> CustomCommands => Ref is { } r
+        ? _owner.Commands.For("Branch", () => new() { ["branch"] = r.Name, ["sha"] = r.Target, ["short"] = r.Target[..7] })
+        : [];
 
     [RelayCommand]
     private Task Merge() => _owner.MergeAsync(Ref!.Name, Text);
