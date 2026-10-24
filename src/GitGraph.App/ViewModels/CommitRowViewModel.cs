@@ -49,6 +49,10 @@ public partial class CommitRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isCompareTarget;
 
+    /// <summary>Faded because another branch is highlighted.</summary>
+    [ObservableProperty]
+    private bool _isDimmed;
+
     [RelayCommand]
     private Task CopyHash() => _owner.Host.Dialogs.CopyTextAsync(Commit.Hash);
 
@@ -164,6 +168,11 @@ public partial class RefBadgeViewModel : ObservableObject
 
     [RelayCommand]
     private Task Checkout() => _owner.CheckoutRefAsync(this);
+
+    [RelayCommand]
+    private void Highlight() => _owner.HighlightBranch(this);
+
+    public bool CanHighlight => Ref != null;
 
     [RelayCommand]
     private Task Merge() => _owner.MergeAsync(Ref!.Name, Text);

@@ -433,6 +433,8 @@ public partial class RepoTabViewModel : TabViewModel
         // Once, for the row selected after the rebuild; the same commit as before keeps its details as they are.
         ShowDetails(fromRefresh: true);
         ApplyFind(jump: false);
+        _refs = refs;
+        ApplyHighlight();
     }
 
     private void UpdateBranchOptions(List<GitRef> refs)

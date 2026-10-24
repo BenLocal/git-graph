@@ -49,6 +49,8 @@
     </MenuFlyout>
     <MenuFlyout x:Key="RefMenu" x:DataType="vm:RefBadgeViewModel">
       <MenuItem Header="Check out" Command="{Binding CheckoutCommand}" IsVisible="{Binding IsBranch}" />
+      <MenuItem Header="Highlight its commits" Command="{Binding HighlightCommand}" IsVisible="{Binding CanHighlight}"
+                ToolTip.Tip="Fade every commit that doesn't lead here, to follow this line through the graph (Esc to stop)" />
       <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanMerge}" />
       <MenuItem Header="Rebase current branch onto this…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanMerge}" />
       <MenuItem Header="Add worktree for this branch…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding IsBranch}" />
@@ -63,7 +65,7 @@
     </MenuFlyout>
   </UserControl.Resources>
   <UserControl.KeyBindings>
-    <KeyBinding Gesture="Escape" Command="{Binding ClearCompareCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding ClearMarksCommand}" />
   </UserControl.KeyBindings>
 
   <!-- Rows 1–4 are resized from code-behind when the details panel is hidden or maximized. -->
@@ -182,6 +184,15 @@
                    IsVisible="{Binding IsFiltered}" />
       </StackPanel>
 
+      <!-- A highlighted branch: its commits stand out, the others fade -->
+      <Border Background="{DynamicResource HoverWashBrush}" Padding="16,6,12,6" IsVisible="{Binding IsHighlighting}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <LucideIcon Kind="Highlighter" Size="14" Foreground="{DynamicResource SignalBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <TextBlock Grid.Column="1" Classes="small" Text="{Binding HighlightText}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="2" Classes="ghost text" Command="{Binding ClearHighlightCommand}" Content="Clear" ToolTip.Tip="Stop highlighting (Esc)" />
+        </Grid>
+      </Border>
+
       <!-- A merge, cherry-pick, revert or rebase stopped part-way: continue it or abort it -->
       <Border Background="{DynamicResource SignalWashBrush}" Padding="16,8,12,8" IsVisible="{Binding HasOperation}">
         <Grid ColumnDefinitions="Auto,*,Auto">
@@ -216,7 +227,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CommitRowViewModel">
             <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.stash="{Binding IsStash}" Classes.match="{Binding IsMatch}"
-                  Classes.compare="{Binding IsCompareTarget}"
+                  Classes.compare="{Binding IsCompareTarget}" Classes.dimmed="{Binding IsDimmed}"
                   ColumnDefinitions="Auto,*,140,150,84" Height="{DynamicResource RowHeight}" ContextFlyout="{StaticResource CommitMenu}">
 
               <ctl:GraphCell Row="{Binding Graph}" IsHead="{Binding IsHead}"

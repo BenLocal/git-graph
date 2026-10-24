@@ -539,6 +539,10 @@
     <Setter Property="Foreground" Value="{DynamicResource SignalBrush}" />
     <Setter Property="FontWeight" Value="Medium" />
   </Style>
+  <!-- Another branch is highlighted: commits that don't lead to it fade -->
+  <Style Selector="Grid.commit.dimmed">
+    <Setter Property="Opacity" Value="0.28" />
+  </Style>
   <Style Selector="Grid.commit.compare">
     <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
   </Style>
