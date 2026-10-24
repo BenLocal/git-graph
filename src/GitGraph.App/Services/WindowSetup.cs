@@ -41,9 +41,14 @@ public static class WindowSetup
         // Text the way GNOME draws it (subpixel RGB antialiasing, slight hinting), with baselines on whole
         // pixels: Avalonia's defaults leave text visibly softer than the rest of the desktop, most of all at
         // fractional scales such as 125%. Subpixel falls back to grey antialiasing over non-opaque backgrounds.
-        TextOptions.SetTextRenderingMode(window, TextRenderingMode.SubpixelAntialias);
-        TextOptions.SetTextHintingMode(window, TextHintingMode.Light);
-        TextOptions.SetBaselinePixelAlignment(window, BaselinePixelAlignment.Aligned);
+        // Only on Linux: Windows has its own ClearType tuning, and macOS turned subpixel antialiasing off
+        // system-wide, so both keep Avalonia's defaults.
+        if (OperatingSystem.IsLinux())
+        {
+            TextOptions.SetTextRenderingMode(window, TextRenderingMode.SubpixelAntialias);
+            TextOptions.SetTextHintingMode(window, TextHintingMode.Light);
+            TextOptions.SetBaselinePixelAlignment(window, BaselinePixelAlignment.Aligned);
+        }
         WaylandAppId.Apply(window);
     }
 }
