@@ -83,4 +83,6 @@ public partial class MainWindow : Window, IDialogService
     public void ShowFileHistory(FileHistoryViewModel history) => new FileHistoryWindow { DataContext = history }.Show(this);
 
     public void ShowReflog(ReflogViewModel reflog) => new ReflogWindow { DataContext = reflog }.Show(this);
+
+    public void ShowInteractiveRebase(InteractiveRebaseViewModel rebase) => new InteractiveRebaseWindow { DataContext = rebase }.ShowDialog(this);
 }

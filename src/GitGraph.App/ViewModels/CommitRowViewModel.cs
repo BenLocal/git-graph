@@ -86,6 +86,9 @@ public partial class CommitRowViewModel : ObservableObject
     [RelayCommand]
     private Task Rebase() => _owner.RebaseAsync(Commit.Hash, $"{Commit.ShortHash} \"{Commit.Subject}\"");
 
+    [RelayCommand]
+    private Task InteractiveRebase() => _owner.InteractiveRebaseAsync(this);
+
     /// <summary>Merging or picking HEAD onto itself does nothing, so those menu items hide there.</summary>
     public bool CanApply => IsCommit && !IsHead;
 

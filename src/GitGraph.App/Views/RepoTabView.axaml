@@ -31,6 +31,8 @@
       <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
       <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
       <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
+      <MenuItem Header="Interactive rebase from here…" Command="{Binding InteractiveRebaseCommand}" IsVisible="{Binding CanApply}"
+                ToolTip.Tip="Reorder, reword, squash, fix up or drop the commits after this one" />
       <Separator IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
                 ToolTip.Tip="Undo its changes with a new commit" />

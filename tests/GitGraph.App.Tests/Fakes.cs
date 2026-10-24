@@ -39,6 +39,7 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public void ShowDiff(FullDiffViewModel diff) { }
     public void ShowFileHistory(FileHistoryViewModel history) { }
     public void ShowReflog(ReflogViewModel reflog) { }
+    public void ShowInteractiveRebase(InteractiveRebaseViewModel rebase) { }
 }
 
 /// <summary>A throwaway repository with one commit of a.txt and b.txt.</summary>

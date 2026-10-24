@@ -22,4 +22,7 @@ public interface IDialogService
 
     /// <summary>Shows a repository's reflog in its own window.</summary>
     void ShowReflog(ViewModels.ReflogViewModel reflog);
+
+    /// <summary>Shows an interactive rebase to plan, in its own window.</summary>
+    void ShowInteractiveRebase(ViewModels.InteractiveRebaseViewModel rebase);
 }

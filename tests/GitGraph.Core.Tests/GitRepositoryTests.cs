@@ -386,6 +386,84 @@ public sealed class GitRepositoryTests : IDisposable
         Assert.True(log[0].Time > DateTimeOffset.Now.AddMinutes(-5));
     }
 
+    // Four commits on top of the merge, one file each.
+    private async Task<(GitRepository Repo, string Base)> FourCommitsAsync()
+    {
+        var repo = new GitRepository(_repo);
+        var @base = (await repo.GetHeadAsync()).Hash!;
+        foreach (var n in new[] { "A", "B", "C", "D" }) Commit($"{n}.txt", $"{n}\n", n);
+        return (repo, @base);
+    }
+
+    private string[] Subjects(int n) => GitRunner.RunAsync(_repo, ["log", $"-{n}", "--format=%s"]).GetAwaiter().GetResult().Trim().Split('\n');
+
+    [Fact]
+    public async Task Interactive_rebase_lists_the_commits_oldest_first_with_their_messages()
+    {
+        var (repo, @base) = await FourCommitsAsync();
+        Git("commit", "-q", "--amend", "-m", "D\n\nwith a body");
+        var commits = await repo.GetRebaseCommitsAsync(@base);
+        Assert.Equal(["A", "B", "C", "D"], commits.Select(c => c.Commit.Subject));
+        Assert.Equal("D\n\nwith a body", commits[3].Message);
+        Assert.True(await repo.IsAncestorAsync(@base, "HEAD"));
+        Assert.False(await repo.IsAncestorAsync("HEAD", @base));
+    }
+
+    [Fact]
+    public async Task Interactive_rebase_reorders_rewords_fixes_up_and_drops()
+    {
+        var (repo, @base) = await FourCommitsAsync();
+        var c = (await repo.GetRebaseCommitsAsync(@base)).ToDictionary(x => x.Commit.Subject, x => x.Commit.Hash);
+
+        // Oldest first: A is dropped, B reworded, D moved before C, and C folded into D.
+        await repo.InteractiveRebaseAsync(@base,
+        [
+            new RebaseStep(c["A"], RebaseAction.Drop),
+            new RebaseStep(c["B"], RebaseAction.Reword, "B, reworded\n\nwith a body"),
+            new RebaseStep(c["D"], RebaseAction.Pick),
+            new RebaseStep(c["C"], RebaseAction.Fixup),
+        ]);
+
+        Assert.Null(await repo.GetOperationInProgressAsync());
+        Assert.Equal(["D", "B, reworded", "merge feature"], Subjects(3));
+        Assert.Equal("B, reworded\n\nwith a body", (await repo.GetCommitDetailAsync("HEAD~1"))!.Message.Trim());
+        Assert.False(File.Exists(Path.Combine(_repo, "A.txt")));
+        Assert.True(File.Exists(Path.Combine(_repo, "C.txt")) && File.Exists(Path.Combine(_repo, "D.txt")));
+    }
+
+    [Fact]
+    public async Task Interactive_rebase_squashes_messages_together_and_keeps_uncommitted_changes()
+    {
+        var (repo, @base) = await FourCommitsAsync();
+        var c = await repo.GetRebaseCommitsAsync(@base);
+        File.WriteAllText(Path.Combine(_repo, "a.txt"), "uncommitted\n");
+
+        await repo.InteractiveRebaseAsync(@base,
+            [.. c.Take(3).Select(x => new RebaseStep(x.Commit.Hash, RebaseAction.Pick)), new RebaseStep(c[3].Commit.Hash, RebaseAction.Squash)]);
+
+        Assert.Equal(["C", "B", "A"], Subjects(3));
+        Assert.Equal("C\n\nD", (await repo.GetCommitDetailAsync("HEAD"))!.Message.Trim());
+        Assert.Equal("uncommitted\n", File.ReadAllText(Path.Combine(_repo, "a.txt")));
+    }
+
+    [Fact]
+    public async Task Interactive_rebase_stops_on_conflicts_and_can_be_aborted()
+    {
+        var repo = new GitRepository(_repo);
+        var @base = (await repo.GetHeadAsync()).Hash!;
+        Commit("x.txt", "one\n", "x one");
+        Commit("x.txt", "two\n", "x two");
+        var before = (await repo.GetHeadAsync()).Hash;
+        var c = await repo.GetRebaseCommitsAsync(@base);
+
+        // "x two" changes a file "x one" creates; replayed first, it conflicts.
+        await Assert.ThrowsAsync<GitException>(() => repo.InteractiveRebaseAsync(@base,
+            [new RebaseStep(c[1].Commit.Hash, RebaseAction.Pick), new RebaseStep(c[0].Commit.Hash, RebaseAction.Pick)]));
+        Assert.Equal(GitOperation.Rebase, await repo.GetOperationInProgressAsync());
+        await repo.AbortAsync(GitOperation.Rebase);
+        Assert.Equal(before, (await repo.GetHeadAsync()).Hash);
+    }
+
     [Fact]
     public async Task Rebase_stops_on_conflicts_then_continues_or_aborts()
     {

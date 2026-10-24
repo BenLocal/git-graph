@@ -120,6 +120,51 @@ public partial class RepoTabViewModel
         await RefreshAsync();
     }
 
+    // ---- Interactive rebase --------------------------------------------------------------------
+
+    /// <summary>Plans an interactive rebase of the commits after <paramref name="row"/>, in its own window.</summary>
+    public async Task InteractiveRebaseAsync(CommitRowViewModel row)
+    {
+        try
+        {
+            if (await _repo.GetOperationInProgressAsync() is { } op)
+            {
+                Host.ReportError($"A {OperationName(op)} is in progress. Continue or abort it first.");
+                return;
+            }
+            if (!await _repo.IsAncestorAsync(row.Hash, "HEAD"))
+            {
+                Host.ReportError($"{row.ShortHash} isn't in {CurrentLabel}'s history. Rebase from a commit below the one checked out.");
+                return;
+            }
+            var commits = await _repo.GetRebaseCommitsAsync(row.Hash);
+            if (commits.Count == 0)
+            {
+                Host.ReportError($"There are no commits after {row.ShortHash} to rebase.");
+                return;
+            }
+            // git would flatten a merge into the commits it brought in, which is rarely what anyone means.
+            if (commits.FirstOrDefault(c => c.Commit.IsMerge) is { } merge)
+            {
+                Host.ReportError($"The commits after {row.ShortHash} include the merge {merge.Commit.ShortHash} \"{merge.Commit.Subject}\". " +
+                                 "Interactive rebase works on a straight line of commits; start from a commit after the merge.");
+                return;
+            }
+            var pushed = await _repo.CountPushedAsync(row.Hash);
+            Host.Dialogs.ShowInteractiveRebase(new InteractiveRebaseViewModel(this, row.Commit, commits, CurrentLabel, pushed));
+        }
+        catch (GitException e)
+        {
+            Host.ReportError(e.Message);
+        }
+    }
+
+    /// <summary>Runs a planned rebase; a conflict stops it, and the banner above the graph continues or aborts it.</summary>
+    public async Task RunInteractiveRebaseAsync(string onto, IReadOnlyList<RebaseStep> steps)
+    {
+        await RunOperationAsync(() => _repo.InteractiveRebaseAsync(onto, steps));
+    }
+
     // ---- Undo and the reflog -----------------------------------------------------------------
 
     /// <summary>Takes back the last thing that moved HEAD, after saying exactly what will happen.</summary>

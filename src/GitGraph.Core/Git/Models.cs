@@ -84,6 +84,14 @@ public enum UndoKind
     KeepReset,
 }
 
+public enum RebaseAction { Pick, Reword, Squash, Fixup, Drop }
+
+/// <summary>One line of an interactive rebase: what to do with a commit; <see cref="Message"/> is the new one for a reword.</summary>
+public sealed record RebaseStep(string Hash, RebaseAction Action, string? Message = null);
+
+/// <summary>A commit an interactive rebase would replay, with its whole message (for rewording).</summary>
+public sealed record RebaseCommit(CommitInfo Commit, string Message);
+
 /// <summary>How to take back the last thing that moved HEAD: <see cref="Action"/> and <see cref="Message"/> say what that was.</summary>
 public sealed record UndoStep(UndoKind Kind, string Target, string Action, string Message, string? Branch);
 

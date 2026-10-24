@@ -412,6 +412,65 @@ public sealed class GitRepository(string path)
         _ => Git(ct, "reset", "--keep", step.Target),
     };
 
+    public async Task<bool> IsAncestorAsync(string ancestor, string of, CancellationToken ct = default) =>
+        (await GitRunner.RunRawAsync(Path, ["merge-base", "--is-ancestor", ancestor, of], ct)).ExitCode == 0;
+
+    /// <summary>The commits an interactive rebase onto <paramref name="baseHash"/> replays, oldest first, with their messages.</summary>
+    public async Task<List<RebaseCommit>> GetRebaseCommitsAsync(string baseHash, CancellationToken ct = default) =>
+        GitParsers.ParseRebaseCommits(await Git(ct, "log", "--reverse", "--topo-order", $"--format={GitParsers.RebaseFormat}", $"{baseHash}..HEAD", "--"));
+
+    /// <summary>How many commits after <paramref name="baseHash"/> the branch's upstream already has: rewriting them needs a force push.</summary>
+    public async Task<int> CountPushedAsync(string baseHash, CancellationToken ct = default)
+    {
+        var upstream = await GitRunner.RunRawAsync(Path, ["rev-parse", "--verify", "-q", "@{upstream}"], ct);
+        if (upstream.ExitCode != 0) return 0;
+        var pushed = await Git(ct, "rev-list", "--count", $"{baseHash}..HEAD", $"^{upstream.StdOut.Trim()}");
+        var all = await Git(ct, "rev-list", "--count", $"{baseHash}..HEAD");
+        return int.Parse(all.Trim()) - int.Parse(pushed.Trim());
+    }
+
+    /// <summary>
+    /// Replays the commits after <paramref name="baseHash"/> as <paramref name="steps"/> say (oldest first), without an
+    /// editor: git is handed the finished todo list, a reword amends the message from a file right after its pick,
+    /// and a squash keeps both messages. Uncommitted changes are stashed and brought back. A conflict stops the rebase
+    /// (GitException) for the user to continue or abort, as with any rebase.
+    /// </summary>
+    public async Task InteractiveRebaseAsync(string baseHash, IReadOnlyList<RebaseStep> steps, CancellationToken ct = default)
+    {
+        // The files must outlive a rebase that stops on a conflict, since its exec lines run after it continues; those
+        // left by such rebases go once they are a day old.
+        foreach (var old in new DirectoryInfo(System.IO.Path.GetTempPath()).EnumerateDirectories("gitgraph-rebase-*"))
+            if (old.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-1))
+                try { old.Delete(recursive: true); } catch (IOException) { }
+        var dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "gitgraph-rebase-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        static string Quote(string s) => "'" + s.Replace("'", "'\\''") + "'";
+        var todo = new System.Text.StringBuilder();
+        var n = 0;
+        foreach (var step in steps)
+        {
+            switch (step.Action)
+            {
+                case RebaseAction.Drop:
+                    todo.Append("drop ").Append(step.Hash).Append('\n');
+                    break;
+                case RebaseAction.Reword:
+                    var message = System.IO.Path.Combine(dir, $"message-{n++}.txt");
+                    await File.WriteAllTextAsync(message, step.Message ?? "", ct);
+                    todo.Append("pick ").Append(step.Hash).Append('\n');
+                    todo.Append("exec git commit --amend --allow-empty --cleanup=strip -F ").Append(Quote(message)).Append('\n');
+                    break;
+                default:
+                    todo.Append(step.Action.ToString().ToLowerInvariant()).Append(' ').Append(step.Hash).Append('\n');
+                    break;
+            }
+        }
+        var todoFile = System.IO.Path.Combine(dir, "git-rebase-todo");
+        await File.WriteAllTextAsync(todoFile, todo.ToString(), ct);
+        await Git(ct, "-c", $"sequence.editor=cp {Quote(todoFile)}", "-c", "core.editor=true", "rebase", "-i", "--autostash", baseHash);
+        Directory.Delete(dir, recursive: true);
+    }
+
     /// <summary>Replays the checked-out branch's own commits on top of <paramref name="onto"/>.</summary>
     /// <param name="autostash">Stash uncommitted changes first and bring them back afterwards.</param>
     public Task RebaseAsync(string onto, bool autostash, CancellationToken ct = default) =>
