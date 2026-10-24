@@ -96,15 +96,15 @@ public static class SyntaxHighlighter
         return result;
     }
 
-    /// <summary>Colours of a whole file's lines (tabs already expanded), by line number; empty for an unknown language.</summary>
-    public static IReadOnlyDictionary<int, SyntaxSpan[]> HighlightLines(string path, IEnumerable<(int Number, string Text)> lines)
+    /// <summary>Colours of a whole file's lines, by line number; empty for an unknown language. <paramref name="ct"/> stops it.</summary>
+    public static IReadOnlyDictionary<int, SyntaxSpan[]> HighlightLines(string path, IEnumerable<(int Number, string Text)> lines, CancellationToken ct = default)
     {
         try
         {
             lock (Gate)
-                return GrammarFor(path) is { } grammar ? Tokenize(grammar, lines.Take(MaxLines), default) : new Dictionary<int, SyntaxSpan[]>();
+                return GrammarFor(path) is { } grammar ? Tokenize(grammar, lines.Take(MaxLines), ct) : new Dictionary<int, SyntaxSpan[]>();
         }
-        catch (Exception)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             return new Dictionary<int, SyntaxSpan[]>();
         }

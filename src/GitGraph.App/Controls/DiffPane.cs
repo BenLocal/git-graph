@@ -29,7 +29,8 @@ public sealed class DiffPane
         _editor = editor;
         _old = old;
         editor.TextArea.TextView.BackgroundRenderers.Add(new Backgrounds(this));
-        editor.TextArea.TextView.LineTransformers.Add(new Colours(this));
+        editor.TextArea.TextView.LineTransformers.Add(new SyntaxColours(editor, number =>
+            number <= _lines.Count && (_old ? _lines[number - 1].OldLine : _lines[number - 1].NewLine) is { } n ? _syntax.Line(_old, n) : null));
         editor.ActualThemeVariantChanged += (_, _) => ApplyTheme();
         ApplyTheme();
     }
@@ -115,37 +116,6 @@ public sealed class DiffPane
                 var pen = new Pen(pane.Brush("SignalBrush"), 1.5);
                 dc.DrawLine(pen, new Point(0, top), new Point(width, top));
                 if (count > 0) dc.DrawLine(pen, new Point(0, bottom), new Point(width, bottom));
-            }
-        }
-    }
-
-    private sealed class Colours(DiffPane pane) : DocumentColorizingTransformer
-    {
-        private readonly Dictionary<Color, IBrush> _brushes = [];
-
-        protected override void ColorizeLine(DocumentLine line)
-        {
-            var index = line.LineNumber - 1;
-            if (index >= pane._lines.Count) return;
-            var number = pane._old ? pane._lines[index].OldLine : pane._lines[index].NewLine;
-            if (number is not { } n || pane._syntax.Line(pane._old, n) is not { } spans) return;
-            var light = pane._editor.ActualThemeVariant == ThemeVariant.Light;
-            foreach (var span in spans)
-            {
-                var start = Math.Min(span.Start, line.Length);
-                var end = Math.Min(span.Start + span.Length, line.Length);
-                if (end <= start) continue;
-                var color = light ? span.Light : span.Dark;
-                if (!_brushes.TryGetValue(color, out var brush)) _brushes[color] = brush = new SolidColorBrush(color);
-                ChangeLinePart(line.Offset + start, line.Offset + end, e =>
-                {
-                    e.TextRunProperties.SetForegroundBrush(brush);
-                    if (span.Style != FontStyle.Normal || span.Weight != FontWeight.Normal)
-                    {
-                        var face = e.TextRunProperties.Typeface;
-                        e.TextRunProperties.SetTypeface(new Typeface(face.FontFamily, span.Style, span.Weight));
-                    }
-                });
             }
         }
     }

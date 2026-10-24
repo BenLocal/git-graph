@@ -5,29 +5,24 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using AvaloniaEdit.Document;
-using AvaloniaEdit.TextMate;
 using GitGraph.App.Controls;
 using GitGraph.App.ViewModels;
-using TextMateSharp.Grammars;
 
 namespace GitGraph.App.Views;
 
 public partial class FolderTabView : UserControl
 {
     private FolderTabViewModel? _vm;
-    private readonly RegistryOptions _grammars;
-    private readonly TextMate.Installation _textMate;
-    private ThemeVariant? _appliedTheme;
 
     public FolderTabView()
     {
         InitializeComponent();
-        _grammars = new RegistryOptions(ThemeName.DarkPlus);
-        _textMate = Editor.InstallTextMate(_grammars);
+        // The view model's colours, from the same TextMate grammars (VS Code's Dark+ / Light+) as the diffs.
+        Editor.TextArea.TextView.LineTransformers.Add(new SyntaxColours(Editor, n => _vm?.FileSyntax?.GetValueOrDefault(n)));
         // Room between the line numbers and the code.
         foreach (var margin in Editor.TextArea.LeftMargins.OfType<AvaloniaEdit.Editing.LineNumberMargin>())
             margin.Margin = new Avalonia.Thickness(4, 0, 18, 0);
-        // VS Code's Dark+ / Light+ follow the app's night and day themes.
+        // Dark+ or Light+ colours follow the app's night and day themes.
         ActualThemeVariantChanged += (_, _) => ApplyTheme();
         ApplyTheme();
         // Each folder remembers how wide its tree was dragged.
@@ -95,26 +90,20 @@ public partial class FolderTabView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FolderTabViewModel.FileText)) ShowText();
+        if (e.PropertyName == nameof(FolderTabViewModel.FileSyntax)) Editor.TextArea.TextView.Redraw();
         // A newly opened file fades in, to show the content was replaced.
         if (e.PropertyName is nameof(FolderTabViewModel.FileText) or nameof(FolderTabViewModel.Image)) Motion.FadeIn(FileArea);
     }
 
     private void ShowText()
     {
-        var text = _vm?.FileText;
-        Editor.Document = new TextDocument(text ?? "");
+        Editor.Document = new TextDocument(_vm?.FileText ?? "");
         Editor.ScrollToHome();
-        if (text is null || _vm?.FileName is not { } name) return;
-        var language = _grammars.GetLanguageByExtension(System.IO.Path.GetExtension(name));
-        _textMate.SetGrammar(language is null ? null : _grammars.GetScopeByLanguageId(language.Id));
     }
 
     private void ApplyTheme()
     {
-        var variant = ActualThemeVariant;
-        if (variant == _appliedTheme) return;
-        _appliedTheme = variant;
-        _textMate.SetTheme(_grammars.LoadTheme(variant == ThemeVariant.Light ? ThemeName.LightPlus : ThemeName.DarkPlus));
         ResourceBrushes.ApplyEditorTheme(Editor);
+        Editor.TextArea.TextView.Redraw();
     }
 }

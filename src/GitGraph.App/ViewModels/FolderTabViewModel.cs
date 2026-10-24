@@ -55,6 +55,10 @@ public sealed partial class FolderTabViewModel : TabViewModel
     [ObservableProperty]
     private string? _fileText;
 
+    /// <summary>The text's syntax colours by line number. They take longest, so they arrive after the text.</summary>
+    [ObservableProperty]
+    private IReadOnlyDictionary<int, SyntaxSpan[]>? _fileSyntax;
+
     /// <summary>The selected file's name, which picks its syntax highlighting.</summary>
     public string? FileName => FilePath is null ? null : System.IO.Path.GetFileName(FilePath);
 
@@ -228,6 +232,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
         var cts = _fileCts = new CancellationTokenSource();
         FilePath = node.RelativePath;
         FileText = null;
+        FileSyntax = null;
         Image = null;
         FileMessage = null;
         try
@@ -263,8 +268,15 @@ public sealed partial class FolderTabViewModel : TabViewModel
             if (cts.IsCancellationRequested) return;
             var lineCount = text.Length == 0 ? 0 : text.Count(c => c == '\n') + (text.EndsWith('\n') ? 0 : 1);
             FileInfo = $"{FormatSize(info.Length)}, {lineCount} {(lineCount == 1 ? "line" : "lines")}";
-            if (lineCount == 0) FileMessage = "This file is empty.";
-            else FileText = text;
+            if (lineCount == 0)
+            {
+                FileMessage = "This file is empty.";
+                return;
+            }
+            FileText = text;
+            var lines = text.Split('\n').Select((line, i) => (i + 1, line.TrimEnd('\r')));
+            var syntax = await Task.Run(() => SyntaxHighlighter.HighlightLines(node.Name, lines, cts.Token), cts.Token);
+            if (!cts.IsCancellationRequested) FileSyntax = syntax;
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
