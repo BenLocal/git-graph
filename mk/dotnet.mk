@@ -22,6 +22,8 @@ clean: ## Remove build output and published artifacts
 	rm -rf artifacts
 
 publish: ## Publish a self-contained app (RID=linux-x64|win-x64|osx-arm64)
+	@# Start empty, so files an older build left (a dropped dependency's dll) don't ship; a custom PUBLISH_DIR is left alone.
+	@case "$(PUBLISH_DIR)" in artifacts/*) rm -rf "$(PUBLISH_DIR)" ;; esac
 	$(DOTNET) publish $(APP) -c Release -r $(RID) --self-contained -o $(PUBLISH_DIR)
 
 .PHONY: lint format
