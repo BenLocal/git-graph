@@ -503,6 +503,13 @@ public partial class RepoTabViewModel : TabViewModel
 
     private void ApplyFind(bool jump)
     {
+        // Filters typed in the box apply on Enter; until then nothing is matched against them.
+        if (FindQuery.Parse(FindText) is { HasFilters: true } or { Problem: not null })
+        {
+            foreach (var r in Rows) r.IsMatch = false;
+            FindStatus = "Enter to filter";
+            return;
+        }
         var text = FindText.Trim();
         var matches = 0;
         foreach (var r in Rows)

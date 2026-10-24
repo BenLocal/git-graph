@@ -55,7 +55,10 @@ public partial class RepoTabViewModel
     partial void OnAuthorFilterChanged(string value) => ApplyFiltersSoon();
     partial void OnPathFilterChanged(string value) => ApplyFiltersSoon();
     partial void OnCodeFilterChanged(string value) => ApplyFiltersSoon();
-    partial void OnSinceFilterChanged(string value) => ApplyFilters();
+    partial void OnSinceFilterChanged(string value)
+    {
+        if (!_settingFilters) ApplyFilters();
+    }
 
     partial void OnShowFiltersChanged(bool value)
     {
@@ -73,6 +76,7 @@ public partial class RepoTabViewModel
 
     private void ApplyFiltersSoon()
     {
+        if (_settingFilters) return;
         if (_filterDebounce is null)
         {
             _filterDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -96,4 +100,39 @@ public partial class RepoTabViewModel
 
     [RelayCommand]
     private void ToggleFilters() => ShowFilters = !ShowFilters;
+
+    /// <summary>
+    /// Enter in the find box: "author:… path:… code:… since:…" go into the filter fields (shown, so they can be seen and
+    /// changed) and the rest stays to find; without any, it moves to the next match.
+    /// </summary>
+    [RelayCommand]
+    private void FindEnter()
+    {
+        var query = FindQuery.Parse(FindText);
+        if (query.Problem != null)
+        {
+            Host.ReportError(query.Problem);
+            return;
+        }
+        if (!query.HasFilters)
+        {
+            FindNext();
+            return;
+        }
+        // Set together, then reload once.
+        _settingFilters = true;
+        try
+        {
+            if (query.Author != null) AuthorFilter = query.Author;
+            if (query.Path != null) PathFilter = query.Path;
+            if (query.Code != null) CodeFilter = query.Code;
+            if (query.Since != null) SinceFilter = query.Since;
+            ShowFilters = true;
+        }
+        finally { _settingFilters = false; }
+        FindText = query.Text;
+        ApplyFilters();
+    }
+
+    private bool _settingFilters;
 }

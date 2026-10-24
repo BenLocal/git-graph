@@ -121,9 +121,9 @@
 
           <Panel Width="230" VerticalAlignment="Center">
             <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
-                     ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous.">
+                     ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous. To filter, type author:name, path:src/, code:text (added or removed), since:week|month|3m|year, quoting values with spaces, then Enter.">
               <TextBox.KeyBindings>
-                <KeyBinding Gesture="Enter" Command="{Binding FindNextCommand}" />
+                <KeyBinding Gesture="Enter" Command="{Binding FindEnterCommand}" />
                 <KeyBinding Gesture="Shift+Enter" Command="{Binding FindPreviousCommand}" />
               </TextBox.KeyBindings>
               <TextBox.InnerRightContent>
