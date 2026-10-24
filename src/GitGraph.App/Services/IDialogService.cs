@@ -19,4 +19,7 @@ public interface IDialogService
 
     /// <summary>Shows one file's history and blame in a maximized window.</summary>
     void ShowFileHistory(ViewModels.FileHistoryViewModel history);
+
+    /// <summary>Shows a repository's reflog in its own window.</summary>
+    void ShowReflog(ViewModels.ReflogViewModel reflog);
 }

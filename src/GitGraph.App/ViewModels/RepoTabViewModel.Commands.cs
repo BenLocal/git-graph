@@ -58,7 +58,10 @@ public partial class RepoTabViewModel
         await RunOperationAsync(() => _repo.RevertAsync(row.Hash, row.Commit.IsMerge, res[0] == "true"));
     }
 
-    public async Task ResetAsync(CommitRowViewModel row, ResetMode mode)
+    public Task ResetAsync(CommitRowViewModel row, ResetMode mode) => ResetToAsync(row.Hash, $"{row.ShortHash} \"{row.Subject}\"", mode);
+
+    /// <param name="label">The target as the confirmation names it: short hash and subject.</param>
+    public async Task ResetToAsync(string hash, string label, ResetMode mode)
     {
         var (what, destructive) = mode switch
         {
@@ -67,9 +70,9 @@ public partial class RepoTabViewModel
             _ => ("The commits after it and all uncommitted changes to tracked files are thrown away. This can't be undone from here.", true),
         };
         if (!await Host.Dialogs.ConfirmAsync($"Reset ({mode.ToString().ToLowerInvariant()})",
-                $"Move {CurrentLabel} to {row.ShortHash} \"{row.Subject}\". {what}", "Reset", destructive))
+                $"Move {CurrentLabel} to {label}. {what}", "Reset", destructive))
             return;
-        await RunAsync(() => _repo.ResetAsync(row.Hash, mode));
+        await RunAsync(() => _repo.ResetAsync(hash, mode));
     }
 
     public async Task RebaseAsync(string onto, string label)
@@ -116,6 +119,60 @@ public partial class RepoTabViewModel
         catch (GitException e) { Host.ReportError(e.Message); }
         await RefreshAsync();
     }
+
+    // ---- Undo and the reflog -----------------------------------------------------------------
+
+    /// <summary>Takes back the last thing that moved HEAD, after saying exactly what will happen.</summary>
+    [RelayCommand]
+    private async Task UndoLastAction()
+    {
+        UndoStep? step;
+        try
+        {
+            if (await _repo.GetOperationInProgressAsync() is { } op)
+            {
+                Host.ReportError($"A {OperationName(op)} is in progress. Continue or abort it first.");
+                return;
+            }
+            step = await _repo.GetUndoAsync();
+        }
+        catch (GitException e)
+        {
+            Host.ReportError(e.Message);
+            return;
+        }
+        if (step is null)
+        {
+            Host.ReportError($"There is nothing to undo in {Title} yet.");
+            return;
+        }
+        var (title, message) = DescribeUndo(step);
+        if (!await Host.Dialogs.ConfirmAsync(title, message + " Undo again to redo it.", "Undo")) return;
+        await RunAsync(() => _repo.UndoAsync(step));
+        await _workspace.RefreshRepoAsync(Path);
+    }
+
+    private (string Title, string Message) DescribeUndo(UndoStep step)
+    {
+        static string Short(string target) => target.Length == 40 && target.All(char.IsAsciiHexDigit) ? target[..7] : target;
+        var what = step.Message.Length > 0 ? $"\"{step.Action}: {step.Message}\"" : $"\"{step.Action}\"";
+        var branch = step.Branch ?? "The detached HEAD";
+        return step switch
+        {
+            { Kind: UndoKind.Checkout } => ("Undo checkout", $"Switch back to {Short(step.Target)}? The last action was {what}."),
+            { Kind: UndoKind.SoftReset, Action: "commit" } =>
+                ("Undo commit", $"Take back the commit \"{step.Message}\"? {branch} goes back to {Short(step.Target)}, and its changes stay staged, so you can change them and commit again."),
+            { Kind: UndoKind.SoftReset, Action: "commit (amend)" } =>
+                ("Undo amend", $"Take back the amend of \"{step.Message}\"? {branch} goes back to the commit as it was before the amend; the amended changes stay staged."),
+            { Kind: UndoKind.SoftReset } =>
+                ("Undo", $"Undo {what}? {branch} goes back to {Short(step.Target)}. The staged files already match it, so nothing else changes."),
+            _ => ("Undo", $"Undo {what}? {branch} and its files go back to {Short(step.Target)}, where they were before. Uncommitted changes are kept; if they are in files that would change, git stops and nothing happens."),
+        };
+    }
+
+    /// <summary>Every recent move of HEAD, to find and restore commits that are no longer on any branch.</summary>
+    [RelayCommand]
+    private void ShowReflog() => Host.Dialogs.ShowReflog(new ReflogViewModel(this, _repo));
 
     // ---- An operation stopped part-way ------------------------------------------------------
 
@@ -254,13 +311,14 @@ public partial class RepoTabViewModel
         await _workspace.RefreshRepoAsync(Path);
     }
 
-    public async Task CheckoutCommitAsync(CommitRowViewModel row)
+    public Task CheckoutCommitAsync(CommitRowViewModel row) => row.IsUncommitted ? Task.CompletedTask : CheckoutHashAsync(row.Hash);
+
+    public async Task CheckoutHashAsync(string hash)
     {
-        if (row.IsUncommitted) return;
         if (!await Host.Dialogs.ConfirmAsync("Check out commit",
-                $"Check out {row.ShortHash} in {Title}? You will be on a detached HEAD until you switch to a branch.", "Check out"))
+                $"Check out {hash[..7]} in {Title}? You will be on a detached HEAD until you switch to a branch.", "Check out"))
             return;
-        await RunAsync(() => _repo.CheckoutAsync(row.Hash));
+        await RunAsync(() => _repo.CheckoutAsync(hash));
         await _workspace.RefreshRepoAsync(Path);
     }
 
@@ -351,13 +409,15 @@ public partial class RepoTabViewModel
         await RunSyncAsync(() => _repo.PushTagAsync(res[0].Trim(), r.Name));
     }
 
-    public async Task CreateBranchAsync(CommitRowViewModel row)
+    public Task CreateBranchAsync(CommitRowViewModel row) => CreateBranchAtAsync(row.Hash);
+
+    public async Task CreateBranchAtAsync(string hash)
     {
-        var res = await Host.Dialogs.PromptAsync("Create branch", $"Start a new branch at {row.ShortHash}.",
+        var res = await Host.Dialogs.PromptAsync("Create branch", $"Start a new branch at {hash[..7]}.",
             [new PromptField("Branch name", "", "feature/my-change"), new PromptField("Check it out", "true", IsCheckbox: true)],
             "Create branch");
         if (res is null || string.IsNullOrWhiteSpace(res[0])) return;
-        await RunAsync(() => _repo.CreateBranchAsync(res[0].Trim(), row.Hash, res[1] == "true"));
+        await RunAsync(() => _repo.CreateBranchAsync(res[0].Trim(), hash, res[1] == "true"));
         await _workspace.RefreshRepoAsync(Path);
     }
 

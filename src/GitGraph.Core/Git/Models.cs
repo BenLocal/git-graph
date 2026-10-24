@@ -71,6 +71,22 @@ public enum GitOperation { Merge, CherryPick, Revert, Rebase }
 /// <summary>What <c>git reset</c> does besides moving the branch: keep changes staged, unstaged, or throw them away.</summary>
 public enum ResetMode { Soft, Mixed, Hard }
 
+/// <summary>One move of HEAD or a branch, newest first: "commit (amend)" with its message, "checkout" with "moving from a to b".</summary>
+public sealed record ReflogEntry(string Hash, DateTimeOffset Time, string Action, string Message);
+
+public enum UndoKind
+{
+    /// <summary>Switch back to the branch or commit checked out before.</summary>
+    Checkout,
+    /// <summary>Move the branch back and keep the index and working tree: the undone commit's changes stay staged.</summary>
+    SoftReset,
+    /// <summary>Move the branch back and its files with it, keeping uncommitted changes (git stops if they are in the way).</summary>
+    KeepReset,
+}
+
+/// <summary>How to take back the last thing that moved HEAD: <see cref="Action"/> and <see cref="Message"/> say what that was.</summary>
+public sealed record UndoStep(UndoKind Kind, string Target, string Action, string Message, string? Branch);
+
 /// <summary>A file's state in the working tree, for colouring the file tree as VS Code does. Earlier members win for folders.</summary>
 public enum FileStatusKind { Conflict, Deleted, Modified, Renamed, Added, Untracked, Ignored }
 

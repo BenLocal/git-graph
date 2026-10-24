@@ -326,6 +326,67 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Undo_takes_back_a_commit_keeping_its_changes_staged_and_undoing_again_redoes_it()
+    {
+        var repo = new GitRepository(_repo);
+        var before = (await repo.GetHeadAsync()).Hash!;
+        Commit("c.txt", "c\n", "add c");
+        var withC = (await repo.GetHeadAsync()).Hash!;
+
+        var undo = await repo.GetUndoAsync();
+        Assert.Equal((UndoKind.SoftReset, before, "commit", "add c", "main"), (undo!.Kind, undo.Target, undo.Action, undo.Message, undo.Branch));
+        await repo.UndoAsync(undo);
+        Assert.Equal(before, (await repo.GetHeadAsync()).Hash);
+        Assert.Equal(["c.txt"], (await repo.GetWorkingChangesAsync()).Staged.Select(c => c.Path));
+
+        // The undo was a reset; undoing that brings the commit back, with nothing left staged.
+        var redo = await repo.GetUndoAsync();
+        Assert.Equal((UndoKind.SoftReset, withC, "reset"), (redo!.Kind, redo.Target, redo.Action));
+        await repo.UndoAsync(redo);
+        Assert.Equal(withC, (await repo.GetHeadAsync()).Hash);
+        Assert.Equal(0, (await repo.GetWorkingChangesAsync()).Count);
+    }
+
+    [Fact]
+    public async Task Undo_takes_back_an_amend_a_checkout_and_a_reset_keeping_other_changes()
+    {
+        var repo = new GitRepository(_repo);
+        var merge = (await repo.GetHeadAsync()).Hash!;
+        Git("commit", "-q", "--amend", "-m", "merge feature, reworded");
+        var amend = await repo.GetUndoAsync();
+        Assert.Equal((UndoKind.SoftReset, merge, "commit (amend)"), (amend!.Kind, amend.Target, amend.Action));
+        await repo.UndoAsync(amend);
+        Assert.Equal("merge feature", (await repo.GetLastCommitMessageAsync()).Trim());
+
+        Git("checkout", "-q", "feature");
+        var checkout = await repo.GetUndoAsync();
+        Assert.Equal((UndoKind.Checkout, "main"), (checkout!.Kind, checkout.Target));
+        await repo.UndoAsync(checkout);
+        Assert.Equal("main", (await repo.GetHeadAsync()).Branch);
+
+        // An unrelated change in the working tree survives undoing a reset that moved files.
+        Git("reset", "-q", "--keep", "HEAD~1");
+        File.WriteAllText(Path.Combine(_repo, "notes.txt"), "mine\n");
+        var reset = await repo.GetUndoAsync();
+        Assert.Equal((UndoKind.KeepReset, merge, "reset"), (reset!.Kind, reset.Target, reset.Action));
+        await repo.UndoAsync(reset);
+        Assert.Equal(merge, (await repo.GetHeadAsync()).Hash);
+        Assert.True(File.Exists(Path.Combine(_repo, "b.txt")));
+        Assert.Equal("mine\n", File.ReadAllText(Path.Combine(_repo, "notes.txt")));
+    }
+
+    [Fact]
+    public async Task Reflog_lists_what_moved_head_newest_first()
+    {
+        var repo = new GitRepository(_repo);
+        Git("checkout", "-q", "feature");
+        var log = await repo.GetReflogAsync("HEAD", 3);
+        Assert.Equal(["checkout", "merge feature", "commit"], log.Select(e => e.Action));
+        Assert.Equal("moving from main to feature", log[0].Message);
+        Assert.True(log[0].Time > DateTimeOffset.Now.AddMinutes(-5));
+    }
+
+    [Fact]
     public async Task Rebase_stops_on_conflicts_then_continues_or_aborts()
     {
         var repo = new GitRepository(_repo);

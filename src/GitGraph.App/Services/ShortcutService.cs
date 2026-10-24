@@ -34,6 +34,9 @@ public sealed class ShortcutService
         new("Pull", "Repository", "Pull", null),
         new("Push", "Repository", "Push", null),
         new("Sync", "Repository", "Sync (pull, then push)", null),
+        // No default: Ctrl+Z belongs to the text boxes (the commit message).
+        new("UndoLastAction", "Repository", "Undo last action", null),
+        new("ShowReflog", "Repository", "Show reflog", null),
         new("CloseTab", "Tabs", "Close tab", "Ctrl+W"),
         new("CloseAllTabs", "Tabs", "Close all tabs", "Ctrl+K Ctrl+W"),
         new("KeepTabOpen", "Tabs", "Keep preview tab open", "Ctrl+K Enter"),

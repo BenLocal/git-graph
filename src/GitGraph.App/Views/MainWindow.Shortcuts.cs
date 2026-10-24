@@ -47,6 +47,8 @@ public partial class MainWindow
             ["Pull"] = () => Tab?.PullCommand.Execute(null),
             ["Push"] = () => Tab?.PushCommand.Execute(null),
             ["Sync"] = () => Tab?.SyncNowCommand.Execute(null),
+            ["UndoLastAction"] = () => Tab?.UndoLastActionCommand.Execute(null),
+            ["ShowReflog"] = () => Tab?.ShowReflogCommand.Execute(null),
             ["CloseTab"] = () => { if (Tab is { } t) Workspace!.CloseTabCommand.Execute(t); },
             ["CloseAllTabs"] = () => Workspace?.CloseAllTabsCommand.Execute(null),
             ["KeepTabOpen"] = () => { if (Tab is { } t) Workspace!.PinTabCommand.Execute(t); },

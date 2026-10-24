@@ -188,6 +188,25 @@ public static partial class GitParsers
         return list;
     }
 
+    public const string ReflogFormat = "%H%x00%gd%x00%gs%x1e";
+
+    /// <summary>Reads <see cref="ReflogFormat"/> taken with --date=unix, so each selector ends in its time: HEAD@{1700000000}.</summary>
+    public static List<ReflogEntry> ParseReflog(string output)
+    {
+        var list = new List<ReflogEntry>();
+        foreach (var raw in output.Split(RecordSep))
+        {
+            var f = raw.TrimStart('\n', '\r').Split(FieldSep);
+            if (f.Length < 3) continue;
+            var at = f[1].LastIndexOf('{');
+            var time = at >= 0 && long.TryParse(f[1][(at + 1)..].TrimEnd('}'), out var unix) ? DateTimeOffset.FromUnixTimeSeconds(unix) : default;
+            var colon = f[2].IndexOf(": ", StringComparison.Ordinal);
+            var (action, message) = colon < 0 ? (f[2], "") : (f[2][..colon], f[2][(colon + 2)..]);
+            list.Add(new ReflogEntry(f[0], time, action, message));
+        }
+        return list;
+    }
+
     public const string DetailFormat = "%H%x00%P%x00%an%x00%ae%x00%at%x00%cn%x00%ce%x00%ct%x00%B";
 
     public static CommitDetail? ParseDetail(string output)

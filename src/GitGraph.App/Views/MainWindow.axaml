@@ -102,6 +102,14 @@
           <MenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.SyncNowCommand}" InputGesture="{Binding Keys[Sync], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Stash changes…" Command="{Binding SelectedWorkspace.SelectedRepoTab.StashChangesCommand}" />
           <MenuItem Header="Pop latest stash" Command="{Binding SelectedWorkspace.SelectedRepoTab.PopLatestStashCommand}" />
+          <Separator />
+          <MenuItem Header="Undo last action…" Command="{Binding SelectedWorkspace.SelectedRepoTab.UndoLastActionCommand}"
+                    InputGesture="{Binding Keys[UndoLastAction], Source={x:Static svc:ShortcutService.Instance}}"
+                    ToolTip.Tip="Take back the last commit, amend, checkout, merge, rebase, pull or reset; it says what it will do first" />
+          <MenuItem Header="Reflog…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ShowReflogCommand}"
+                    InputGesture="{Binding Keys[ShowReflog], Source={x:Static svc:ShortcutService.Instance}}"
+                    ToolTip.Tip="Every recent move of HEAD, to bring back commits a reset or rebase left behind" />
+          <Separator />
           <MenuItem Header="Force push (with lease)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ForcePushCommand}"
                     ToolTip.Tip="After a rebase or amend: overwrite the remote branch, unless someone else pushed to it since your last fetch" />
           <MenuItem Header="Pull by">

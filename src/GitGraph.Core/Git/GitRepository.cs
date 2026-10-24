@@ -372,6 +372,46 @@ public sealed class GitRepository(string path)
     public Task ResetAsync(string target, ResetMode mode, CancellationToken ct = default) =>
         Git(ct, "reset", mode switch { ResetMode.Soft => "--soft", ResetMode.Hard => "--hard", _ => "--mixed" }, target);
 
+    /// <summary>The last moves of <paramref name="refName"/> (HEAD, or refs/heads/…), newest first.</summary>
+    public async Task<List<ReflogEntry>> GetReflogAsync(string refName = "HEAD", int maxCount = 200, CancellationToken ct = default)
+    {
+        var r = await GitRunner.RunRawAsync(Path, ["reflog", "show", "--date=unix", $"--format={GitParsers.ReflogFormat}", $"-n{maxCount}", refName, "--"], ct);
+        // A branch or repository without a reflog yet has nothing to list.
+        return r.ExitCode == 0 ? GitParsers.ParseReflog(r.StdOut) : [];
+    }
+
+    /// <summary>
+    /// How to take back the last thing that moved HEAD, as lazygit's undo does: a checkout switches back; otherwise the
+    /// branch returns to where its reflog says it was before. A commit or amend comes back off the branch with its
+    /// changes staged; anything else (merge, rebase, pull, reset, cherry-pick, revert) moves the files back too and
+    /// keeps uncommitted changes. Undoing an undo redoes it. Null when there is nothing before.
+    /// </summary>
+    public async Task<UndoStep?> GetUndoAsync(CancellationToken ct = default)
+    {
+        var headLog = await GetReflogAsync("HEAD", 1, ct);
+        if (headLog.Count == 0) return null;
+        if (headLog[0] is { Action: "checkout" } checkout && System.Text.RegularExpressions.Regex.Match(checkout.Message, "^moving from (.+) to .+$") is { Success: true } m)
+            return new UndoStep(UndoKind.Checkout, m.Groups[1].Value, checkout.Action, checkout.Message, null);
+
+        // On a branch its own reflog has one entry per change (a rebase is one), where HEAD's has one per step.
+        var branch = (await GetHeadAsync(ct)).Branch;
+        var log = await GetReflogAsync(branch is null ? "HEAD" : $"refs/heads/{branch}", 2, ct);
+        if (log.Count < 2) return null;
+        var (last, target) = (log[0], log[1].Hash);
+        // When the index already holds the target's files (redoing a commit undone with its changes staged), only the
+        // branch needs to move; a keep reset would refuse because of those staged changes.
+        var indexIsTarget = (await GitRunner.RunRawAsync(Path, ["diff", "--cached", "--quiet", target, "--"], ct)).ExitCode == 0;
+        var kind = last.Action is "commit" or "commit (amend)" || indexIsTarget ? UndoKind.SoftReset : UndoKind.KeepReset;
+        return new UndoStep(kind, target, last.Action, last.Message, branch);
+    }
+
+    public Task UndoAsync(UndoStep step, CancellationToken ct = default) => step.Kind switch
+    {
+        UndoKind.Checkout => Git(ct, "checkout", step.Target),
+        UndoKind.SoftReset => Git(ct, "reset", "--soft", step.Target),
+        _ => Git(ct, "reset", "--keep", step.Target),
+    };
+
     /// <summary>Replays the checked-out branch's own commits on top of <paramref name="onto"/>.</summary>
     /// <param name="autostash">Stash uncommitted changes first and bring them back afterwards.</param>
     public Task RebaseAsync(string onto, bool autostash, CancellationToken ct = default) =>

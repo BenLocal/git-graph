@@ -20,6 +20,20 @@ public class ParserTests
     }
 
     [Fact]
+    public void ParseReflog_splits_the_action_from_its_message()
+    {
+        var output = "aaaa\0HEAD@{1700000000}\0commit (amend): Fix: the parser\x1e\n" +
+                     "bbbb\0HEAD@{1699999000}\0checkout: moving from main to feat\x1e\n" +
+                     "cccc\0HEAD@{1699998000}\0rebase (finish)\x1e\n";
+        var log = GitParsers.ParseReflog(output);
+        Assert.Equal(["commit (amend)", "checkout", "rebase (finish)"], log.Select(e => e.Action));
+        // Only the first ": " separates the action; the message keeps its own colons.
+        Assert.Equal(["Fix: the parser", "moving from main to feat", ""], log.Select(e => e.Message));
+        Assert.Equal(DateTimeOffset.FromUnixTimeSeconds(1700000000), log[0].Time);
+        Assert.Equal("bbbb", log[1].Hash);
+    }
+
+    [Fact]
     public void ParseRefs_peels_annotated_tags_and_skips_remote_head()
     {
         var output =

@@ -1,0 +1,66 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GitGraph.App.ViewModels"
+        x:Class="GitGraph.App.Views.ReflogWindow"
+        x:DataType="vm:ReflogViewModel"
+        Title="{Binding Title, StringFormat='{}{0} – Reflog – Git Graph'}"
+        Icon="/Assets/Icons/gitgraph-256.png"
+        Width="1000" Height="680" MinWidth="560" MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource SurfaceBrush}">
+  <Window.Resources>
+    <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
+    <MenuFlyout x:Key="EntryMenu" x:DataType="vm:ReflogRowViewModel">
+      <MenuItem Header="Create branch here…" Command="{Binding Owner.CreateBranchCommand}" CommandParameter="{Binding}"
+                ToolTip.Tip="Keep this commit on a branch of its own, for example one a reset left behind" />
+      <MenuItem Header="Check out this commit…" Command="{Binding Owner.CheckoutCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Reset current branch to here">
+        <MenuItem Header="Soft: keep the changes staged…" Command="{Binding Owner.ResetSoftCommand}" CommandParameter="{Binding}" />
+        <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding Owner.ResetMixedCommand}" CommandParameter="{Binding}" />
+        <MenuItem Header="Hard: discard the changes…" Command="{Binding Owner.ResetHardCommand}" CommandParameter="{Binding}" />
+      </MenuItem>
+      <Separator />
+      <MenuItem Header="Copy commit hash" Command="{Binding Owner.CopyHashCommand}" CommandParameter="{Binding}" />
+    </MenuFlyout>
+  </Window.Resources>
+  <Grid RowDefinitions="Auto,Auto,*">
+    <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Spacing="2">
+          <TextBlock Classes="title" Text="{Binding Title, StringFormat='Reflog of {0}'}" />
+          <TextBlock Classes="muted small" TextWrapping="Wrap"
+                     Text="Every recent move of HEAD, newest first. Right-click an entry to bring back a commit a reset or rebase left behind." />
+        </StackPanel>
+        <Button Grid.Column="1" Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)" VerticalAlignment="Top">
+          <LucideIcon Kind="X" />
+        </Button>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="110,90,150,*,80" Margin="26,6,26,4">
+      <TextBlock Classes="section" Text="When" />
+      <TextBlock Grid.Column="1" Classes="section" Text="Entry" />
+      <TextBlock Grid.Column="2" Classes="section" Text="Action" />
+      <TextBlock Grid.Column="3" Classes="section" Text="Message" />
+      <TextBlock Grid.Column="4" Classes="section" Text="Commit" />
+    </Grid>
+
+    <TextBlock Grid.Row="2" Classes="muted" Text="{Binding Message}" Margin="26,12" TextWrapping="Wrap"
+               IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <ListBox Grid.Row="2" Classes="dense pills" ItemsSource="{Binding Entries}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ReflogRowViewModel">
+          <Grid ColumnDefinitions="110,90,150,*,80" Height="{DynamicResource RowHeight}" Margin="14,0" Background="Transparent"
+                ContextFlyout="{StaticResource EntryMenu}">
+            <TextBlock Classes="muted" Text="{Binding When}" ToolTip.Tip="{Binding TimeText}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Classes="muted mono small" Text="{Binding Selector}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="2" Text="{Binding Action}" FontWeight="Medium" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+            <TextBlock Grid.Column="3" Text="{Binding Message}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                       ToolTip.Tip="{Binding Message}" Margin="0,0,12,0" />
+            <TextBlock Grid.Column="4" Classes="mono muted" Text="{Binding ShortHash}" VerticalAlignment="Center" />
+          </Grid>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+  </Grid>
+</Window>
