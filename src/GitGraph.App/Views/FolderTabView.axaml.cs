@@ -43,6 +43,8 @@ public partial class FolderTabView : UserControl
         if (_vm != null) _vm.PropertyChanged -= OnVmChanged;
         _vm = DataContext as FolderTabViewModel;
         if (_vm != null) _vm.PropertyChanged += OnVmChanged;
+        // This view outlives its folder tabs; a selection left in the tree would keep a closed tab's files alive.
+        else Tree.SelectedItem = null;
         ShowText();
         if (_vm != null) Columns.ColumnDefinitions[0].Width = new Avalonia.Controls.GridLength(_vm.TreeWidth);
         // The tree resets each new row's selection (and the binding copies that back), and its SelectedItem
