@@ -189,7 +189,7 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:TabViewModel">
-              <Grid RowDefinitions="2,*" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped">
+              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped">
                 <Grid.ContextMenu>
                   <ContextMenu>
                     <MenuItem Header="Keep open" Command="{Binding Workspace.PinTabCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsPreview}" />
@@ -198,8 +198,8 @@
                     <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
                   </ContextMenu>
                 </Grid.ContextMenu>
-                <Border Grid.Row="0" Classes="tabline" />
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
+                <Border Grid.Row="1" Classes="tabline" />
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
                   <LucideIcon Kind="FolderTree" Size="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
                   <LucideIcon Kind="Folder" Size="13" IsVisible="{Binding IsFolder}" VerticalAlignment="Center" />
                   <TextBlock Classes="name" Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />

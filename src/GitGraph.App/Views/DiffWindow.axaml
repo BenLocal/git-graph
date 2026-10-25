@@ -93,7 +93,7 @@
           <TextBlock Classes="section" Text="{Binding CommentsTitle}" Margin="12,6" />
           <TextBlock Grid.Row="1" Classes="muted small" TextWrapping="Wrap" Margin="12,0,12,8"
                      Text="Right-click a line to comment on it. Comments are kept in git notes and pushed with the branch." />
-          <ListBox x:Name="CommentList" Grid.Row="2" Classes="plain" ItemsSource="{Binding FileComments}" SelectionChanged="OnCommentPicked">
+          <ListBox x:Name="CommentList" Grid.Row="2" Classes="plain" Background="Transparent" ItemsSource="{Binding FileComments}" SelectionChanged="OnCommentPicked">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:CommentViewModel">
                 <StackPanel Spacing="4" Margin="0,4">

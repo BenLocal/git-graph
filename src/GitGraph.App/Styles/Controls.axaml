@@ -124,7 +124,7 @@
     <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="16,14" />
   </Style>
   <Style Selector="ProgressBar.share">
@@ -211,16 +211,17 @@
     <Setter Property="Padding" Value="10,5" />
   </Style>
 
+  <!-- GitHub's buttons: green for the main action, a bordered grey one for the rest -->
   <Style Selector="Button.primary">
-    <Setter Property="Background" Value="{DynamicResource SignalBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />
+    <Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
+    <Setter Property="Foreground" Value="White" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="14,7" />
   </Style>
   <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SystemAccentColorLight1}" />
-    <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />
+    <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
+    <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector="Button.primary.danger">
     <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
@@ -232,9 +233,16 @@
     <Setter Property="Opacity" Value="0.9" />
   </Style>
   <Style Selector="Button.secondary">
-    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ButtonBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="14,7" />
+    <Setter Property="Padding" Value="14,6" />
+  </Style>
+  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
 
   <!-- Inputs -->
@@ -290,10 +298,9 @@
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Margin" Value="8,0,8,8" />
     <Setter Property="ClipToBounds" Value="True" />
-    <Setter Property="BoxShadow" Value="0 6 24 0 #38000000" />
   </Style>
   <Style Selector="Border.menubar Menu > MenuItem">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
@@ -320,7 +327,7 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
-  <!-- Repository tabs: folder tabs on the frame; the selected one takes the sheet's colour and joins it. -->
+  <!-- Repository tabs: GitHub's underline navigation on the frame; the selected one is bold over a coral line. -->
   <Style Selector="ListBox.tabs">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Padding" Value="0" />
@@ -332,7 +339,7 @@
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="CornerRadius" Value="8,8,0,0" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.12" />
@@ -343,13 +350,13 @@
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
+    <Setter Property="Background" Value="Transparent" />
   </Style>
-  <!-- The signal bar on top of the selected tab grows out from its centre. -->
+  <!-- The line under the selected tab grows out from its centre. -->
   <Style Selector="ListBox.tabs ListBoxItem Border.tabline">
-    <Setter Property="Background" Value="{DynamicResource SignalBrush}" />
-    <Setter Property="Margin" Value="10,0" />
-    <Setter Property="CornerRadius" Value="0,0,2,2" />
+    <Setter Property="Background" Value="{DynamicResource TabLineBrush}" />
+    <Setter Property="Margin" Value="8,0" />
+    <Setter Property="CornerRadius" Value="2" />
     <Setter Property="RenderTransform" Value="scaleX(0)" />
     <Setter Property="Transitions">
       <Transitions>
@@ -382,13 +389,13 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
-  <!-- Details pane tabs: quiet labels, the selected one gets the signal underline like the repository tabs. -->
+  <!-- Details pane tabs: quiet labels, the selected one gets the coral underline like the repository tabs. -->
   <Style Selector="TabControl.pane">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
     <Style.Resources>
       <x:Double x:Key="TabItemHeaderPipeThickness">2</x:Double>
-      <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource SignalColor}" />
+      <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource TabLineColor}" />
       <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="{DynamicResource MutedColor}" />
       <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="{DynamicResource TextColor}" />
       <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="{DynamicResource TextColor}" />
@@ -413,8 +420,8 @@
   </Style>
   <!-- File count next to the Changes tab label. -->
   <Style Selector="Border.count">
-    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+    <Setter Property="CornerRadius" Value="10" />
     <Setter Property="Padding" Value="6,0" />
     <Setter Property="MinWidth" Value="18" />
   </Style>
@@ -429,7 +436,7 @@
     <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="10,6" />
     <Setter Property="BoxShadow" Value="0 4 14 0 #33000000" />
     <Setter Property="Opacity" Value="0" />
@@ -555,14 +562,13 @@
     <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
   </Style>
 
-  <!-- Ref badges: route plates in the lane's colour -->
   <!--
-    Ref labels: filled with the commit's lane colour, dark text and icon on it (a branch, tag or cloud icon
+    Ref labels: pills like GitHub's labels, filled with the commit's lane colour, dark text and icon on it (a branch, tag or cloud icon
     first), a local branch and its remote copies in one label ("main │ origin"), the checked-out branch bold.
     Worktree labels are neutral: they mark a checkout, not a ref.
   -->
   <Style Selector="Border.badge">
-    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="CornerRadius" Value="9" />
     <Setter Property="Height" Value="18" />
     <Setter Property="Background" Value="{ReflectionBinding LaneBrush}" />
     <Setter Property="ClipToBounds" Value="True" />
@@ -577,8 +583,8 @@
     <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector="Border.badge Border.refblock">
-    <Setter Property="Width" Value="18" />
-    <Setter Property="Padding" Value="4,2,0,2" />
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Padding" Value="6,2,0,2" />
   </Style>
   <Style Selector="Border.badge Border.refblock LucideIcon">
     <Setter Property="Foreground" Value="{DynamicResource OnLaneBrush}" />

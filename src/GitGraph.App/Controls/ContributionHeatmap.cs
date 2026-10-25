@@ -54,7 +54,8 @@ public sealed class ContributionHeatmap : Control
     /// <summary>Five shades: none, then four steps up to the busiest days (quartiles of the days with commits).</summary>
     private (IBrush[] Shades, int[] Steps) Scale()
     {
-        var signal = (this.Brush("SignalBrush", Brushes.Gray) as ISolidColorBrush)?.Color ?? Colors.Orange;
+        // Green, as on a GitHub profile.
+        var signal = (this.Brush("PrimaryBrush", Brushes.Gray) as ISolidColorBrush)?.Color ?? Colors.Green;
         IBrush[] shades =
         [
             this.Brush("RaisedBrush", Brushes.Gray),

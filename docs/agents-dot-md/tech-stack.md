@@ -20,7 +20,7 @@ Structure and design trade-offs are in `architecture.md`.
 | Serialization | System.Text.Json | BCL | source generator |
 | Text diff | DiffPlex | 1.9.0 | line diff plus word diff inside modified lines (`Diff/TextDiff.cs`) |
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
-| Fonts | IBM Plex Sans (UI); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
+| Fonts | Segoe UI → Noto Sans → IBM Plex Sans (UI, as GitHub's system stack); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
 | Icons | Lucide.Avalonia (`<LucideIcon Kind="GitBranch" Size="14" />`) | 0.2.24 | default size, stroke and colour set by the `LucideIcon` style in `Controls.axaml` |
 | Code viewer | AvaloniaEdit | 12.0.0 | read-only file view in folder tabs and both sides of the full diff window |
 | Syntax colours | TextMateSharp.Grammars | 2.0.3 | VS Code's grammars and Dark+/Light+ themes, in one registry (`Services/SyntaxHighlighter.cs`) for diffs, blame and the code viewer; editors take the colours through `Controls/SyntaxColours.cs` |

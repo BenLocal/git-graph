@@ -13,7 +13,13 @@
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
-    <FluentTheme />
+    <!-- Fluent's accent is GitHub's blue; without it, the light theme takes the desktop's accent (Ubuntu's orange) -->
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#0969DA" />
+        <ColorPaletteResources x:Key="Dark" Accent="#1F6FEB" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
     <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     <StyleInclude Source="avares://GitGraph/Styles/Controls.axaml" />
   </Application.Styles>

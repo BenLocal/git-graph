@@ -107,4 +107,4 @@ The macOS app is only ad-hoc signed, not notarized, so the first launch needs ri
 | `make screenshots` | Render the README screenshots from the demo repositories into `docs/screenshots` |
 | `make reindex` | Rebuild the generated indexes in `AGENTS.md` and `docs/` |
 
-Fonts: the interface uses IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`). Icons are [Lucide](https://lucide.dev) (ISC license), through the Lucide.Avalonia package.
+Fonts: the interface uses the system sans GitHub uses (Segoe UI on Windows, Noto Sans on Linux), falling back to IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`). Icons are [Lucide](https://lucide.dev) (ISC license), through the Lucide.Avalonia package.

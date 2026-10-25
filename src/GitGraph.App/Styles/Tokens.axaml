@@ -1,16 +1,16 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!--
-    Design tokens. The graph is drawn like a transit map: each lane is a line with its own colour,
-    commits are stations on it. Everything around the graph stays in quiet slate so the lines carry the colour.
-    The chrome (menu bar, sidebar, tab strip) sits on a darker frame; the open repository is one lit sheet in it.
+    Design tokens, after GitHub's Primer: a dark header frame, a plain canvas, 1 px borders, blue for focus and
+    selection, green for the main action, a coral underline on the selected tab. The graph's lane colours are the
+    one bright thing; everything around them stays in Primer's quiet greys.
   -->
   <!--
-    Code uses the same fonts as the user's Ghostty terminal (Ubuntu Sans Mono, Noto Sans CJK SC for Chinese,
-    DejaVu Sans Mono), falling back to the bundled IBM Plex Mono where those aren't installed.
-    The interface keeps IBM Plex Sans, with Noto Sans CJK SC for Chinese.
+    The interface uses the system sans GitHub asks for (Segoe UI on Windows, Noto Sans on Linux), falling back to
+    the bundled IBM Plex Sans, with Noto Sans CJK SC for Chinese. Code uses the same fonts as the user's Ghostty
+    terminal (Ubuntu Sans Mono, Noto Sans CJK SC, DejaVu Sans Mono), falling back to the bundled IBM Plex Mono.
   -->
-  <FontFamily x:Key="UiFont">avares://GitGraph/Assets/Fonts#IBM Plex Sans, Noto Sans CJK SC</FontFamily>
+  <FontFamily x:Key="UiFont">Segoe UI, Noto Sans, avares://GitGraph/Assets/Fonts#IBM Plex Sans, Noto Sans CJK SC</FontFamily>
   <FontFamily x:Key="CodeFont">Ubuntu Sans Mono, Noto Sans CJK SC, DejaVu Sans Mono, avares://GitGraph/Assets/Fonts#IBM Plex Mono</FontFamily>
 
   <x:Double x:Key="FontSizeSmall">11.5</x:Double>
@@ -23,86 +23,96 @@
   <x:Double x:Key="RowHeight">26</x:Double>
 
   <ResourceDictionary.ThemeDictionaries>
-    <!-- Night map -->
+    <!-- Primer dark -->
     <ResourceDictionary x:Key="Dark">
-      <Color x:Key="FrameColor">#11151C</Color>
-      <Color x:Key="CanvasColor">#171C26</Color>
-      <Color x:Key="SurfaceColor">#1C222D</Color>
-      <Color x:Key="RaisedColor">#262E3B</Color>
-      <Color x:Key="RuleColor">#29313F</Color>
-      <Color x:Key="TextColor">#E4E8EF</Color>
-      <Color x:Key="MutedColor">#8B95A7</Color>
-      <Color x:Key="SignalColor">#F2B33D</Color>
-      <Color x:Key="SignalWashColor">#2EF2B33D</Color>
+      <Color x:Key="FrameColor">#010409</Color>
+      <Color x:Key="CanvasColor">#0D1117</Color>
+      <Color x:Key="SurfaceColor">#151B23</Color>
+      <Color x:Key="RaisedColor">#212830</Color>
+      <Color x:Key="RuleColor">#3D444D</Color>
+      <Color x:Key="TextColor">#F0F6FC</Color>
+      <Color x:Key="MutedColor">#9198A1</Color>
+      <Color x:Key="SignalColor">#4493F8</Color>
+      <Color x:Key="SignalWashColor">#26388BFD</Color>
       <!-- Selected text in the code viewer, as in VS Code: the text keeps its own colours on it -->
       <Color x:Key="EditorSelectionColor">#264F78</Color>
-      <Color x:Key="HoverWashColor">#14FFFFFF</Color>
-      <Color x:Key="OnLaneColor">#10141B</Color>
-      <Color x:Key="AddBgColor">#1D3A32</Color>
-      <Color x:Key="AddWordBgColor">#2F6652</Color>
-      <Color x:Key="AddFgColor">#7FD1B0</Color>
-      <Color x:Key="DelBgColor">#41242B</Color>
-      <Color x:Key="DelWordBgColor">#74343F</Color>
-      <Color x:Key="DelFgColor">#F08A86</Color>
-      <Color x:Key="HunkBgColor">#222B3E</Color>
-      <Color x:Key="HunkFgColor">#8EA2D4</Color>
-      <Color x:Key="LinkColor">#7FA6F5</Color>
+      <Color x:Key="HoverWashColor">#33656C76</Color>
+      <Color x:Key="OnLaneColor">#0D1117</Color>
+      <Color x:Key="AddBgColor">#262EA043</Color>
+      <Color x:Key="AddWordBgColor">#662EA043</Color>
+      <Color x:Key="AddFgColor">#3FB950</Color>
+      <Color x:Key="DelBgColor">#1AF85149</Color>
+      <Color x:Key="DelWordBgColor">#66F85149</Color>
+      <Color x:Key="DelFgColor">#F85149</Color>
+      <Color x:Key="HunkBgColor">#1A388BFD</Color>
+      <Color x:Key="HunkFgColor">#9198A1</Color>
+      <Color x:Key="LinkColor">#4493F8</Color>
       <Color x:Key="ScrollThumbColor">#30FFFFFF</Color>
       <Color x:Key="BadgeFillColor">#14FFFFFF</Color>
-      <Color x:Key="FieldColor">#232A37</Color>
-      <!-- VS Code's git decoration colours (Dark+) -->
-      <Color x:Key="GitModifiedColor">#E2C08D</Color>
-      <Color x:Key="GitAddedColor">#81B88B</Color>
-      <Color x:Key="GitUntrackedColor">#73C991</Color>
-      <Color x:Key="GitDeletedColor">#C74E39</Color>
-      <Color x:Key="GitConflictColor">#E4676B</Color>
+      <Color x:Key="FieldColor">#0D1117</Color>
+      <!-- Primer's attention, success, danger and severe colours, as GitHub marks changed files -->
+      <Color x:Key="GitModifiedColor">#D29922</Color>
+      <Color x:Key="GitAddedColor">#3FB950</Color>
+      <Color x:Key="GitUntrackedColor">#3FB950</Color>
+      <Color x:Key="GitDeletedColor">#F85149</Color>
+      <Color x:Key="GitConflictColor">#DB6D28</Color>
       <Color x:Key="ScrollThumbHoverColor">#55FFFFFF</Color>
       <Color x:Key="ScrollThumbActiveColor">#80FFFFFF</Color>
-      <Color x:Key="DangerColor">#F07167</Color>
+      <Color x:Key="DangerColor">#DA3633</Color>
+      <!-- The main action (GitHub's green button) and the selected tab's underline -->
+      <Color x:Key="PrimaryColor">#238636</Color>
+      <Color x:Key="PrimaryHoverColor">#29903B</Color>
+      <Color x:Key="TabLineColor">#F78166</Color>
+      <Color x:Key="ButtonColor">#212830</Color>
+      <Color x:Key="ButtonHoverColor">#262C36</Color>
 
-      <Color x:Key="SystemAccentColor">#F2B33D</Color>
-      <Color x:Key="SystemAccentColorDark1">#D99C2B</Color>
-      <Color x:Key="SystemAccentColorLight1">#F5C364</Color>
+      <Color x:Key="SystemAccentColor">#1F6FEB</Color>
+      <Color x:Key="SystemAccentColorDark1">#1158C7</Color>
+      <Color x:Key="SystemAccentColorLight1">#4493F8</Color>
     </ResourceDictionary>
-    <!-- Day map -->
+    <!-- Primer light -->
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="FrameColor">#E4E8EE</Color>
+      <Color x:Key="FrameColor">#F6F8FA</Color>
       <Color x:Key="CanvasColor">#FFFFFF</Color>
-      <Color x:Key="SurfaceColor">#F7F8FA</Color>
-      <Color x:Key="RaisedColor">#ECEFF4</Color>
-      <Color x:Key="RuleColor">#DFE4EB</Color>
-      <Color x:Key="TextColor">#1C2330</Color>
-      <Color x:Key="MutedColor">#5D697C</Color>
-      <Color x:Key="SignalColor">#B07206</Color>
-      <Color x:Key="SignalWashColor">#26E9A21B</Color>
+      <Color x:Key="SurfaceColor">#F6F8FA</Color>
+      <Color x:Key="RaisedColor">#EFF2F5</Color>
+      <Color x:Key="RuleColor">#D1D9E0</Color>
+      <Color x:Key="TextColor">#1F2328</Color>
+      <Color x:Key="MutedColor">#59636E</Color>
+      <Color x:Key="SignalColor">#0969DA</Color>
+      <Color x:Key="SignalWashColor">#1F0969DA</Color>
       <Color x:Key="EditorSelectionColor">#ADD6FF</Color>
-      <Color x:Key="HoverWashColor">#0C1C2330</Color>
+      <Color x:Key="HoverWashColor">#1F818B98</Color>
       <Color x:Key="OnLaneColor">#11161F</Color>
-      <Color x:Key="AddBgColor">#E1F3EA</Color>
-      <Color x:Key="AddWordBgColor">#B5E3CB</Color>
-      <Color x:Key="AddFgColor">#1E7652</Color>
-      <Color x:Key="DelBgColor">#FBE6E4</Color>
-      <Color x:Key="DelWordBgColor">#F5C1BB</Color>
-      <Color x:Key="DelFgColor">#B13A32</Color>
-      <Color x:Key="HunkBgColor">#E8EEF8</Color>
-      <Color x:Key="HunkFgColor">#4760A0</Color>
-      <Color x:Key="LinkColor">#2F5FC4</Color>
+      <Color x:Key="AddBgColor">#DAFBE1</Color>
+      <Color x:Key="AddWordBgColor">#ACEEBB</Color>
+      <Color x:Key="AddFgColor">#1A7F37</Color>
+      <Color x:Key="DelBgColor">#FFEBE9</Color>
+      <Color x:Key="DelWordBgColor">#FFCECB</Color>
+      <Color x:Key="DelFgColor">#D1242F</Color>
+      <Color x:Key="HunkBgColor">#DDF4FF</Color>
+      <Color x:Key="HunkFgColor">#59636E</Color>
+      <Color x:Key="LinkColor">#0969DA</Color>
       <Color x:Key="ScrollThumbColor">#2A1C2330</Color>
       <Color x:Key="BadgeFillColor">#0A1C2330</Color>
-      <Color x:Key="FieldColor">#EEF1F5</Color>
-      <!-- VS Code's git decoration colours (Light+) -->
-      <Color x:Key="GitModifiedColor">#895503</Color>
-      <Color x:Key="GitAddedColor">#587C0C</Color>
-      <Color x:Key="GitUntrackedColor">#007100</Color>
-      <Color x:Key="GitDeletedColor">#AD0707</Color>
-      <Color x:Key="GitConflictColor">#AD0707</Color>
+      <Color x:Key="FieldColor">#FFFFFF</Color>
+      <Color x:Key="GitModifiedColor">#9A6700</Color>
+      <Color x:Key="GitAddedColor">#1A7F37</Color>
+      <Color x:Key="GitUntrackedColor">#1A7F37</Color>
+      <Color x:Key="GitDeletedColor">#D1242F</Color>
+      <Color x:Key="GitConflictColor">#BC4C00</Color>
       <Color x:Key="ScrollThumbHoverColor">#501C2330</Color>
       <Color x:Key="ScrollThumbActiveColor">#781C2330</Color>
-      <Color x:Key="DangerColor">#C2382E</Color>
+      <Color x:Key="DangerColor">#CF222E</Color>
+      <Color x:Key="PrimaryColor">#1F883D</Color>
+      <Color x:Key="PrimaryHoverColor">#1C8139</Color>
+      <Color x:Key="TabLineColor">#FD8C73</Color>
+      <Color x:Key="ButtonColor">#F6F8FA</Color>
+      <Color x:Key="ButtonHoverColor">#EFF2F5</Color>
 
-      <Color x:Key="SystemAccentColor">#B07206</Color>
-      <Color x:Key="SystemAccentColorDark1">#966104</Color>
-      <Color x:Key="SystemAccentColorLight1">#C88A1F</Color>
+      <Color x:Key="SystemAccentColor">#0969DA</Color>
+      <Color x:Key="SystemAccentColorDark1">#0550AE</Color>
+      <Color x:Key="SystemAccentColorLight1">#218BFF</Color>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -137,4 +147,9 @@
   <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="{DynamicResource ScrollThumbHoverColor}" />
   <SolidColorBrush x:Key="ScrollThumbActiveBrush" Color="{DynamicResource ScrollThumbActiveColor}" />
   <SolidColorBrush x:Key="DangerBrush" Color="{DynamicResource DangerColor}" />
+  <SolidColorBrush x:Key="PrimaryBrush" Color="{DynamicResource PrimaryColor}" />
+  <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{DynamicResource PrimaryHoverColor}" />
+  <SolidColorBrush x:Key="TabLineBrush" Color="{DynamicResource TabLineColor}" />
+  <SolidColorBrush x:Key="ButtonBrush" Color="{DynamicResource ButtonColor}" />
+  <SolidColorBrush x:Key="ButtonHoverBrush" Color="{DynamicResource ButtonHoverColor}" />
 </ResourceDictionary>

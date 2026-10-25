@@ -213,7 +213,8 @@
     </StackPanel>
 
     <!-- Column headings -->
-    <Border x:Name="Headings" Grid.Row="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1">
+    <!-- Like the header of a GitHub box: a tinted band over the list -->
+    <Border x:Name="Headings" Grid.Row="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,1">
       <!-- Inset like the rows' selection pills so the columns line up. -->
       <Grid ColumnDefinitions="Auto,*,140,150,84" Height="26" Margin="6,0">
         <TextBlock Classes="section" Width="{Binding GraphWidth}" Padding="10,0,0,0" Text="Graph" VerticalAlignment="Center" />
