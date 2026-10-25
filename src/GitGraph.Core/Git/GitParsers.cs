@@ -188,6 +188,56 @@ public static partial class GitParsers
         return list;
     }
 
+    /// <summary>
+    /// The comments of one commit's note. The note is a log, one JSON object per line: an edit adds the comment again
+    /// with the same id and a later date, a delete adds it with "deleted": true. That way two people's notes merge
+    /// with git's cat_sort_uniq strategy (lines from both, sorted, duplicates dropped) and nothing is lost.
+    /// Each comment's latest version counts; they come in the order they were first written.
+    /// </summary>
+    public static List<CodeComment> ParseComments(string note)
+    {
+        var latest = new Dictionary<string, (CodeComment Comment, bool Deleted, DateTimeOffset First)>();
+        foreach (var raw in note.Split('\n'))
+        {
+            var line = raw.Trim();
+            if (!line.StartsWith('{')) continue;
+            System.Text.Json.Nodes.JsonObject? o;
+            try { o = System.Text.Json.Nodes.JsonNode.Parse(line) as System.Text.Json.Nodes.JsonObject; }
+            catch (System.Text.Json.JsonException) { continue; }
+            if (o?["id"]?.GetValue<string>() is not { Length: > 0 } id || o["date"] is null) continue;
+            var comment = new CodeComment(id, o["file"]?.GetValue<string>() ?? "", o["side"]?.GetValue<string>() == "old",
+                o["line"]?.GetValue<int>() ?? 0, o["author"]?.GetValue<string>() ?? "", o["email"]?.GetValue<string>() ?? "",
+                o["date"]!.GetValue<DateTimeOffset>(), o["text"]?.GetValue<string>() ?? "");
+            var deleted = o["deleted"]?.GetValue<bool>() == true;
+            if (!latest.TryGetValue(id, out var known))
+                latest[id] = (comment, deleted, comment.Date);
+            else
+            {
+                var first = comment.Date < known.First ? comment.Date : known.First;
+                latest[id] = comment.Date >= known.Comment.Date ? (comment, deleted, first) : (known.Comment, known.Deleted, first);
+            }
+        }
+        return latest.Values.Where(v => !v.Deleted).OrderBy(v => v.First).Select(v => v.Comment).ToList();
+    }
+
+    /// <summary>One line of a comment note; see <see cref="ParseComments"/>.</summary>
+    public static string CommentLine(CodeComment c, bool deleted = false)
+    {
+        var o = new System.Text.Json.Nodes.JsonObject
+        {
+            ["id"] = c.Id,
+            ["file"] = c.File,
+            ["side"] = c.OldSide ? "old" : "new",
+            ["line"] = c.Line,
+            ["author"] = c.Author,
+            ["email"] = c.Email,
+            ["date"] = c.Date,
+            ["text"] = deleted ? "" : c.Text,
+        };
+        if (deleted) o["deleted"] = true;
+        return o.ToJsonString();
+    }
+
     public const string RebaseFormat = "%H%x00%P%x00%an%x00%ae%x00%at%x00%s%x00%B%x1e";
 
     public static List<RebaseCommit> ParseRebaseCommits(string output)

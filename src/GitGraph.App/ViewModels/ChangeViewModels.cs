@@ -94,6 +94,25 @@ public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, 
     public bool IsHunk { get; } = line.Kind == DiffLineKind.Hunk;
     /// <summary>Set on the hunk headers of an uncommitted file that can be staged a hunk at a time.</summary>
     public HunkActions? Hunk { get; } = hunk;
+
+    /// <summary>Where a comment on this line goes; null where lines can't take comments (not a commit's diff).</summary>
+    [ObservableProperty]
+    private CommentSpot? _spot;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasComments))]
+    private IReadOnlyList<CommentViewModel> _comments = [];
+
+    public bool HasComments => Comments.Count > 0;
+
+    /// <summary>Shows <paramref name="owner"/>'s comments on this line of <paramref name="file"/>, or none without one.</summary>
+    public void ShowComments(CommitComments? owner, string file, IReadOnlyList<CodeComment> comments)
+    {
+        Spot = owner is null || IsHunk ? null
+            : IsDeleted ? new CommentSpot(owner, file, true, line.OldLine!.Value)
+            : new CommentSpot(owner, file, false, line.NewLine!.Value);
+        Comments = owner is null || IsHunk ? [] : owner.At(comments, line.OldLine, line.NewLine);
+    }
 }
 
 public sealed partial class SplitCellViewModel(DiffLine? line, bool left, DiffSyntax syntax) : ObservableObject
@@ -109,12 +128,24 @@ public sealed partial class SplitCellViewModel(DiffLine? line, bool left, DiffSy
     public bool IsAdded { get; } = line?.Kind == DiffLineKind.Added;
     public bool IsDeleted { get; } = line?.Kind == DiffLineKind.Deleted;
     public bool IsEmpty { get; } = line is null;
+
+    /// <summary>Where a comment on this side's line goes: the parent's line for a deleted one, else the commit's.</summary>
+    [ObservableProperty]
+    private CommentSpot? _spot;
+
+    public void ShowComments(CommitComments? owner, string file) =>
+        Spot = owner is null || line is null ? null
+            : IsDeleted ? new CommentSpot(owner, file, true, line.OldLine!.Value)
+            : new CommentSpot(owner, file, false, line.NewLine!.Value);
 }
 
-public sealed class SplitRowViewModel
+public sealed partial class SplitRowViewModel : ObservableObject
 {
+    private readonly SplitDiffRow _row;
+
     public SplitRowViewModel(SplitDiffRow row, DiffSyntax syntax, HunkActions? hunk = null)
     {
+        _row = row;
         Hunk = hunk;
         IsHunk = row.IsHunk;
         HunkText = row.IsHunk ? row.Left!.Text : "";
@@ -132,5 +163,20 @@ public sealed class SplitRowViewModel
     {
         Left.ApplySyntax(syntax);
         Right.ApplySyntax(syntax);
+    }
+
+    /// <summary>The comments on either side's line, shown under the whole row.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasComments))]
+    private IReadOnlyList<CommentViewModel> _comments = [];
+
+    public bool HasComments => Comments.Count > 0;
+
+    public void ShowComments(CommitComments? owner, string file, IReadOnlyList<CodeComment> comments)
+    {
+        if (IsHunk) return;
+        Left.ShowComments(owner, file);
+        Right.ShowComments(owner, file);
+        Comments = owner is null ? [] : owner.At(comments, _row.Left?.OldLine, _row.Right?.NewLine);
     }
 }

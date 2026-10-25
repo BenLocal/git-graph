@@ -20,6 +20,25 @@ public class ParserTests
     }
 
     [Fact]
+    public void Comments_keep_each_ones_latest_version_and_drop_deleted_ones()
+    {
+        // As a note holds them after edits and a union merge: lines in any order, blank lines between.
+        var note = string.Join("\n\n",
+            """{"id":"b","file":"a.cs","side":"new","line":3,"author":"Ana","email":"ana@x","date":"2026-10-25T10:00:00+08:00","text":"second"}""",
+            """{"id":"a","file":"a.cs","side":"old","line":1,"author":"Mei","email":"mei@x","date":"2026-10-25T09:00:00+08:00","text":"first"}""",
+            """{"id":"a","file":"a.cs","side":"old","line":1,"author":"Mei","email":"mei@x","date":"2026-10-25T11:00:00+08:00","text":"first, edited"}""",
+            """{"id":"c","file":"b.cs","side":"new","line":7,"author":"Ana","email":"ana@x","date":"2026-10-25T10:30:00+08:00","text":"gone"}""",
+            """{"id":"c","file":"b.cs","side":"new","line":7,"author":"Ana","email":"ana@x","date":"2026-10-25T12:00:00+08:00","text":"","deleted":true}""",
+            "not json");
+
+        var comments = GitParsers.ParseComments(note);
+        // In the order they were first written; an edit keeps its place.
+        Assert.Equal(["first, edited", "second"], comments.Select(c => c.Text));
+        Assert.Equal((true, 1, "Mei"), (comments[0].OldSide, comments[0].Line, comments[0].Author));
+        Assert.Equal(comments[1], GitParsers.ParseComments(GitParsers.CommentLine(comments[1])).Single());
+    }
+
+    [Fact]
     public void ParseReflog_splits_the_action_from_its_message()
     {
         var output = "aaaa\0HEAD@{1700000000}\0commit (amend): Fix: the parser\x1e\n" +

@@ -4,62 +4,109 @@
                     xmlns:ctl="using:GitGraph.App.Controls">
   <!-- Diff rows shared by the details panel and the full-screen diff window. -->
 
-  <DataTemplate x:Key="UnifiedLineTemplate" x:DataType="vm:DiffLineViewModel">
-    <Grid Classes="diffline" Classes.add="{Binding IsAdded}" Classes.del="{Binding IsDeleted}" Classes.hunk="{Binding IsHunk}"
-          ColumnDefinitions="52,52,18,*">
-      <TextBlock Classes="lineno" Text="{Binding OldNo}" />
-      <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
-      <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
-      <ctl:DiffText Grid.Column="3" Line="{Binding Text}" Segments="{Binding Segments}" Syntax="{Binding Syntax}" IsAdded="{Binding IsAdded}"
-                    Classes="code" Margin="0,0,12,0" />
-      <!-- On the hunk headers of an uncommitted file: move this hunk alone. They sit where line numbers go, so they stay
-           in view when long lines scroll sideways. -->
-      <StackPanel Orientation="Horizontal" Spacing="2" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
-                  IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
-        <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
-                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
-        <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
-                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
-        <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
-                CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+  <!-- A review comment under its line; its author can edit or delete it. -->
+  <DataTemplate x:Key="CommentTemplate" x:DataType="vm:CommentViewModel">
+    <Border Classes="comment" Classes.mine="{Binding IsMine}">
+      <StackPanel Spacing="3">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <LucideIcon Kind="MessageSquareText" Size="12" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
+          <TextBlock Classes="small" FontWeight="SemiBold" Text="{Binding Author}" ToolTip.Tip="{Binding Email}" VerticalAlignment="Center" />
+          <TextBlock Classes="small muted" Text="{Binding DateText}" VerticalAlignment="Center" />
+          <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsMine}">
+            <Button Classes="ghost hunkaction" Content="Edit" Command="{Binding EditCommand}" />
+            <Button Classes="ghost hunkaction" Content="Delete" Command="{Binding DeleteCommand}" />
+          </StackPanel>
+        </StackPanel>
+        <SelectableTextBlock Text="{Binding Text}" TextWrapping="Wrap" />
       </StackPanel>
-    </Grid>
+    </Border>
+  </DataTemplate>
+
+  <DataTemplate x:Key="UnifiedLineTemplate" x:DataType="vm:DiffLineViewModel">
+    <StackPanel>
+      <Grid Classes="diffline" Classes.add="{Binding IsAdded}" Classes.del="{Binding IsDeleted}" Classes.hunk="{Binding IsHunk}"
+            Classes.commentable="{Binding Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ColumnDefinitions="52,52,18,*">
+        <TextBlock Classes="lineno" Text="{Binding OldNo}" />
+        <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
+        <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
+        <!-- On a commit's diff: comment on this line. It takes the place of the sign while the line is hovered. -->
+        <Button Grid.Column="2" Classes="ghost commentadd" Command="{Binding Spot.AddCommand, FallbackValue={x:Null}}"
+                IsVisible="{Binding Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">
+          <LucideIcon Kind="MessageSquarePlus" Size="12" />
+        </Button>
+        <ctl:DiffText Grid.Column="3" Line="{Binding Text}" Segments="{Binding Segments}" Syntax="{Binding Syntax}" IsAdded="{Binding IsAdded}"
+                      Classes="code" Margin="0,0,12,0" />
+        <!-- On the hunk headers of an uncommitted file: move this hunk alone. They sit where line numbers go, so they stay
+             in view when long lines scroll sideways. -->
+        <StackPanel Orientation="Horizontal" Spacing="2" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
+                    IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+          <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+          <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+        </StackPanel>
+      </Grid>
+      <ItemsControl ItemsSource="{Binding Comments}" ItemTemplate="{StaticResource CommentTemplate}" IsVisible="{Binding HasComments}"
+                    Margin="122,4,12,6">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </StackPanel>
   </DataTemplate>
 
   <DataTemplate x:Key="SplitRowTemplate" x:DataType="vm:SplitRowViewModel">
-    <Panel>
-      <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
-        <Grid Classes="diffline" ColumnDefinitions="Auto,*">
-          <TextBlock Text="{Binding HunkText}" />
-          <!-- Right after the header, so they stay in view when long lines scroll sideways -->
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
-                      IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
-                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
-            <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
-                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
-            <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
-                    CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
-          </StackPanel>
+    <StackPanel>
+      <Panel>
+        <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
+          <Grid Classes="diffline" ColumnDefinitions="Auto,*">
+            <TextBlock Text="{Binding HunkText}" />
+            <!-- Right after the header, so they stay in view when long lines scroll sideways -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
+                        IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+              <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+              <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+            </StackPanel>
+          </Grid>
+        </Border>
+        <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
+          <Border Classes="cell" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
+            <Grid Classes="diffline" ColumnDefinitions="16,40,*">
+              <Button Classes="ghost commentadd" Command="{Binding Left.Spot.AddCommand, FallbackValue={x:Null}}"
+                      IsVisible="{Binding Left.Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">
+                <LucideIcon Kind="MessageSquarePlus" Size="12" />
+              </Button>
+              <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding Left.No}" />
+              <ctl:DiffText Grid.Column="2" Line="{Binding Left.Text}" Segments="{Binding Left.Segments}" Syntax="{Binding Left.Syntax}" IsAdded="False"
+                            Classes="code" Margin="0,0,10,0" />
+            </Grid>
+          </Border>
+          <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
+          <Border Grid.Column="2" Classes="cell" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
+            <Grid Classes="diffline" ColumnDefinitions="16,40,*">
+              <Button Classes="ghost commentadd" Command="{Binding Right.Spot.AddCommand, FallbackValue={x:Null}}"
+                      IsVisible="{Binding Right.Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">
+                <LucideIcon Kind="MessageSquarePlus" Size="12" />
+              </Button>
+              <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding Right.No}" />
+              <ctl:DiffText Grid.Column="2" Line="{Binding Right.Text}" Segments="{Binding Right.Segments}" Syntax="{Binding Right.Syntax}" IsAdded="True"
+                            Classes="code" Margin="0,0,10,0" />
+            </Grid>
+          </Border>
         </Grid>
-      </Border>
-      <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
-        <Border Classes="cell" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
-          <Grid Classes="diffline" ColumnDefinitions="48,*">
-            <TextBlock Classes="lineno" Text="{Binding Left.No}" />
-            <ctl:DiffText Grid.Column="1" Line="{Binding Left.Text}" Segments="{Binding Left.Segments}" Syntax="{Binding Left.Syntax}" IsAdded="False"
-                          Classes="code" Margin="0,0,10,0" />
-          </Grid>
-        </Border>
-        <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
-        <Border Grid.Column="2" Classes="cell" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
-          <Grid Classes="diffline" ColumnDefinitions="48,*">
-            <TextBlock Classes="lineno" Text="{Binding Right.No}" />
-            <ctl:DiffText Grid.Column="1" Line="{Binding Right.Text}" Segments="{Binding Right.Segments}" Syntax="{Binding Right.Syntax}" IsAdded="True"
-                          Classes="code" Margin="0,0,10,0" />
-          </Grid>
-        </Border>
-      </Grid>
-    </Panel>
+      </Panel>
+      <ItemsControl ItemsSource="{Binding Comments}" ItemTemplate="{StaticResource CommentTemplate}" IsVisible="{Binding HasComments}"
+                    Margin="56,4,12,6">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </StackPanel>
   </DataTemplate>
 </ResourceDictionary>

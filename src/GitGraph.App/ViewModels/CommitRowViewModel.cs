@@ -49,6 +49,14 @@ public partial class CommitRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isCompareTarget;
 
+    /// <summary>Review comments on the commit's diff.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasComments), nameof(CommentTip))]
+    private int _commentCount;
+
+    public bool HasComments => CommentCount > 0;
+    public string CommentTip => CommentCount == 1 ? "1 comment on this commit's changes" : $"{CommentCount} comments on this commit's changes";
+
     /// <summary>Faded because another branch is highlighted.</summary>
     [ObservableProperty]
     private bool _isDimmed;

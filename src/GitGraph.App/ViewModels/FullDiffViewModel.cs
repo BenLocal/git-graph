@@ -18,9 +18,12 @@ public sealed partial class FullDiffViewModel : ObservableObject
     // The row of each line of each side, to find a line's counterpart.
     private readonly int[] _oldRow, _newRow;
 
-    public FullDiffViewModel(FileChange file, string range, FileDiff diff, DiffSyntax syntax, string? message, Services.IDialogService dialogs, string fullPath)
+    /// <param name="comments">The commit's review comments, when the diff is one commit's (lines can take comments).</param>
+    public FullDiffViewModel(FileChange file, string range, FileDiff diff, DiffSyntax syntax, string? message, Services.IDialogService dialogs, string fullPath,
+        CommitComments? comments = null)
     {
         _dialogs = dialogs;
+        _comments = comments;
         _fullPath = fullPath;
         Path = file.Path;
         OldPath = file.OldPath;
@@ -50,6 +53,11 @@ public sealed partial class FullDiffViewModel : ObservableObject
         Folds = TextDiff.Sections(_rows).Where(s => s.Foldable)
             .Select(s => new FoldViewModel(_rows[s.Start].Left!.OldLine!.Value - 1, _rows[s.Start].Right!.NewLine!.Value - 1, s.Count))
             .ToList();
+        if (comments != null)
+        {
+            comments.PropertyChanged += OnCommentsChanged;
+            ShowComments();
+        }
     }
 
     public string Path { get; }
@@ -130,6 +138,48 @@ public sealed partial class FullDiffViewModel : ObservableObject
             var (start, count) = old ? (Changes[i].OldStart, Changes[i].OldCount) : (Changes[i].NewStart, Changes[i].NewCount);
             if (line >= start && line < start + count) CurrentChange = i;
         }
+    }
+
+    // ---- Review comments ---------------------------------------------------------------------
+
+    private readonly CommitComments? _comments;
+
+    /// <summary>Lines can take comments: the diff is one commit's.</summary>
+    public bool CanComment => _comments != null;
+
+    /// <summary>The file's comments, in the order they were made.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CommentsTitle))]
+    private IReadOnlyList<CommentViewModel> _fileComments = [];
+
+    public string CommentsTitle => FileComments.Count == 0 ? "Comments" : $"Comments ({FileComments.Count})";
+
+    /// <summary>The 0-based lines of each side that have comments, for the markers in the editors.</summary>
+    public IReadOnlySet<int> OldCommentLines { get; private set; } = new HashSet<int>();
+    public IReadOnlySet<int> NewCommentLines { get; private set; } = new HashSet<int>();
+
+    /// <summary>Asks the view to show a 0-based line of one side and put the caret on it.</summary>
+    public event Action<bool, int>? LineRevealRequested;
+
+    /// <summary>Comments on 0-based <paramref name="line"/> of the old or new side.</summary>
+    public Task CommentOnLineAsync(bool old, int line) => _comments?.AddAsync(Path, old, line + 1) ?? Task.CompletedTask;
+
+    public void RevealComment(CommentViewModel comment) => LineRevealRequested?.Invoke(comment.Comment.OldSide, comment.Comment.Line - 1);
+
+    /// <summary>The window closed: stop following the commit's comments, which outlive it.</summary>
+    public void Detach()
+    {
+        if (_comments != null) _comments.PropertyChanged -= OnCommentsChanged;
+    }
+
+    private void OnCommentsChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => ShowComments();
+
+    private void ShowComments()
+    {
+        var comments = _comments!.For(Path).ToList();
+        OldCommentLines = comments.Where(c => c.OldSide).Select(c => c.Line - 1).ToHashSet();
+        NewCommentLines = comments.Where(c => !c.OldSide).Select(c => c.Line - 1).ToHashSet();
+        FileComments = comments.Select(c => new CommentViewModel(c, _comments)).ToList();
     }
 
     /// <summary>The copy button's check mark.</summary>

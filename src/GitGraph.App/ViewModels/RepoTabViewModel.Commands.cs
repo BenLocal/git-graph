@@ -352,7 +352,11 @@ public partial class RepoTabViewModel
         {
             if (!await Host.Dialogs.ConfirmAsync("Publish branch", $"Push {branch} to {s.Remotes[0]} and track it there?", "Publish"))
                 return;
-            await RunSyncAsync(() => _repo.PublishAsync(s.Remotes[0], branch));
+            await RunSyncAsync(async () =>
+            {
+                await _repo.PublishAsync(s.Remotes[0], branch);
+                await PushCommentsAsync(s.Remotes[0]);
+            });
             return;
         }
         if (s.Upstream is null) return;
@@ -364,6 +368,7 @@ public partial class RepoTabViewModel
         {
             await _repo.PullAsync(Host.PullMode);
             await _repo.PushAsync();
+            await PushCommentsAsync(UpstreamRemote(s));
         });
     }
 
@@ -372,8 +377,16 @@ public partial class RepoTabViewModel
 
     [RelayCommand]
     private Task Push() => Sync?.CanPublish == true && Sync.Branch is { } b
-        ? RunSyncAsync(() => _repo.PublishAsync(Sync.Remotes[0], b))
-        : RunSyncAsync(() => _repo.PushAsync());
+        ? RunSyncAsync(async () =>
+        {
+            await _repo.PublishAsync(Sync.Remotes[0], b);
+            await PushCommentsAsync(Sync.Remotes[0]);
+        })
+        : RunSyncAsync(async () =>
+        {
+            await _repo.PushAsync();
+            await PushCommentsAsync(UpstreamRemote(Sync));
+        });
 
     /// <summary>Pushes over a rewritten history (after a rebase or amend), unless someone else pushed since the last fetch.</summary>
     [RelayCommand]
@@ -385,7 +398,26 @@ public partial class RepoTabViewModel
                 + "The push is refused if someone else pushed to it since your last fetch.",
                 "Force push", destructive: true))
             return;
-        await RunSyncAsync(() => _repo.PushAsync(forceWithLease: true));
+        await RunSyncAsync(async () =>
+        {
+            await _repo.PushAsync(forceWithLease: true);
+            await PushCommentsAsync(UpstreamRemote(Sync));
+        });
+    }
+
+    /// <summary>The remote of the upstream branch: "origin" of "origin/main" (remote names can have slashes too).</summary>
+    private static string? UpstreamRemote(SyncStatus? s) =>
+        s?.Upstream is { } up ? s.Remotes.Where(r => up.StartsWith(r + "/", StringComparison.Ordinal)).MaxBy(r => r.Length) : null;
+
+    /// <summary>
+    /// Review comments go along with a push. They are extra: if they can't be pushed, the push itself still
+    /// succeeded, so that only gets a note.
+    /// </summary>
+    private async Task PushCommentsAsync(string? remote)
+    {
+        if (remote is null) return;
+        try { await _repo.PushCommentsAsync(remote); }
+        catch (GitException e) { Host.Notify($"Pushed, but the review comments could not be pushed to {remote}: {Trim(e.Message)}"); }
     }
 
     private async Task RunSyncAsync(Func<Task> action)

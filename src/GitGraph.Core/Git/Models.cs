@@ -84,6 +84,12 @@ public enum UndoKind
     KeepReset,
 }
 
+/// <summary>
+/// A review comment on one line of a commit's diff: <see cref="Line"/> is 1-based in the file as it is in the commit
+/// (the new side) or in its first parent (the old side). Kept in git notes, see <see cref="GitRepository.CommentsRef"/>.
+/// </summary>
+public sealed record CodeComment(string Id, string File, bool OldSide, int Line, string Author, string Email, DateTimeOffset Date, string Text);
+
 public enum RebaseAction { Pick, Reword, Squash, Fixup, Drop }
 
 /// <summary>One line of an interactive rebase: what to do with a commit; <see cref="Message"/> is the new one for a reword.</summary>

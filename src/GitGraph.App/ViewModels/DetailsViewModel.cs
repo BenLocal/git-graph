@@ -181,6 +181,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Files.Clear();
         Groups.Clear();
         FileCount = 0;
+        LoadComments(null);
         ResetDiff(null);
     }
 
@@ -201,6 +202,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         CommitterText = null;
         ParentsText = null;
         RangeText = null;
+        LoadComments(c.Hash);
         _ = Loads.Track(LoadAsync(GitRepository.TargetForCommit(c), async ct =>
         {
             var d = await _repo.GetCommitDetailAsync(c.Hash, ct);
@@ -245,6 +247,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         ParentsText = $"{stash.Name}, made on {stash.BaseHash[..7]}. Changes shown against that commit"
             + (stash.HasUntracked ? ", with the untracked files it saved." : ".");
         RangeText = null;
+        LoadComments(null);
         _ = Loads.Track(LoadAsync(new DiffTarget(stash.BaseHash, stash.Hash), null, stash));
     }
 
@@ -267,6 +270,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         RangeText = null;
         _headRev = from;
         IsStaging = true;
+        LoadComments(null);
         _ = Loads.Track(LoadWorkingAsync(untracked));
     }
 
@@ -288,6 +292,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         RangeText = newer is null
             ? $"From \"{older.Subject}\" to uncommitted changes"
             : $"From \"{older.Subject}\" to \"{newer.Subject}\"";
+        LoadComments(null);
         _ = Loads.Track(LoadAsync(new DiffTarget(older.Hash, newer?.Hash), null));
     }
 

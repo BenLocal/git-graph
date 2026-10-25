@@ -68,7 +68,7 @@ public partial class RepoTabViewModel : TabViewModel
         _repo = new GitRepository(path);
         _showRemotes = host.ShowRemoteBranches;
         Commands = new RepoCommands(host, path, RefreshAsync);
-        Details = new DetailsViewModel(_repo, host) { RepoChanged = RefreshAsync, Commands = Commands };
+        Details = new DetailsViewModel(_repo, host) { RepoChanged = RefreshAsync, Commands = Commands, CommentsChanged = OnCommentsChanged };
         Stats = new RepoStatsViewModel(_repo);
         _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
         _debounce.Tick += (_, _) =>
@@ -206,6 +206,23 @@ public partial class RepoTabViewModel : TabViewModel
         return Task.CompletedTask;
     }
 
+    // How many review comments each commit has, from the last refresh and the comments made since.
+    private Dictionary<string, int> _commentCounts = [];
+
+    private void ShowCommentCounts()
+    {
+        foreach (var row in Rows)
+            if (row.IsCommit) row.CommentCount = _commentCounts.GetValueOrDefault(row.Hash);
+    }
+
+    /// <summary>The details panel loaded or changed a commit's comments.</summary>
+    private void OnCommentsChanged(string commit, int count)
+    {
+        _commentCounts[commit] = count;
+        foreach (var row in Rows)
+            if (row.IsCommit && row.Hash == commit) row.CommentCount = count;
+    }
+
     // What the last rebuild showed; a refresh that reads the same skips rebuilding the rows.
     private string? _shownSignature;
 
@@ -272,7 +289,8 @@ public partial class RepoTabViewModel : TabViewModel
             var syncTask = _repo.GetSyncStatusAsync(ct);
             var stashTask = _repo.GetStashesAsync(ct);
             var opTask = _repo.GetOperationInProgressAsync(ct);
-            await Task.WhenAll(headTask, refsTask, wtTask, countTask, commitsTask, syncTask, stashTask, opTask);
+            var commentsTask = _repo.GetCommentCountsAsync(ct);
+            await Task.WhenAll(headTask, refsTask, wtTask, countTask, commitsTask, syncTask, stashTask, opTask, commentsTask);
             if (ct.IsCancellationRequested) return;
 
             var head = headTask.Result;
@@ -297,16 +315,20 @@ public partial class RepoTabViewModel : TabViewModel
             var (uncommitted, untracked) = countTask.Result;
             _untracked = untracked;
             _lastRefresh = DateTime.UtcNow;
+            // Comments change without changing the rows (made in the details, or fetched), so they aren't in the signature.
+            _commentCounts = commentsTask.Result;
             var signature = Signature(commitsTask.Result, refsTask.Result, head, uncommitted);
             if (signature == _shownSignature && Rows.Count > 0)
             {
                 // The working tree can change without changing the count; the details check their own list.
                 if (SelectedRow is { IsUncommitted: true }) ShowDetails(fromRefresh: true);
+                ShowCommentCounts();
                 LoadError = null;
                 return;
             }
             _shownSignature = signature;
             Build(commitsTask.Result, refsTask.Result, head, uncommitted);
+            ShowCommentCounts();
             if (_showConflicts)
             {
                 _showConflicts = false;

@@ -60,6 +60,8 @@ public sealed class GitRepository(string path)
         else
         {
             args.Add("--exclude=refs/stash");
+            // Notes (review comments among them) are commits of their own, not part of the project's history.
+            args.Add("--exclude=refs/notes/*");
             if (!includeRemotes) args.Add("--exclude=refs/remotes/*");
             args.Add("--all");
             args.Add("HEAD");
@@ -569,12 +571,111 @@ public sealed class GitRepository(string path)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(FetchTimeout);
-        try { await Git(timeout.Token, "fetch", "--all", "--prune"); }
+        try
+        {
+            await Git(timeout.Token, "fetch", "--all", "--prune");
+            // Review comments come along; they are extra, so trouble with them doesn't fail the fetch.
+            try { await FetchCommentsAsync(timeout.Token); }
+            catch (GitException) { }
+        }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             throw new GitException($"git fetch was still running after {FetchTimeout.TotalMinutes:0} minutes, so it was stopped. "
                 + "Check the network connection and the remote's address.", -1, "fetch --all --prune");
         }
+    }
+
+    // ---- Review comments, in git notes -----------------------------------------------------------
+
+    /// <summary>
+    /// The notes ref review comments live in: their own, so git's default notes and other tools' stay apart. git
+    /// fetches and pushes notes only when asked; <see cref="FetchAsync"/> and <see cref="PushCommentsAsync"/> do.
+    /// </summary>
+    public const string CommentsRef = "refs/notes/gitgraph-comments";
+
+    public async Task<List<CodeComment>> GetCommentsAsync(string commit, CancellationToken ct = default)
+    {
+        var r = await GitRunner.RunRawAsync(Path, ["notes", $"--ref={CommentsRef}", "show", commit], ct);
+        return r.ExitCode == 0 ? GitParsers.ParseComments(r.StdOut) : [];
+    }
+
+    /// <summary>The commits with comments, and how many each has.</summary>
+    public async Task<Dictionary<string, int>> GetCommentCountsAsync(CancellationToken ct = default)
+    {
+        var list = await GitRunner.RunRawAsync(Path, ["notes", $"--ref={CommentsRef}", "list"], ct);
+        var commits = list.ExitCode == 0
+            ? list.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Split(' ')[^1]).ToList()
+            : [];
+        var counts = new Dictionary<string, int>();
+        // Each note's text, a few hundred commits per git log.
+        foreach (var chunk in commits.Chunk(300))
+        {
+            var r = await GitRunner.RunRawAsync(Path, ["log", "--no-walk=unsorted", $"--notes={CommentsRef}", "--format=%H%x00%N%x1e", .. chunk, "--"], ct);
+            if (r.ExitCode != 0) continue;
+            foreach (var record in r.StdOut.Split(GitParsers.RecordSep))
+            {
+                var f = record.TrimStart('\n').Split(GitParsers.FieldSep, 2);
+                if (f.Length == 2 && GitParsers.ParseComments(f[1]).Count is > 0 and var n) counts[f[0]] = n;
+            }
+        }
+        return counts;
+    }
+
+    /// <summary>Adds a comment as the configured git user.</summary>
+    public async Task<CodeComment> AddCommentAsync(string commit, string file, bool oldSide, int line, string text, CancellationToken ct = default)
+    {
+        var (name, email) = await GetIdentityAsync(ct);
+        var comment = new CodeComment(Guid.NewGuid().ToString("N")[..12], file, oldSide, line, name, email, DateTimeOffset.Now, text);
+        await AppendCommentAsync(commit, GitParsers.CommentLine(comment), ct);
+        return comment;
+    }
+
+    public Task EditCommentAsync(string commit, CodeComment comment, string text, CancellationToken ct = default) =>
+        AppendCommentAsync(commit, GitParsers.CommentLine(comment with { Text = text, Date = DateTimeOffset.Now }), ct);
+
+    public Task DeleteCommentAsync(string commit, CodeComment comment, CancellationToken ct = default) =>
+        AppendCommentAsync(commit, GitParsers.CommentLine(comment with { Date = DateTimeOffset.Now }, deleted: true), ct);
+
+    private Task AppendCommentAsync(string commit, string line, CancellationToken ct) =>
+        Git(ct, "notes", $"--ref={CommentsRef}", "append", "-m", line, commit);
+
+    /// <summary>The configured git user, who comments are made as.</summary>
+    public async Task<(string Name, string Email)> GetIdentityAsync(CancellationToken ct = default)
+    {
+        var name = await GitRunner.RunRawAsync(Path, ["config", "user.name"], ct);
+        var email = await GitRunner.RunRawAsync(Path, ["config", "user.email"], ct);
+        return (name.StdOut.Trim(), email.StdOut.Trim());
+    }
+
+    /// <summary>
+    /// Brings in the comments every remote has and merges them into ours: both sides' lines are kept (cat_sort_uniq),
+    /// which <see cref="GitParsers.ParseComments"/> reads back as the latest version of each comment. A remote
+    /// without comments, or that can't be reached, is skipped.
+    /// </summary>
+    public async Task FetchCommentsAsync(CancellationToken ct = default)
+    {
+        var remotes = await GitRunner.RunRawAsync(Path, ["remote"], ct);
+        foreach (var remote in remotes.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries)) await FetchCommentsFromAsync(remote.Trim(), ct);
+    }
+
+    private async Task FetchCommentsFromAsync(string remote, CancellationToken ct)
+    {
+        var tracking = $"refs/notes/remotes/{remote}/gitgraph-comments";
+        await GitRunner.RunRawAsync(Path, ["fetch", "-q", remote, $"+{CommentsRef}:{tracking}"], ct);
+        if ((await GitRunner.RunRawAsync(Path, ["rev-parse", "--verify", "-q", tracking], ct)).ExitCode != 0) return;
+        await Git(ct, "notes", $"--ref={CommentsRef}", "merge", "-q", "-s", "cat_sort_uniq", tracking);
+    }
+
+    /// <summary>Pushes our comments to <paramref name="remote"/>, merging its newer ones in first. Nothing to do without comments.</summary>
+    public async Task PushCommentsAsync(string remote, CancellationToken ct = default)
+    {
+        if ((await GitRunner.RunRawAsync(Path, ["rev-parse", "--verify", "-q", CommentsRef], ct)).ExitCode != 0) return;
+        await FetchCommentsFromAsync(remote, ct);
+        var push = await GitRunner.RunRawAsync(Path, ["push", "-q", remote, CommentsRef], ct);
+        if (push.ExitCode == 0) return;
+        // Someone pushed comments in between: merge theirs and try once more.
+        await FetchCommentsFromAsync(remote, ct);
+        await Git(ct, "push", "-q", remote, CommentsRef);
     }
 
     /// <summary>Changed, untracked and ignored paths, relative to the top level. Untracked and ignored folders come as "dir/".</summary>

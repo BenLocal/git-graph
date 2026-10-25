@@ -495,6 +495,58 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Comments_are_added_edited_and_deleted_on_a_commit()
+    {
+        var repo = new GitRepository(_repo);
+        var head = (await repo.GetHeadAsync()).Hash!;
+        Assert.Empty(await repo.GetCommentsAsync(head));
+
+        var first = await repo.AddCommentAsync(head, "a.txt", oldSide: false, line: 2, "Why two?");
+        await repo.AddCommentAsync(head, "a.txt", oldSide: true, line: 1, "Fine");
+        Assert.Equal(("Tester", "t@example.com"), (first.Author, first.Email));
+        await repo.EditCommentAsync(head, first, "Why two lines?");
+        var comments = await repo.GetCommentsAsync(head);
+        Assert.Equal(["Why two lines?", "Fine"], comments.Select(c => c.Text));
+        Assert.Equal(new Dictionary<string, int> { [head] = 2 }, await repo.GetCommentCountsAsync());
+
+        await repo.DeleteCommentAsync(head, comments[1]);
+        Assert.Equal(["Why two lines?"], (await repo.GetCommentsAsync(head)).Select(c => c.Text));
+        await repo.DeleteCommentAsync(head, comments[0]);
+        // A commit whose comments are all deleted has none to count.
+        Assert.Empty(await repo.GetCommentCountsAsync());
+        // Plain git sees them too, under their own notes ref.
+        Assert.Contains("Why two", await GitRunner.RunAsync(_repo, ["log", "-1", $"--notes={GitRepository.CommentsRef}"]));
+        // The notes ref's own commits stay out of the graph.
+        Assert.Equal([head], (await repo.GetCommitsAsync(10, null, true)).Where(c => c.Subject.StartsWith("Notes", StringComparison.Ordinal) || c.Hash == head).Select(c => c.Hash));
+    }
+
+    [Fact]
+    public async Task Comments_made_in_two_clones_at_once_both_survive_a_sync()
+    {
+        var remote = Path.Combine(_root, "remote.git");
+        Git("init", "-q", "--bare", "-b", "main", remote);
+        Git("remote", "add", "origin", remote);
+        var mine = new GitRepository(_repo);
+        await mine.PublishAsync("origin", "main");
+        var clone = Path.Combine(_root, "clone");
+        Git("clone", "-q", remote, clone);
+        await GitRunner.RunAsync(clone, ["config", "user.name", "Other"]);
+        await GitRunner.RunAsync(clone, ["config", "user.email", "other@example.com"]);
+        var theirs = new GitRepository(clone);
+        var head = (await mine.GetHeadAsync()).Hash!;
+
+        // Both comment on the same commit before either syncs; then both push.
+        await mine.AddCommentAsync(head, "a.txt", false, 1, "mine");
+        await theirs.AddCommentAsync(head, "a.txt", false, 2, "theirs");
+        await mine.PushCommentsAsync("origin");
+        await theirs.PushCommentsAsync("origin");
+        await mine.FetchAsync();
+
+        Assert.Equal(["mine", "theirs"], (await mine.GetCommentsAsync(head)).Select(c => c.Text).Order());
+        Assert.Equal(["mine", "theirs"], (await theirs.GetCommentsAsync(head)).Select(c => c.Text).Order());
+    }
+
+    [Fact]
     public async Task Rebase_stops_on_conflicts_then_continues_or_aborts()
     {
         var repo = new GitRepository(_repo);

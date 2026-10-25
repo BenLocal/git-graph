@@ -16,6 +16,16 @@ public partial class DiffWindow : Window
         Opened += (_, _) => Motion.FadeIn(Content as Control);
         // Tunnel, so the keys reach the window before the editors.
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);
+        // Before the window lets go of its view model (see WindowSetup), which then stops following the comments.
+        Closing += (_, e) => { if (!e.Cancel) (DataContext as FullDiffViewModel)?.Detach(); };
+    }
+
+    /// <summary>A comment picked in the list: go to its line. Picking the same one again goes there again.</summary>
+    private void OnCommentPicked(object? sender, SelectionChangedEventArgs e)
+    {
+        if (CommentList.SelectedItem is not CommentViewModel comment || DataContext is not FullDiffViewModel vm) return;
+        vm.RevealComment(comment);
+        CommentList.SelectedItem = null;
     }
 
     private void OnShortcutKeyDown(object? sender, KeyEventArgs e)

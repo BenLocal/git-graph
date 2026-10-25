@@ -38,10 +38,19 @@ public sealed class PromptDialog : Window
             var group = new StackPanel { Spacing = 6 };
             group.Children.Add(new TextBlock { Text = f.Label, FontWeight = FontWeight.Medium, FontSize = 12 });
             var tb = new TextBox { Text = f.Value, PlaceholderText = f.Placeholder };
-            tb.KeyDown += (_, e) =>
+            // A multiline field takes Enter as a new line, and Ctrl+Enter confirms.
+            if (f.IsMultiline)
             {
-                if (e.Key == Key.Enter) { Confirm(); e.Handled = true; }
-            };
+                tb.AcceptsReturn = true;
+                tb.TextWrapping = TextWrapping.Wrap;
+                tb.MinHeight = 96;
+                tb.MaxHeight = 260;
+            }
+            // Tunnel, ahead of the text box, which takes every Enter (Ctrl+Enter too) as a new line when it accepts returns.
+            tb.AddHandler(KeyDownEvent, (_, e) =>
+            {
+                if (e.Key == Key.Enter && (!f.IsMultiline || e.KeyModifiers.HasFlag(KeyModifiers.Control))) { Confirm(); e.Handled = true; }
+            }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             _inputs.Add(tb);
             group.Children.Add(tb);
             if (f.Hint != null) group.Children.Add(new TextBlock { Text = f.Hint, FontSize = 11.5, Classes = { "muted" }, TextWrapping = TextWrapping.Wrap });

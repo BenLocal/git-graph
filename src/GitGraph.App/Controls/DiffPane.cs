@@ -57,6 +57,19 @@ public sealed class DiffPane
         }
     }
 
+    private IReadOnlySet<int> _commentLines = new HashSet<int>();
+
+    /// <summary>The 0-based lines with review comments, marked with a bar at the left edge.</summary>
+    public IReadOnlySet<int> CommentLines
+    {
+        get => _commentLines;
+        set
+        {
+            _commentLines = value;
+            TextView.InvalidateLayer(KnownLayer.Background);
+        }
+    }
+
     /// <summary>Where a block starts and ends on this side, in lines.</summary>
     public (int Start, int Count) Span(DiffBlock b) => _old ? (b.OldStart, b.OldCount) : (b.NewStart, b.NewCount);
 
@@ -106,6 +119,14 @@ public sealed class DiffPane
                 if (!b.Changed || count > 0) continue;
                 var y = pane.Top(start) - textView.VerticalOffset;
                 dc.DrawLine(marker, new Point(0, y), new Point(width, y));
+            }
+
+            if (pane._commentLines.Count > 0)
+            {
+                var brush = pane.Brush("SignalBrush");
+                foreach (var visual in textView.VisualLines)
+                    if (pane._commentLines.Contains(visual.FirstDocumentLine.LineNumber - 1))
+                        dc.FillRectangle(brush, new Rect(0, visual.VisualTop - textView.VerticalOffset, 3, visual.Height));
             }
 
             if (pane._current is { } current)

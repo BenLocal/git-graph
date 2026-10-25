@@ -94,6 +94,7 @@ public partial class DetailsViewModel
             DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l, syntax, l.Kind == DiffLineKind.Hunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
             hunk = -1;
             SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
+            ShowComments();
             DiffMessage = null;
             HasDiff = true;
             _ = Loads.Track(ColourAsync(target, file, loaded, cts.Token));
@@ -150,7 +151,7 @@ public partial class DetailsViewModel
             // Opened before the colours arrived (or for another file): the window gets them before it shows.
             if (syntax == DiffSyntax.Empty) syntax = await Task.Run(() => SyntaxHighlighter.Highlight(file.Change.Path, diff));
             _host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, syntax, EmptyMessage(diff, file.Change),
-                _host.Dialogs, FullPath(file.Change.Path)));
+                _host.Dialogs, FullPath(file.Change.Path), CommentsFor(file)));
         }
         catch (Exception e) when (e is GitException or IOException)
         {

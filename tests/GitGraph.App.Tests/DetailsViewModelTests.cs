@@ -107,4 +107,48 @@ public sealed class DetailsViewModelTests : IDisposable
         Assert.Empty(_repo.Git("status", "--porcelain"));
         Assert.Equal("", _vm.CommitMessage);
     }
+
+    [Fact]
+    public async Task Comments_show_under_their_lines_and_follow_edits_and_deletes()
+    {
+        _repo.Write("a.txt", "one\nTWO\n");
+        _repo.Git("commit", "-qam", "second");
+        var commit = (await new GitRepository(_repo.Path).GetCommitsAsync(1, null, false)).Single();
+        var counts = new List<int>();
+        _vm.CommentsChanged = (_, n) => counts.Add(n);
+
+        _vm.ShowCommit(commit);
+        await Settled();
+        var deleted = _vm.DiffLines.Single(l => l.IsDeleted);
+        var added = _vm.DiffLines.Single(l => l.IsAdded);
+        Assert.Equal((true, 2), (deleted.Spot!.OldSide, deleted.Spot.Line));
+        Assert.Equal((false, 2), (added.Spot!.OldSide, added.Spot.Line));
+        Assert.Null(_vm.DiffLines.Single(l => l.IsHunk).Spot);
+
+        _host.PromptAnswers.Enqueue(["Why upper case?"]);
+        await added.Spot.AddCommand.ExecuteAsync(null);
+        await Settled();
+        var comment = Assert.Single(_vm.DiffLines.Single(l => l.IsAdded).Comments);
+        Assert.Equal(("Why upper case?", "Tester", true), (comment.Text, comment.Author, comment.IsMine));
+        Assert.Empty(_vm.DiffLines.Single(l => l.IsDeleted).Comments);
+        // The split view shows it under the row of both sides.
+        Assert.Single(_vm.SplitRows.Single(r => r.Right.IsAdded).Comments);
+
+        _host.PromptAnswers.Enqueue(["Why upper case here?"]);
+        await comment.EditCommand.ExecuteAsync(null);
+        await Settled();
+        comment = Assert.Single(_vm.DiffLines.Single(l => l.IsAdded).Comments);
+        Assert.Equal("Why upper case here?", comment.Text);
+
+        await comment.DeleteCommand.ExecuteAsync(null);
+        await Settled();
+        Assert.Empty(_vm.DiffLines.Single(l => l.IsAdded).Comments);
+        Assert.Equal([0, 1, 1, 0], counts);
+
+        // Uncommitted changes can't take comments.
+        _repo.Write("b.txt", "changed\n");
+        _vm.ShowUncommitted("HEAD");
+        await Settled();
+        Assert.All(_vm.DiffLines, l => Assert.Null(l.Spot));
+    }
 }

@@ -39,6 +39,39 @@ public partial class CompareView : UserControl
         NewEditor.TextArea.TextView.VisualLinesChanged += (_, _) => SyncFolds(fromOld: false);
         OldEditor.TextArea.Caret.PositionChanged += (_, _) => _vm?.SetCaret(true, OldEditor.TextArea.Caret.Line - 1);
         NewEditor.TextArea.Caret.PositionChanged += (_, _) => _vm?.SetCaret(false, NewEditor.TextArea.Caret.Line - 1);
+        AddMenu(OldEditor);
+        AddMenu(NewEditor);
+    }
+
+    /// <summary>
+    /// Right-click puts the caret on the line clicked, and the menu acts on the caret's line: comment on it (on a
+    /// commit's diff) or copy the selection.
+    /// </summary>
+    private void AddMenu(TextEditor editor)
+    {
+        editor.TextArea.AddHandler(PointerPressedEvent, (_, e) =>
+        {
+            if (!e.GetCurrentPoint(editor.TextArea).Properties.IsRightButtonPressed || editor.Document is not { LineCount: > 0 }) return;
+            var view = editor.TextArea.TextView;
+            var y = e.GetPosition(view).Y + view.VerticalOffset;
+            var line = view.GetDocumentLineByVisualTop(Math.Clamp(y, 0, Math.Max(0, view.DocumentHeight - 1)));
+            // Inside the selection, keep it for Copy.
+            if (!editor.TextArea.Selection.IsEmpty && editor.TextArea.Selection.Segments.Any(s => s.StartOffset <= line.EndOffset && s.EndOffset >= line.Offset))
+                return;
+            editor.TextArea.Caret.Line = line.LineNumber;
+        }, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+
+        var comment = new MenuItem { Header = "Comment on this line…" };
+        comment.Click += (_, _) => _ = _vm?.CommentOnLineAsync(editor == OldEditor, editor.TextArea.Caret.Line - 1);
+        var copy = new MenuItem { Header = "Copy" };
+        copy.Click += (_, _) => editor.Copy();
+        var menu = new ContextMenu { Items = { comment, copy } };
+        menu.Opening += (_, _) =>
+        {
+            comment.IsVisible = _vm?.CanComment == true;
+            copy.IsEnabled = !editor.TextArea.Selection.IsEmpty;
+        };
+        editor.ContextMenu = menu;
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -48,6 +81,7 @@ public partial class CompareView : UserControl
         {
             _vm.PropertyChanged -= OnVmChanged;
             _vm.RevealRequested -= Reveal;
+            _vm.LineRevealRequested -= RevealLine;
             foreach (var f in _folds) f.Fold.PropertyChanged -= OnFoldChanged;
         }
         _vm = DataContext as FullDiffViewModel;
@@ -70,6 +104,8 @@ public partial class CompareView : UserControl
         }
         _vm.PropertyChanged += OnVmChanged;
         _vm.RevealRequested += Reveal;
+        _vm.LineRevealRequested += RevealLine;
+        ShowCommentLines();
         // The first change, once the editors know their sizes.
         Dispatcher.UIThread.Post(() => { if (_vm is { HasChanges: true, CurrentChange: < 0 } vm) vm.GoToChange(0); }, DispatcherPriority.Background);
     }
@@ -83,8 +119,15 @@ public partial class CompareView : UserControl
         return section;
     }
 
+    private void ShowCommentLines()
+    {
+        _old.CommentLines = _vm?.OldCommentLines ?? new HashSet<int>();
+        _new.CommentLines = _vm?.NewCommentLines ?? new HashSet<int>();
+    }
+
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(FullDiffViewModel.FileComments)) ShowCommentLines();
         if (e.PropertyName != nameof(FullDiffViewModel.CurrentChange) || _vm is null) return;
         var current = _vm.CurrentChange >= 0 ? _vm.Changes[_vm.CurrentChange] : null;
         _old.Current = current;
@@ -173,6 +216,24 @@ public partial class CompareView : UserControl
         _vm?.SetCaret(editor == OldEditor, line - 1);
         _scrolling = null;
         ScrollTo(editor, Math.Max(0, pane.Top(start) - pane.TextView.Bounds.Height / 3));
+        editor.Focus();
+    }
+
+    /// <summary>Shows a commented line: opens its fold, scrolls it a third of the way down and puts the caret on it.</summary>
+    private void RevealLine(bool old, int line)
+    {
+        var (editor, pane) = old ? (OldEditor, _old) : (NewEditor, _new);
+        if (line < 0 || line >= editor.Document.LineCount) return;
+        foreach (var (fold, _, _) in _folds)
+        {
+            var start = old ? fold.OldStart : fold.NewStart;
+            if (line >= start && line < start + fold.Count) fold.IsExpanded = true;
+        }
+        editor.TextArea.Caret.Line = line + 1;
+        editor.TextArea.Caret.Column = 1;
+        _vm?.SetCaret(old, line);
+        _scrolling = null;
+        ScrollTo(editor, Math.Max(0, pane.Top(line) - pane.TextView.Bounds.Height / 3));
         editor.Focus();
     }
 

@@ -27,8 +27,11 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public void Notify(string message) { }
     public void SaveState() { }
 
+    /// <summary>What the next prompts are answered with; without any, each field keeps its value.</summary>
+    public Queue<string[]> PromptAnswers { get; } = new();
+
     public Task<string[]?> PromptAsync(string title, string? message, IReadOnlyList<PromptField> fields, string confirmText) =>
-        Task.FromResult<string[]?>(fields.Select(f => f.Value).ToArray());
+        Task.FromResult<string[]?>(PromptAnswers.Count > 0 ? PromptAnswers.Dequeue() : fields.Select(f => f.Value).ToArray());
 
     public Task<bool> ConfirmAsync(string title, string message, string confirmText, bool destructive = false)
     {

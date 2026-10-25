@@ -281,6 +281,12 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
+                <!-- Review comments on the commit's diff -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="3" Margin="8,0,8,0" VerticalAlignment="Center"
+                            IsVisible="{Binding HasComments}" ToolTip.Tip="{Binding CommentTip}">
+                  <LucideIcon Kind="MessageSquareText" Size="12" VerticalAlignment="Center" Foreground="{DynamicResource MutedBrush}" />
+                  <TextBlock Classes="muted small" Text="{Binding CommentCount}" VerticalAlignment="Center" />
+                </StackPanel>
                 <TextBlock Classes="subject" Text="{Binding Subject}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            ToolTip.Tip="{Binding Tooltip}" />
               </DockPanel>

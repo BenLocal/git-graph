@@ -1,6 +1,7 @@
 namespace GitGraph.App.Services;
 
-public sealed record PromptField(string Label, string Value = "", string? Placeholder = null, bool IsCheckbox = false, string? Hint = null);
+public sealed record PromptField(string Label, string Value = "", string? Placeholder = null, bool IsCheckbox = false, string? Hint = null,
+    bool IsMultiline = false);
 
 /// <summary>UI interactions view models ask for; implemented by the main window.</summary>
 public interface IDialogService
