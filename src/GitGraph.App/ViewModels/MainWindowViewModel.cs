@@ -41,7 +41,11 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     {
         _store = store;
         _state = store.Load();
-        Services.AvatarService.UseImages = _state.AvatarStyle != "Initials";
+        Services.AvatarService.Style = _state.AvatarStyle;
+        _avatarStyles = [.. Services.AvatarService.GravatarStyles, .. Services.AvatarService.RoboHashStyles, .. Services.AvatarService.DiceBearStyles];
+        GravatarAvatars = Services.AvatarService.GravatarStyles.Select(StyleItem).ToList();
+        RoboHashAvatars = Services.AvatarService.RoboHashStyles.Select(StyleItem).ToList();
+        DiceBearAvatars = Services.AvatarService.DiceBearStyles.Select(StyleItem).ToList();
         Services.ShortcutService.Instance.Load(_state.Keybindings);
         Services.ShortcutService.Instance.Changed += () =>
         {
@@ -134,18 +138,33 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     [RelayCommand]
     private void ToggleSidebar() => ShowSidebar = !ShowSidebar;
 
-    /// <summary>Robots (GitHub pictures and Gravatar) or initials; switching redraws the avatars on screen.</summary>
-    public bool AvatarRobots => _state.AvatarStyle != "Initials";
-    public bool AvatarInitials => _state.AvatarStyle == "Initials";
+    // ---- Author avatars: GitHub pictures and Gravatar with robots or another generated style, or drawn here ----
+
+    private readonly List<Services.AvatarStyle> _avatarStyles;
+
+    /// <summary>The generated styles for people without a picture, as radio items of the View menu's submenus.</summary>
+    public IReadOnlyList<AvatarStyleItem> GravatarAvatars { get; }
+    public IReadOnlyList<AvatarStyleItem> RoboHashAvatars { get; }
+    public IReadOnlyList<AvatarStyleItem> DiceBearAvatars { get; }
+
+    private AvatarStyleItem StyleItem(Services.AvatarStyle style) =>
+        new(style.Name, style.Id, SetAvatarStyleCommand) { IsChecked = _state.AvatarStyle == style.Id };
+
+    /// <summary>Robots: the default, and what an unknown setting falls back to.</summary>
+    public bool AvatarRobots => AvatarInitials is false && AvatarIdenticons is false && _avatarStyles.All(s => s.Id != _state.AvatarStyle);
+    public bool AvatarInitials => _state.AvatarStyle == Services.AvatarService.Initials;
+    public bool AvatarIdenticons => _state.AvatarStyle == Services.AvatarService.Identicons;
 
     [RelayCommand]
     private void SetAvatarStyle(string style)
     {
         if (_state.AvatarStyle == style) return;
         _state.AvatarStyle = style;
-        Services.AvatarService.UseImages = AvatarRobots;
+        Services.AvatarService.Style = style;
+        foreach (var item in GravatarAvatars.Concat(RoboHashAvatars).Concat(DiceBearAvatars)) item.IsChecked = item.Id == style;
         OnPropertyChanged(nameof(AvatarRobots));
         OnPropertyChanged(nameof(AvatarInitials));
+        OnPropertyChanged(nameof(AvatarIdenticons));
         SaveState();
     }
 
@@ -374,4 +393,15 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
                 _ => ThemeVariant.Default,
             };
     }
+}
+
+/// <summary>A radio item of the Author avatars submenus: a generated style, checked while it is in use.</summary>
+public sealed partial class AvatarStyleItem(string name, string id, System.Windows.Input.ICommand select) : ObservableObject
+{
+    public string Name { get; } = name;
+    public string Id { get; } = id;
+    public System.Windows.Input.ICommand Select { get; } = select;
+
+    [ObservableProperty]
+    private bool _isChecked;
 }

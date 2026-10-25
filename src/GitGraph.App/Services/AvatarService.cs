@@ -8,28 +8,78 @@ using Avalonia.Media.Imaging;
 
 namespace GitGraph.App.Services;
 
+/// <summary>One way of drawing authors who have no picture; <see cref="Id"/> is what the settings keep.</summary>
+public sealed record AvatarStyle(string Id, string Name);
+
 /// <summary>
-/// Author avatars, fetched the way GitLens does it: GitHub's avatar for GitHub noreply addresses,
-/// otherwise Gravatar by the MD5 of the email with the "robohash" default, so people without a
-/// Gravatar still get a distinct robot. Images are cached on disk for a week.
+/// Author avatars, fetched the way GitLens does it: GitHub's avatar for GitHub noreply addresses, otherwise
+/// Gravatar by the MD5 of the email. People without a Gravatar get a generated picture in the chosen
+/// <see cref="Style"/>: one of Gravatar's own, or one from RoboHash or DiceBear (seeded with that MD5, never the
+/// address). Images are cached on disk for a week. <see cref="Initials"/> and <see cref="Identicons"/> are drawn
+/// here and send nothing.
 /// </summary>
 public static partial class AvatarService
 {
     public const int Size = 64;
 
-    private static bool _useImages = true;
+    public const string Robots = "Robots";
+    public const string Initials = "Initials";
+    public const string Identicons = "Identicon";
 
-    /// <summary>False shows initials and sends nothing to Gravatar or GitHub.</summary>
-    public static bool UseImages
+    /// <summary>Gravatar's built-in pictures for people without one, in one request.</summary>
+    public static readonly IReadOnlyList<AvatarStyle> GravatarStyles =
+    [
+        new("Gravatar/identicon", "Geometric patterns"),
+        new("Gravatar/retro", "Pixel characters"),
+        new("Gravatar/monsterid", "Monsters"),
+        new("Gravatar/wavatar", "Cartoon faces"),
+        new("Gravatar/mp", "Silhouettes"),
+    ];
+
+    /// <summary>RoboHash's other sets (Gravatar's robohash default is set 1, the robots).</summary>
+    public static readonly IReadOnlyList<AvatarStyle> RoboHashStyles =
+    [
+        new("RoboHash/set2", "Monsters"),
+        new("RoboHash/set3", "Robot heads"),
+        new("RoboHash/set4", "Kittens"),
+        new("RoboHash/set5", "Humans"),
+    ];
+
+    /// <summary>A choice of DiceBear's styles (dicebear.com/styles).</summary>
+    public static readonly IReadOnlyList<AvatarStyle> DiceBearStyles =
+    [
+        new("DiceBear/identicon", "Identicon"),
+        new("DiceBear/shapes", "Shapes"),
+        new("DiceBear/rings", "Rings"),
+        new("DiceBear/pixel-art", "Pixel art"),
+        new("DiceBear/bottts", "Bottts"),
+        new("DiceBear/thumbs", "Thumbs"),
+        new("DiceBear/fun-emoji", "Fun emoji"),
+        new("DiceBear/avataaars", "Avataaars"),
+        new("DiceBear/lorelei", "Lorelei"),
+        new("DiceBear/notionists", "Notionists"),
+        new("DiceBear/adventurer", "Adventurer"),
+        new("DiceBear/open-peeps", "Open Peeps"),
+    ];
+
+    private static string _style = Robots;
+
+    /// <summary>The <see cref="AvatarStyle.Id"/> in use; an unknown one falls back to robots.</summary>
+    public static string Style
     {
-        get => _useImages;
+        get => _style;
         set
         {
-            if (_useImages == value) return;
-            _useImages = value;
+            if (_style == value) return;
+            _style = value;
+            // Pictures of the old style can go; the new style's come from its own cache files.
+            Loaded.Clear();
             StyleChanged?.Invoke();
         }
     }
+
+    /// <summary>Pictures are fetched: not initials or identicons, which are drawn here.</summary>
+    public static bool UseImages => Style is not (Initials or Identicons);
 
     /// <summary>Raised when the avatar style changes, so avatars on screen redraw.</summary>
     public static event Action? StyleChanged;
@@ -92,12 +142,13 @@ public static partial class AvatarService
     {
         if (!UseImages) return Task.FromResult<Bitmap?>(null);
         var key = email.Trim().ToLowerInvariant();
-        return Loaded.GetOrAdd(key, LoadAsync);
+        return Loaded.GetOrAdd(key, k => LoadAsync(k, Style));
     }
 
-    private static async Task<Bitmap?> LoadAsync(string email)
+    private static async Task<Bitmap?> LoadAsync(string email, string style)
     {
-        var file = Path.Combine(CacheDir, Md5(email) + ".png");
+        // Robots keep the plain name, so pictures cached before there were styles still count.
+        var file = Path.Combine(CacheDir, Md5(email) + (style == Robots ? "" : "-" + style.Replace('/', '-')) + ".png");
         try
         {
             if (File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < MaxAge)
@@ -106,7 +157,7 @@ public static partial class AvatarService
             await Gate.WaitAsync();
             try
             {
-                var bytes = await Http.GetByteArrayAsync(UrlFor(email));
+                var bytes = await FetchAsync(email, style);
                 Directory.CreateDirectory(CacheDir);
                 await File.WriteAllBytesAsync(file, bytes);
                 using var stream = new MemoryStream(bytes);
@@ -123,13 +174,29 @@ public static partial class AvatarService
         }
     }
 
-    private static string UrlFor(string email)
+    /// <summary>
+    /// GitHub's picture for a GitHub address. Otherwise Gravatar: with one of its own defaults in one request, or
+    /// asking it for a 404 when the person has no picture and then generating one elsewhere.
+    /// </summary>
+    private static async Task<byte[]> FetchAsync(string email, string style)
     {
         if (GitHubIdNoReply().Match(email) is { Success: true } id)
-            return $"https://avatars.githubusercontent.com/u/{id.Groups[1].Value}?s={Size}&v=4";
+            return await Http.GetByteArrayAsync($"https://avatars.githubusercontent.com/u/{id.Groups[1].Value}?s={Size}&v=4");
         if (GitHubUserNoReply().Match(email) is { Success: true } user)
-            return $"https://github.com/{user.Groups[1].Value}.png?size={Size}";
-        return $"https://www.gravatar.com/avatar/{Md5(email)}?s={Size}&d=robohash";
+            return await Http.GetByteArrayAsync($"https://github.com/{user.Groups[1].Value}.png?size={Size}");
+        var hash = Md5(email);
+        var (source, name) = style.IndexOf('/') is var slash and > 0 ? (style[..slash], style[(slash + 1)..]) : (style, "");
+        var fallback = source switch
+        {
+            "RoboHash" => $"https://robohash.org/{hash}.png?set={name}&size={Size}x{Size}",
+            "DiceBear" => $"https://api.dicebear.com/9.x/{name}/png?seed={hash}&size={Size}",
+            _ => null,
+        };
+        if (fallback is null)
+            return await Http.GetByteArrayAsync($"https://www.gravatar.com/avatar/{hash}?s={Size}&d={(source == "Gravatar" ? name : "robohash")}");
+        using var gravatar = await Http.GetAsync($"https://www.gravatar.com/avatar/{hash}?s={Size}&d=404");
+        if (gravatar.StatusCode != HttpStatusCode.NotFound) return await gravatar.EnsureSuccessStatusCode().Content.ReadAsByteArrayAsync();
+        return await Http.GetByteArrayAsync(fallback);
     }
 
     private static string Md5(string s) => Convert.ToHexStringLower(MD5.HashData(Encoding.UTF8.GetBytes(s)));

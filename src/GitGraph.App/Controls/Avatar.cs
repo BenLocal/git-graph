@@ -7,8 +7,9 @@ using GitGraph.App.Services;
 namespace GitGraph.App.Controls;
 
 /// <summary>
-/// A commit author's avatar from <see cref="AvatarService"/>. Until the image arrives, or when
-/// avatars are off or offline, it shows the author's initials on a colour picked from the email.
+/// A commit author's avatar from <see cref="AvatarService"/>. Until the image arrives, or when avatars are off
+/// or offline, it shows the author's initials on a colour picked from the email; the identicon style draws
+/// GitHub's kind of pattern instead.
 /// </summary>
 public sealed class Avatar : Control
 {
@@ -20,6 +21,8 @@ public sealed class Avatar : Control
 
     private Bitmap? _image;
     private FormattedText? _initials;
+    // The identicon's colour and its 5 × 5 cells, from the email.
+    private (Color Color, bool[] Cells)? _identicon;
 
     static Avatar()
     {
@@ -38,7 +41,7 @@ public sealed class Avatar : Control
         AvatarService.StyleChanged -= OnStyleChanged;
     }
 
-    // Switching between robots and initials takes effect on the avatars already on screen.
+    // Switching styles takes effect on the avatars already on screen.
     private void OnStyleChanged()
     {
         _image = null;
@@ -63,6 +66,7 @@ public sealed class Avatar : Control
     {
         base.OnPropertyChanged(change);
         if (change.Property == AuthorNameProperty || change.Property == EmailProperty) _initials = null;
+        if (change.Property == EmailProperty) _identicon = null;
         if (change.Property != EmailProperty) return;
         _image = null;
         if (Email is { Length: > 0 } email) _ = LoadAsync(email);
@@ -70,9 +74,10 @@ public sealed class Avatar : Control
 
     private async Task LoadAsync(string email)
     {
+        var style = AvatarService.Style;
         var image = await AvatarService.GetAsync(email);
-        // The row may have been reused for another commit while the image loaded.
-        if (image is null || Email != email) return;
+        // The row may have been reused for another commit, or the style changed, while the image loaded.
+        if (image is null || Email != email || AvatarService.Style != style) return;
         _image = image;
         InvalidateVisual();
     }
@@ -95,11 +100,44 @@ public sealed class Avatar : Control
             return;
         }
 
+        if (AvatarService.Style == AvatarService.Identicons)
+        {
+            DrawIdenticon(ctx, rect, circle, Email);
+            return;
+        }
+
         ctx.DrawGeometry(new SolidColorBrush(ColorFor(Email)), null, circle);
         _initials ??= new FormattedText(Initials(AuthorName, Email), System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight, new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold),
             size * 0.42, Brushes.White);
         ctx.DrawText(_initials, new Point(rect.Center.X - _initials.Width / 2, rect.Center.Y - _initials.Height / 2));
+    }
+
+    /// <summary>
+    /// A pattern like GitHub's default avatar: 5 × 5 cells mirrored left to right, in one colour, picked from the
+    /// email's MD5 (as Gravatar keys pictures), on the soft disc behind every avatar.
+    /// </summary>
+    private void DrawIdenticon(DrawingContext ctx, Rect rect, Geometry circle, string email)
+    {
+        if (_identicon is null)
+        {
+            var hash = System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(email.Trim().ToLowerInvariant()));
+            var cells = new bool[25];
+            for (var i = 0; i < 15; i++)
+            {
+                var (col, row) = (i / 5, i % 5);
+                cells[row * 5 + col] = cells[row * 5 + 4 - col] = (hash[2 + i / 8] >> (i % 8) & 1) == 1;
+            }
+            _identicon = (HslColor.ToRgb((hash[0] << 8 | hash[1]) % 360, 0.55, 0.52), cells);
+        }
+        var (color, on) = _identicon.Value;
+        ctx.DrawGeometry(this.Brush("RaisedBrush", Brushes.LightGray), null, circle);
+        // Inset so the corner cells stay inside the circle.
+        var cell = rect.Width * 0.64 / 5;
+        var origin = rect.Center - new Point(cell * 2.5, cell * 2.5);
+        var brush = new SolidColorBrush(color);
+        for (var i = 0; i < 25; i++)
+            if (on[i]) ctx.FillRectangle(brush, new Rect(origin.X + i % 5 * cell, origin.Y + i / 5 * cell, cell + 0.5, cell + 0.5));
     }
 
     private static string Initials(string? name, string email)

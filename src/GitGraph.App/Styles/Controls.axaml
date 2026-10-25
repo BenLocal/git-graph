@@ -8,6 +8,14 @@
       <Setter Property="Header" Value="{ReflectionBinding Name}" />
       <Setter Property="Command" Value="{ReflectionBinding Run}" />
     </ControlTheme>
+    <!-- A radio item of an Author avatars submenu (an AvatarStyleItem); the radio group spans the submenus -->
+    <ControlTheme x:Key="AvatarStyleItem" TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+      <Setter Property="Header" Value="{ReflectionBinding Name}" />
+      <Setter Property="ToggleType" Value="Radio" />
+      <Setter Property="IsChecked" Value="{ReflectionBinding IsChecked, Mode=OneWay}" />
+      <Setter Property="Command" Value="{ReflectionBinding Select}" />
+      <Setter Property="CommandParameter" Value="{ReflectionBinding Id}" />
+    </ControlTheme>
   </Styles.Resources>
 
   <Style Selector="Window">

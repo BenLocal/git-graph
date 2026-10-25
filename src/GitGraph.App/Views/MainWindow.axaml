@@ -51,11 +51,22 @@
           <MenuItem Header="Wrap long lines in diffs" ToggleType="CheckBox" IsChecked="{Binding WrapDiffLines, Mode=OneWay}"
                     Command="{Binding ToggleWrapDiffLinesCommand}" />
           <MenuItem Header="Switch diff between unified and split" Tag="ToggleDiffLayout" Click="OnMenuCommand" InputGesture="{Binding Keys[ToggleDiffLayout], Source={x:Static svc:ShortcutService.Instance}}" />
+          <!-- GitHub's picture for GitHub addresses, otherwise Gravatar; people with neither get the style picked here -->
           <MenuItem Header="Author avatars">
-            <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
+            <MenuItem Header="Robots and GitHub pictures" ToggleType="Radio" IsChecked="{Binding AvatarRobots, Mode=OneWay}"
                       Command="{Binding SetAvatarStyleCommand}" CommandParameter="Robots"
                       ToolTip.Tip="GitHub's picture for GitHub addresses, otherwise Gravatar, with a robot for people who don't have one" />
-            <MenuItem Header="Initials" ToggleType="Radio" GroupName="avatars" IsChecked="{Binding AvatarInitials, Mode=OneWay}"
+            <MenuItem Header="Gravatar's own pictures" ItemsSource="{Binding GravatarAvatars}" ItemContainerTheme="{StaticResource AvatarStyleItem}"
+                      ToolTip.Tip="GitHub and Gravatar pictures; people without one get Gravatar's generated picture" />
+            <MenuItem Header="RoboHash" ItemsSource="{Binding RoboHashAvatars}" ItemContainerTheme="{StaticResource AvatarStyleItem}"
+                      ToolTip.Tip="GitHub and Gravatar pictures; people without one get a RoboHash picture (sent a hash of the address)" />
+            <MenuItem Header="DiceBear" ItemsSource="{Binding DiceBearAvatars}" ItemContainerTheme="{StaticResource AvatarStyleItem}"
+                      ToolTip.Tip="GitHub and Gravatar pictures; people without one get a DiceBear picture (sent a hash of the address)" />
+            <Separator />
+            <MenuItem Header="Identicons" ToggleType="Radio" IsChecked="{Binding AvatarIdenticons, Mode=OneWay}"
+                      Command="{Binding SetAvatarStyleCommand}" CommandParameter="Identicon"
+                      ToolTip.Tip="Patterns like GitHub's default avatars, drawn here; nothing is sent to Gravatar or GitHub" />
+            <MenuItem Header="Initials" ToggleType="Radio" IsChecked="{Binding AvatarInitials, Mode=OneWay}"
                       Command="{Binding SetAvatarStyleCommand}" CommandParameter="Initials"
                       ToolTip.Tip="Drawn here from the author's name; nothing is sent to Gravatar or GitHub" />
           </MenuItem>
