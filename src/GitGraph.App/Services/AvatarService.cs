@@ -20,7 +20,8 @@ public sealed record AvatarStyle(string Id, string Name);
 /// </summary>
 public static partial class AvatarService
 {
-    public const int Size = 64;
+    /// <summary>Pixels asked for: twice the largest avatar (40), so it stays sharp at 200 % scaling.</summary>
+    public const int Size = 128;
 
     public const string Robots = "Robots";
     public const string Initials = "Initials";
@@ -147,8 +148,8 @@ public static partial class AvatarService
 
     private static async Task<Bitmap?> LoadAsync(string email, string style)
     {
-        // Robots keep the plain name, so pictures cached before there were styles still count.
-        var file = Path.Combine(CacheDir, Md5(email) + (style == Robots ? "" : "-" + style.Replace('/', '-')) + ".png");
+        // The size is in the name, so smaller pictures cached before aren't used for a larger one.
+        var file = Path.Combine(CacheDir, $"{Md5(email)}-{Size}-{style.Replace('/', '-')}.png");
         try
         {
             if (File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < MaxAge)

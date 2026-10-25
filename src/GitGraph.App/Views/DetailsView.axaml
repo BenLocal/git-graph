@@ -113,9 +113,13 @@
                   </Button>
                 </StackPanel>
                 <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,16,4" VerticalAlignment="Center" />
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                  <ctl:Avatar Email="{Binding AuthorEmail}" AuthorName="{Binding AuthorName}" Width="24" Height="24" VerticalAlignment="Center" />
-                  <SelectableTextBlock Text="{Binding AuthorText}" VerticalAlignment="Center" />
+                <!-- As on a GitHub commit page: a large avatar, the name over the address -->
+                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,2,0,6">
+                  <ctl:Avatar Email="{Binding AuthorEmail}" AuthorName="{Binding AuthorName}" Width="40" Height="40" VerticalAlignment="Center" />
+                  <StackPanel VerticalAlignment="Center" Spacing="1">
+                    <SelectableTextBlock Text="{Binding AuthorName}" FontWeight="SemiBold" />
+                    <SelectableTextBlock Classes="muted" Text="{Binding AuthorEmail}" FontSize="{DynamicResource FontSizeCaption}" />
+                  </StackPanel>
                 </StackPanel>
                 <TextBlock Grid.Row="2" Classes="muted small" Text="Date" Margin="0,0,16,0" VerticalAlignment="Center" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DateText}" />

@@ -43,9 +43,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     [ObservableProperty]
     private string? _hashText;
 
-    [ObservableProperty]
-    private string? _authorText;
-
     /// <summary>Drives the author's avatar.</summary>
     [ObservableProperty]
     private string? _authorEmail;
@@ -195,7 +192,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Heading = c.Subject;
         Body = null;
         HashText = c.Hash;
-        AuthorText = $"{c.AuthorName} <{c.AuthorEmail}>";
         AuthorEmail = c.AuthorEmail;
         AuthorName = c.AuthorName;
         DateText = c.AuthorDate.ToString("yyyy-MM-dd HH:mm:ss zzz");
@@ -213,7 +209,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             Body = nl < 0 ? null : d.Message[(nl + 1)..].Trim('\n', '\r');
             if (string.IsNullOrWhiteSpace(Body)) Body = null;
             HashText = d.Hash;
-            AuthorText = $"{d.AuthorName} <{d.AuthorEmail}>";
             AuthorEmail = d.AuthorEmail;
             AuthorName = d.AuthorName;
             DateText = d.AuthorDate.ToString("yyyy-MM-dd HH:mm:ss zzz");
@@ -239,7 +234,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Heading = stash.Message;
         Body = null;
         HashText = stash.Hash;
-        AuthorText = $"{stash.AuthorName} <{stash.AuthorEmail}>";
         AuthorEmail = stash.AuthorEmail;
         AuthorName = stash.AuthorName;
         DateText = stash.Date.ToString("yyyy-MM-dd HH:mm:ss zzz");
@@ -262,7 +256,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Heading = "Uncommitted changes";
         Body = null;
         HashText = null;
-        AuthorText = null;
         AuthorEmail = null;
         DateText = null;
         CommitterText = null;
@@ -284,7 +277,6 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         Heading = newer is null ? $"{older.ShortHash} compared with your working tree" : $"{older.ShortHash} compared with {newer.ShortHash}";
         Body = null;
         HashText = null;
-        AuthorText = null;
         AuthorEmail = null;
         DateText = null;
         CommitterText = null;
