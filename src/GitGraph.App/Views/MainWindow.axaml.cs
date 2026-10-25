@@ -61,11 +61,17 @@ public partial class MainWindow : Window, IDialogService
         if (sender is MenuItem { Tag: string id }) RunShortcut(id);
     }
 
+    /// <summary>
+    /// Where prompts open: over the window asked from (the full diff window, a history or reflog window), which
+    /// would otherwise cover a prompt owned by this one.
+    /// </summary>
+    private Window DialogOwner => OwnedWindows.LastOrDefault(w => w.IsActive) ?? this;
+
     public Task<string[]?> PromptAsync(string title, string? message, IReadOnlyList<PromptField> fields, string confirmText) =>
-        new PromptDialog(title, message, fields, confirmText, destructive: false).ShowDialog<string[]?>(this);
+        new PromptDialog(title, message, fields, confirmText, destructive: false).ShowDialog<string[]?>(DialogOwner);
 
     public async Task<bool> ConfirmAsync(string title, string message, string confirmText, bool destructive = false) =>
-        await new PromptDialog(title, message, [], confirmText, destructive).ShowDialog<string[]?>(this) is not null;
+        await new PromptDialog(title, message, [], confirmText, destructive).ShowDialog<string[]?>(DialogOwner) is not null;
 
     public async Task<string?> PickFolderAsync(string title)
     {
