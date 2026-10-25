@@ -154,6 +154,13 @@ public sealed partial class FullDiffViewModel : ObservableObject
 
     public string CommentsTitle => FileComments.Count == 0 ? "Comments" : $"Comments ({FileComments.Count})";
 
+    /// <summary>The comments list beside the code: hidden until asked for, so the diff gets the whole width.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsCommentsPanelVisible))]
+    private bool _showCommentsPanel;
+
+    public bool IsCommentsPanelVisible => CanComment && ShowCommentsPanel;
+
     /// <summary>The 0-based lines of each side that have comments, for the markers in the editors.</summary>
     public IReadOnlySet<int> OldCommentLines { get; private set; } = new HashSet<int>();
     public IReadOnlySet<int> NewCommentLines { get; private set; } = new HashSet<int>();

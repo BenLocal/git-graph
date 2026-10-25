@@ -67,6 +67,15 @@
             </StackPanel>
           </Button>
           <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" IsVisible="{Binding HasFolds}" />
+          <!-- Shows or hides the comments list; the count says whether there is anything in it -->
+          <ToggleButton Classes="ghost" IsChecked="{Binding ShowCommentsPanel}" IsVisible="{Binding CanComment}"
+                        ToolTip.Tip="Show or hide the comments on this file">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <LucideIcon Kind="MessageSquareText" Size="14" VerticalAlignment="Center" />
+              <TextBlock Classes="small" Text="{Binding CommentsTitle}" VerticalAlignment="Center" />
+            </StackPanel>
+          </ToggleButton>
+          <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" IsVisible="{Binding CanComment}" />
           <Button Classes="ghost" Click="OnClose" ToolTip.Tip="Close (Esc)">
             <LucideIcon Kind="X" />
           </Button>
@@ -88,7 +97,7 @@
 
       <!-- The file's review comments, on a commit's diff; picking one goes to its line -->
       <Border Grid.Column="1" Width="320" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="1,0,0,0"
-              IsVisible="{Binding CanComment}">
+              IsVisible="{Binding IsCommentsPanelVisible}">
         <Grid RowDefinitions="Auto,Auto,*">
           <TextBlock Classes="section" Text="{Binding CommentsTitle}" Margin="12,6" />
           <TextBlock Grid.Row="1" Classes="muted small" TextWrapping="Wrap" Margin="12,0,12,8"
