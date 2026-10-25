@@ -45,3 +45,12 @@ Tokens and passwords never go into committed files or commit messages. Review `g
 ## 8. No second library for the same job
 
 MVVM is CommunityToolkit.Mvvm, JSON is System.Text.Json, git goes through the CLI. Before adding a NuGet package, explain why the existing ones aren't enough.
+
+## 9. Wait for the condition, not for a guessed time
+
+- Wrong: `await Task.Delay(400)` (or a one-shot timer) to wait until rows exist, a load finishes or layout settles.
+- Right: wait for the event or the work itself: `LayoutUpdated` or container events, `PendingLoads.WhenIdleAsync`, a `Dispatcher.UIThread.Post` priority. A delay is only fine when the delay is the behaviour (how long a note stays, debounce), as a named constant.
+
+## 10. Desktop-specific tweaks run only where they apply
+
+Releases ship for Linux, Windows and macOS. Settings tuned for GNOME, X11, Wayland, Mesa or libc go behind `OperatingSystem.IsLinux()` (plus a backend check where it matters), with a comment saying why the other platforms keep the defaults.

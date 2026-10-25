@@ -5,7 +5,7 @@
 
 ## Workspace rules
 - Scope: these rules apply to this repository and all subdirectories.
-- Language: talk to the user in Simplified Chinese unless they ask for English. **Everything written into the repository is English**: code, comments, UI text, commit messages, README, AGENTS.md, `docs/agents-dot-md/*` and `docs/memory/*`, including new entries added later (see `docs/agents-dot-md/translation.md`).
+- Language: talk to the user in Simplified Chinese unless they ask for English, short progress notes between tool calls included. **Everything written into the repository is English**: code, comments, UI text, commit messages, README, AGENTS.md, `docs/agents-dot-md/*` and `docs/memory/*`, including new entries added later (see `docs/agents-dot-md/translation.md`).
 - Changes: make the smallest precise change; no unrelated refactoring.
 - Safety: no destructive git or file operations without explicit permission.
 - Verification: after changing code, build and run the relevant tests.
