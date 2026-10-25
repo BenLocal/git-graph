@@ -154,6 +154,9 @@
           </ToggleButton>
 
           <Border Width="1" Background="{DynamicResource RuleBrush}" Margin="4,6" />
+          <Button Classes="ghost" Command="{Binding BrowseFilesCommand}" ToolTip.Tip="Browse files in a folder tab">
+            <LucideIcon Kind="FolderOpen" />
+          </Button>
           <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
                         ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
             <LucideIcon Kind="ChartColumn" />

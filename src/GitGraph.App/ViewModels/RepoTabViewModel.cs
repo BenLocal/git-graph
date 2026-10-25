@@ -110,6 +110,10 @@ public partial class RepoTabViewModel : TabViewModel
     [RelayCommand]
     private void ToggleStats() => ShowStats = !ShowStats;
 
+    /// <summary>Opens this working tree's files in a folder tab, as Browse files does in the sidebar.</summary>
+    [RelayCommand]
+    private void BrowseFiles() => _workspace.OpenFolderTab(Path, pin: true);
+
     /// <summary>Selects the checked-out commit, loading more history if it isn't on screen yet.</summary>
     [RelayCommand]
     private async Task GoToHead()
