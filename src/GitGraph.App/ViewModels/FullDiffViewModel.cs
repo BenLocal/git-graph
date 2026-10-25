@@ -19,8 +19,9 @@ public sealed partial class FullDiffViewModel : ObservableObject
     private readonly int[] _oldRow, _newRow;
 
     /// <param name="comments">The commit's review comments, when the diff is one commit's (lines can take comments).</param>
+    /// <param name="blame">Blames the old (true) or new side, for the note on the caret's line; null for a side that can't be.</param>
     public FullDiffViewModel(FileChange file, string range, FileDiff diff, DiffSyntax syntax, string? message, Services.IDialogService dialogs, string fullPath,
-        CommitComments? comments = null)
+        CommitComments? comments = null, Func<bool, CancellationToken, Task<BlameResult?>>? blame = null)
     {
         _dialogs = dialogs;
         _comments = comments;
@@ -58,6 +59,7 @@ public sealed partial class FullDiffViewModel : ObservableObject
             comments.PropertyChanged += OnCommentsChanged;
             ShowComments();
         }
+        if (blame != null) _ = LoadBlameAsync(blame);
     }
 
     public string Path { get; }
@@ -119,11 +121,43 @@ public sealed partial class FullDiffViewModel : ObservableObject
     public bool IsDetailDeleted => DetailOld?.Kind == DiffLineKind.Deleted;
     public bool IsDetailAdded => DetailNew?.Kind == DiffLineKind.Added;
 
+    // ---- Who changed the caret's line, as GitLens shows it ----------------------------------------
+
+    private readonly CancellationTokenSource _blameCts = new();
+    private BlameResult? _oldBlame, _newBlame;
+    private (bool Old, int Line)? _caret;
+
+    /// <summary>The note at the end of the caret's line: who last changed it, when, and the commit's subject.</summary>
+    [ObservableProperty]
+    private LineNote? _lineBlame;
+
+    private async Task LoadBlameAsync(Func<bool, CancellationToken, Task<BlameResult?>> blame)
+    {
+        async Task<BlameResult?> Side(bool old)
+        {
+            // Only a note: a side git can't blame (a new file, the index) simply has none.
+            try { return await blame(old, _blameCts.Token); }
+            catch (Exception e) when (e is GitException or OperationCanceledException) { return null; }
+        }
+        var (oldSide, newSide) = (Side(true), Side(false));
+        (_oldBlame, _newBlame) = (await oldSide, await newSide);
+        if (!_blameCts.IsCancellationRequested) ShowLineBlame();
+    }
+
+    private void ShowLineBlame()
+    {
+        LineBlame = _caret is var (old, line) && LineNote.Blame(old ? _oldBlame : _newBlame, line) is { } text
+            ? new LineNote(old, line, text)
+            : null;
+    }
+
     /// <summary>The caret moved to <paramref name="line"/> (0-based) of one side.</summary>
     public void SetCaret(bool old, int line)
     {
         var rows = old ? _oldRow : _newRow;
         if (line < 0 || line >= rows.Length) return;
+        _caret = (old, line);
+        ShowLineBlame();
         var row = _rows[rows[line]];
         DetailOld = row.Left;
         DetailNew = row.Right;
@@ -173,9 +207,10 @@ public sealed partial class FullDiffViewModel : ObservableObject
 
     public void RevealComment(CommentViewModel comment) => LineRevealRequested?.Invoke(comment.Comment.OldSide, comment.Comment.Line - 1);
 
-    /// <summary>The window closed: stop following the commit's comments, which outlive it.</summary>
+    /// <summary>The window closed: stop blaming, and stop following the commit's comments, which outlive it.</summary>
     public void Detach()
     {
+        _blameCts.Cancel();
         if (_comments != null) _comments.PropertyChanged -= OnCommentsChanged;
     }
 
@@ -215,6 +250,16 @@ public sealed partial class FullDiffViewModel : ObservableObject
     {
         foreach (var f in Folds) f.IsExpanded = false;
     }
+}
+
+/// <summary>A note drawn after 0-based <paramref name="Line"/> of the old or new side.</summary>
+public sealed record LineNote(bool Old, int Line, string Text)
+{
+    /// <summary>Who last changed 0-based <paramref name="line"/>, when, and the commit's subject, as GitLens puts it.</summary>
+    public static string? Blame(BlameResult? blame, int line) =>
+        blame is { } b && line < b.Lines.Count && b.Lines[line].Number == line + 1 && b.Commits.GetValueOrDefault(b.Lines[line].Hash) is { } c
+            ? c.IsCommitted ? $"{c.AuthorName}, {ReflogRowViewModel.Relative(c.Date)} • {c.Summary}" : "You, not committed yet"
+            : null;
 }
 
 /// <summary>A stretch of unchanged lines that can be shown or hidden, starting at these 0-based lines of each side.</summary>

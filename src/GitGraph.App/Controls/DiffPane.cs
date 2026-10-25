@@ -29,6 +29,7 @@ public sealed class DiffPane
         _editor = editor;
         _old = old;
         editor.TextArea.TextView.BackgroundRenderers.Add(new Backgrounds(this));
+        _note = new LineNoteRenderer(editor);
         editor.TextArea.TextView.LineTransformers.Add(new SyntaxColours(editor, number =>
             number <= _lines.Count && (_old ? _lines[number - 1].OldLine : _lines[number - 1].NewLine) is { } n ? _syntax.Line(_old, n) : null));
         editor.ActualThemeVariantChanged += (_, _) => ApplyTheme();
@@ -68,6 +69,15 @@ public sealed class DiffPane
             _commentLines = value;
             TextView.InvalidateLayer(KnownLayer.Background);
         }
+    }
+
+    private readonly LineNoteRenderer _note;
+
+    /// <summary>Faint text after the end of a 0-based line, like GitLens's blame of the caret's line.</summary>
+    public (int Line, string Text)? Note
+    {
+        get => _note.Note;
+        set => _note.Note = value;
     }
 
     /// <summary>Where a block starts and ends on this side, in lines.</summary>

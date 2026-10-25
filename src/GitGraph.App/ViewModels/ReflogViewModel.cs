@@ -91,7 +91,8 @@ public sealed class ReflogRowViewModel(ReflogEntry entry, int index, ReflogViewM
     public string When { get; } = Relative(entry.Time);
     public string TimeText { get; } = entry.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
-    private static string Relative(DateTimeOffset time)
+    /// <summary>"5 minutes ago", "3 days ago", then the date.</summary>
+    internal static string Relative(DateTimeOffset time)
     {
         var age = DateTimeOffset.Now - time;
         static string Ago(int n, string unit) => $"{n} {unit}{(n == 1 ? "" : "s")} ago";

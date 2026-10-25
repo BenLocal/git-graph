@@ -151,4 +151,27 @@ public sealed class DetailsViewModelTests : IDisposable
         await Settled();
         Assert.All(_vm.DiffLines, l => Assert.Null(l.Spot));
     }
+
+    [Fact]
+    public async Task The_full_diff_says_who_last_changed_the_caret_line_on_each_side()
+    {
+        _repo.Write("a.txt", "one\nTWO\n");
+        _repo.Git("-c", "user.name=Ana", "commit", "-qam", "Shout two");
+        var commit = (await new GitRepository(_repo.Path).GetCommitsAsync(1, null, false)).Single();
+        _vm.ShowCommit(commit);
+        await Settled();
+        await _vm.OpenFullDiffCommand.ExecuteAsync(null);
+        var diff = Assert.Single(_host.Diffs);
+
+        // The blame arrives after the window opens; the note follows the caret from then on.
+        var shown = new TaskCompletionSource();
+        diff.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(FullDiffViewModel.LineBlame) && diff.LineBlame != null) shown.TrySetResult(); };
+        diff.SetCaret(false, 1);
+        await shown.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal(new LineNote(false, 1, "Ana, just now • Shout two"), diff.LineBlame);
+        // The old side is blamed at the parent: line 2 was written by the first commit.
+        diff.SetCaret(true, 1);
+        Assert.Equal("Tester, just now • first", diff.LineBlame?.Text);
+        diff.Detach();
+    }
 }

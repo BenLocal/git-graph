@@ -130,6 +130,19 @@ public partial class DetailsViewModel
             new LoadedDiff(TextDiff.Build(oldText, newText, ignoreWhitespace: _host.IgnoreWhitespace), DiffSyntax.Empty, oldText, newText), ct);
     }
 
+    /// <summary>
+    /// Blames one side of a file's diff: the old side at the diff's start, the new side at its end (the working
+    /// tree when that is uncommitted). Null where there is nothing to blame: a side the file isn't on, the empty
+    /// tree, or the index, which has no history of its own.
+    /// </summary>
+    private Func<bool, CancellationToken, Task<BlameResult?>> BlameFor(DiffTarget target, FileChange file) => async (old, ct) =>
+    {
+        var rev = old ? target.From : target.To;
+        var missing = old ? file.Kind is ChangeKind.Added or ChangeKind.Untracked : file.Kind is ChangeKind.Deleted or ChangeKind.Untracked;
+        if (missing || rev is GitRepository.EmptyTree or GitRepository.Index) return null;
+        return await _repo.BlameAsync(old ? file.OldPath ?? file.Path : file.Path, rev, ct);
+    };
+
     private static string? EmptyMessage(FileDiff diff, FileChange file) =>
         diff.IsBinary ? "Binary file. There is no text diff to show."
         : diff.Lines.Count > 0 ? null
@@ -151,7 +164,7 @@ public partial class DetailsViewModel
             // Opened before the colours arrived (or for another file): the window gets them before it shows.
             if (syntax == DiffSyntax.Empty) syntax = await Task.Run(() => SyntaxHighlighter.Highlight(file.Change.Path, diff));
             _host.Dialogs.ShowDiff(new FullDiffViewModel(file.Change, RangeLabel(target), diff, syntax, EmptyMessage(diff, file.Change),
-                _host.Dialogs, FullPath(file.Change.Path), CommentsFor(file)));
+                _host.Dialogs, FullPath(file.Change.Path), CommentsFor(file), BlameFor(target, file.Change)));
         }
         catch (Exception e) when (e is GitException or IOException)
         {

@@ -70,6 +70,21 @@ public sealed partial class FolderTabViewModel : TabViewModel
     /// <summary>The selected file's name, which picks its syntax highlighting.</summary>
     public string? FileName => FilePath is null ? null : System.IO.Path.GetFileName(FilePath);
 
+    // Who last changed each line of the file shown, from git blame of the working tree; null outside a repository.
+    private BlameResult? _blame;
+    private int _caretLine;
+
+    /// <summary>Who last changed the caret's line, when, and why, shown at its end as GitLens does.</summary>
+    [ObservableProperty]
+    private LineNote? _lineBlame;
+
+    /// <summary>The caret moved to 0-based <paramref name="line"/> of the file.</summary>
+    public void SetCaret(int line)
+    {
+        _caretLine = line;
+        LineBlame = LineNote.Blame(_blame, line) is { } text ? new LineNote(false, line, text) : null;
+    }
+
     [ObservableProperty]
     private Bitmap? _image;
 
@@ -241,6 +256,9 @@ public sealed partial class FolderTabViewModel : TabViewModel
         FilePath = node.RelativePath;
         FileText = null;
         FileSyntax = null;
+        _blame = null;
+        _caretLine = 0;
+        LineBlame = null;
         Image = null;
         FileMessage = null;
         try
@@ -282,15 +300,35 @@ public sealed partial class FolderTabViewModel : TabViewModel
                 return;
             }
             FileText = text;
+            var blame = BlameAsync(node, cts.Token);
             var lines = text.Split('\n').Select((line, i) => (i + 1, line.TrimEnd('\r')));
             var syntax = await Task.Run(() => SyntaxHighlighter.HighlightLines(node.Name, lines, cts.Token), cts.Token);
             if (!cts.IsCancellationRequested) FileSyntax = syntax;
+            _blame = await blame;
+            if (!cts.IsCancellationRequested) SetCaret(_caretLine);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
             FileMessage = $"Could not read this file: {e.Message}";
         }
+    }
+
+    /// <summary>The file as it is on disk, blamed; null outside a repository or for a file git doesn't track.</summary>
+    private static async Task<BlameResult?> BlameAsync(FileNodeViewModel node, CancellationToken ct)
+    {
+        try { return await GitPathAsync(node, ct) is var (root, path) ? await new GitRepository(root).BlameAsync(path, null, ct) : null; }
+        catch (GitException) { return null; }
+    }
+
+    /// <summary>The repository a file is in, and its path there; null outside a repository.</summary>
+    private static async Task<(string Root, string Path)?> GitPathAsync(FileNodeViewModel node, CancellationToken ct = default)
+    {
+        var dir = System.IO.Path.GetDirectoryName(node.FullPath)!;
+        if (await GitRepository.FindTopLevelAsync(dir, ct) is not { } top) return null;
+        var relative = System.IO.Path.GetRelativePath(top, node.FullPath).Replace('\\', '/');
+        // Through a symlinked folder, git's top level isn't above the path as written; git also takes paths from the file's folder.
+        return relative.StartsWith("..", StringComparison.Ordinal) ? (dir, node.Name) : (top, relative);
     }
 
     private static string Decode(byte[] bytes)
@@ -350,15 +388,11 @@ public sealed partial class FolderTabViewModel : TabViewModel
     {
         node ??= SelectedNode;
         if (node is not { IsFile: true }) return;
-        var dir = System.IO.Path.GetDirectoryName(node.FullPath)!;
-        if (await GitRepository.FindTopLevelAsync(dir) is not { } top)
+        if (await GitPathAsync(node) is not var (root, path))
         {
             _host.ReportError($"{node.Name} isn't in a git repository, so it has no history.");
             return;
         }
-        var relative = System.IO.Path.GetRelativePath(top, node.FullPath).Replace('\\', '/');
-        // Through a symlinked folder, git's top level isn't above the path as written; git also takes paths from the file's folder.
-        var (root, path) = relative.StartsWith("..", StringComparison.Ordinal) ? (dir, node.Name) : (top, relative);
         _host.Dialogs.ShowFileHistory(new FileHistoryViewModel(new GitRepository(root), path, null, _host.Dialogs, blame));
     }
 

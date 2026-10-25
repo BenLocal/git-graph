@@ -106,6 +106,7 @@ public partial class CompareView : UserControl
         _vm.RevealRequested += Reveal;
         _vm.LineRevealRequested += RevealLine;
         ShowCommentLines();
+        ShowLineBlame();
         // The first change, once the editors know their sizes.
         Dispatcher.UIThread.Post(() => { if (_vm is { HasChanges: true, CurrentChange: < 0 } vm) vm.GoToChange(0); }, DispatcherPriority.Background);
     }
@@ -119,6 +120,13 @@ public partial class CompareView : UserControl
         return section;
     }
 
+    private void ShowLineBlame()
+    {
+        var note = _vm?.LineBlame;
+        _old.Note = note is { Old: true } ? (note.Line, note.Text) : null;
+        _new.Note = note is { Old: false } ? (note.Line, note.Text) : null;
+    }
+
     private void ShowCommentLines()
     {
         _old.CommentLines = _vm?.OldCommentLines ?? new HashSet<int>();
@@ -128,6 +136,7 @@ public partial class CompareView : UserControl
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(FullDiffViewModel.FileComments)) ShowCommentLines();
+        if (e.PropertyName == nameof(FullDiffViewModel.LineBlame)) ShowLineBlame();
         if (e.PropertyName != nameof(FullDiffViewModel.CurrentChange) || _vm is null) return;
         var current = _vm.CurrentChange >= 0 ? _vm.Changes[_vm.CurrentChange] : null;
         _old.Current = current;

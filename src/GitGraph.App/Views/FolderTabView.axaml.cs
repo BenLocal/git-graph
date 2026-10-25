@@ -13,6 +13,7 @@ namespace GitGraph.App.Views;
 public partial class FolderTabView : UserControl
 {
     private FolderTabViewModel? _vm;
+    private readonly LineNoteRenderer _note;
 
     public FolderTabView()
     {
@@ -25,6 +26,9 @@ public partial class FolderTabView : UserControl
         // Dark+ or Light+ colours follow the app's night and day themes.
         ActualThemeVariantChanged += (_, _) => ApplyTheme();
         ApplyTheme();
+        // Who last changed the caret's line, at its end.
+        _note = new LineNoteRenderer(Editor);
+        Editor.TextArea.Caret.PositionChanged += (_, _) => _vm?.SetCaret(Editor.TextArea.Caret.Line - 1);
         // Each folder remembers how wide its tree was dragged.
         TreeSplitter.DragCompleted += (_, _) => _vm?.SaveTreeWidth(Columns.ColumnDefinitions[0].ActualWidth);
     }
@@ -46,6 +50,7 @@ public partial class FolderTabView : UserControl
         // This view outlives its folder tabs; a selection left in the tree would keep a closed tab's files alive.
         else Tree.SelectedItem = null;
         ShowText();
+        ShowLineBlame();
         if (_vm != null) Columns.ColumnDefinitions[0].Width = new Avalonia.Controls.GridLength(_vm.TreeWidth);
         // The tree resets each new row's selection (and the binding copies that back), and its SelectedItem
         // doesn't reach nested rows; so once the rows exist, select the remembered file's row directly.
@@ -93,9 +98,12 @@ public partial class FolderTabView : UserControl
     {
         if (e.PropertyName == nameof(FolderTabViewModel.FileText)) ShowText();
         if (e.PropertyName == nameof(FolderTabViewModel.FileSyntax)) Editor.TextArea.TextView.Redraw();
+        if (e.PropertyName == nameof(FolderTabViewModel.LineBlame)) ShowLineBlame();
         // A newly opened file fades in, to show the content was replaced.
         if (e.PropertyName is nameof(FolderTabViewModel.FileText) or nameof(FolderTabViewModel.Image)) Motion.FadeIn(FileArea);
     }
+
+    private void ShowLineBlame() => _note.Note = _vm?.LineBlame is { } n ? (n.Line, n.Text) : null;
 
     private void ShowText()
     {
