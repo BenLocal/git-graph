@@ -639,6 +639,7 @@ public partial class RepoTabViewModel : TabViewModel
 
     public override void Dispose()
     {
+        Terminal.CloseCommand.Execute(null);
         _loadCts?.Cancel();
         _debounce.Stop();
         foreach (var w in _watchers) w.Dispose();

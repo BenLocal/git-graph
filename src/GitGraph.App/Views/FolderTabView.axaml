@@ -70,6 +70,10 @@
             <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+            <ToggleButton Classes="ghost" Padding="5" IsChecked="{Binding Terminal.IsVisible, Mode=OneWay}"
+                          Command="{Binding ToggleTerminalCommand}" ToolTip.Tip="Toggle terminal">
+              <LucideIcon Kind="Terminal" />
+            </ToggleButton>
             <Button Classes="ghost" Padding="5" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Open the folder in VS Code">
               <LucideIcon Kind="SquareCode" Size="15" />
             </Button>

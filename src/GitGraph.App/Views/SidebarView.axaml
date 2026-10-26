@@ -12,6 +12,7 @@
           <ContextMenu>
             <MenuItem Header="Open files" Command="{Binding OpenCommand}" />
             <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+            <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
             <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
             <Separator IsVisible="{Binding IsFolder}" />
             <MenuItem Header="Remove from workspace" Command="{Binding RemoveCommand}" IsVisible="{Binding IsFolder}" />
@@ -153,6 +154,7 @@
                         <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
                         <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
                         <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+                        <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
                         <Separator />
                         <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
                         <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
@@ -182,6 +184,7 @@
                             <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
                             <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
                             <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+                            <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
                             <Separator />
                             <MenuItem Header="Remove worktree…" Command="{Binding RemoveCommand}" />
                           </ContextMenu>

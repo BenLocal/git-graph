@@ -1,0 +1,62 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:terminal="using:Iciclecreek.Terminal"
+             xmlns:controls="using:GitGraph.App.Controls"
+             x:Class="GitGraph.App.Views.TerminalPanelView"
+             x:DataType="vm:TerminalViewModel"
+             Height="280" MinHeight="120"
+             Background="{DynamicResource SurfaceBrush}">
+  <UserControl.Styles>
+    <Style Selector="terminal|TerminalControl">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Grid ColumnDefinitions="*,Auto">
+            <controls:ImeTerminalView Name="PART_TerminalView"
+                                      FontFamily="{TemplateBinding FontFamily}"
+                                      FontSize="{TemplateBinding FontSize}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      Background="{TemplateBinding Background}"
+                                      SelectionBrush="{TemplateBinding SelectionBrush}"
+                                      Process="{TemplateBinding Process}"
+                                      BufferSize="{TemplateBinding BufferSize}"
+                                      CursorColor="{TemplateBinding CursorColor}"
+                                      CursorBlink="{TemplateBinding CursorBlink}"
+                                      AllowWindowOps="{TemplateBinding AllowWindowOps}"
+                                      Options="{TemplateBinding Options}" />
+            <ScrollBar Name="PART_ScrollBar" Grid.Column="1" Orientation="Vertical" AllowAutoHide="False" />
+          </Grid>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="5,Auto,*">
+    <Thumb Cursor="SizeNorthSouth" DragDelta="OnResize" ToolTip.Tip="Resize terminal">
+      <Thumb.Template>
+        <ControlTemplate>
+          <Border Background="{DynamicResource RuleBrush}" />
+        </ControlTemplate>
+      </Thumb.Template>
+    </Thumb>
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" Margin="12,4,8,4">
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <LucideIcon Kind="Terminal" Size="14" />
+        <TextBlock Text="Terminal" FontWeight="SemiBold" />
+      </StackPanel>
+      <TextBlock Grid.Column="1" Classes="muted small" Text="{Binding Path}" Margin="12,0"
+                 TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding Path}" />
+      <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Status}" Margin="8,0" VerticalAlignment="Center" />
+      <Button Grid.Column="3" Classes="ghost" Click="OnRestart" ToolTip.Tip="Restart shell">
+        <LucideIcon Kind="RotateCw" Size="14" />
+      </Button>
+      <Button Grid.Column="4" Classes="ghost" Command="{Binding HideCommand}" ToolTip.Tip="Hide terminal (keep shell running)">
+        <LucideIcon Kind="ChevronDown" Size="14" />
+      </Button>
+      <Button Grid.Column="5" Classes="ghost" Command="{Binding CloseCommand}" ToolTip.Tip="Close terminal and stop shell">
+        <LucideIcon Kind="X" Size="14" />
+      </Button>
+    </Grid>
+    <!-- Keep inactive controls attached so switching tabs preserves their screen and PTY. -->
+    <Grid x:Name="Sessions" Grid.Row="2" Margin="8,0,8,6" ClipToBounds="True" />
+  </Grid>
+</UserControl>

@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace GitGraph.App.ViewModels;
 
@@ -8,8 +9,19 @@ public abstract partial class TabViewModel : ObservableObject, IDisposable
     protected TabViewModel(string path, WorkspaceViewModel workspace)
     {
         Path = path;
+        Terminal = new TerminalViewModel(path);
         Workspace = workspace;
         Title = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(path));
+    }
+
+    public TerminalViewModel Terminal { get; }
+
+    [RelayCommand]
+    private void ToggleTerminal()
+    {
+        Workspace.PinTabCommand.Execute(this);
+        if (Terminal.IsVisible) Terminal.HideCommand.Execute(null);
+        else Terminal.ShowCommand.Execute(null);
     }
 
     public string Path { get; }

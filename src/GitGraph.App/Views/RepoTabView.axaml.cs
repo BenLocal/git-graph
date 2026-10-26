@@ -19,6 +19,7 @@ public partial class RepoTabView : UserControl
     public RepoTabView()
     {
         InitializeComponent();
+        SizeChanged += (_, _) => LimitDetailsHeight();
         // Tunnel so Ctrl+click is seen before the ListBox turns it into a selection toggle.
         CommitList.AddHandler(PointerPressedEvent, OnCommitPointerPressed, RoutingStrategies.Tunnel);
         CommitList.SelectionChanged += (_, _) =>
@@ -168,6 +169,14 @@ public partial class RepoTabView : UserControl
         DetailsSplitter.IsVisible = visible && !maximized;
         if (visible && !DetailsPane.IsVisible) Motion.FadeIn(DetailsPane);
         DetailsPane.IsVisible = visible;
+        LimitDetailsHeight();
+    }
+
+    private void LimitDetailsHeight()
+    {
+        // Leave room for the graph when the terminal reduces the space available to this view.
+        Layout.RowDefinitions[4].MaxHeight = _tab?.Terminal.IsVisible == true && _details?.IsMaximized != true
+            ? Math.Max(80, Bounds.Height * 0.55) : double.PositiveInfinity;
     }
 
     public void FocusFind()

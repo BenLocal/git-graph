@@ -229,7 +229,9 @@
 
       <!-- The sheet: everything about the open repository -->
       <Border Grid.Row="1" Classes="sheet">
-      <Grid RowDefinitions="Auto,*">
+      <Grid RowDefinitions="Auto,*,Auto">
+
+      <v:TerminalPanelView x:Name="TerminalPanel" Grid.Row="2" DataContext="{Binding SelectedTab.Terminal}" />
 
       <StackPanel Grid.Row="0">
         <!-- Notes such as new commits found by the periodic fetch, until dismissed -->

@@ -96,6 +96,8 @@ public partial class MainWindow
     {
         // Dialogs and the shortcut recorder handle their own keys.
         if (e.Source is Visual v && TopLevel.GetTopLevel(v) != this) return;
+        // Shells and terminal applications own their keys, including Ctrl+C, Ctrl+R and Tab.
+        if (e.Source is Visual source && source.GetSelfAndVisualAncestors().OfType<TerminalPanelView>().Any()) return;
         if (ShortcutService.FromKeyEvent(e) is null) return;
         var svc = ShortcutService.Instance;
 

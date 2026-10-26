@@ -191,6 +191,14 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public void OpenFolderTab(string path, bool pin = false) =>
         Open(new FolderTabViewModel(path, this, _host), pin);
 
+    /// <summary>Opens and pins the target tab before showing its embedded terminal.</summary>
+    public void OpenTerminal(string path, bool folder = false)
+    {
+        if (folder) OpenFolderTab(path, pin: true);
+        else OpenTab(path, pin: true);
+        SelectedTab!.Terminal.ShowCommand.Execute(null);
+    }
+
     private const string FolderPrefix = "folder:";
 
     private void Open(TabViewModel candidate, bool pin)
@@ -506,6 +514,9 @@ public partial class RepoNodeViewModel : ObservableObject
         if (ExternalTools.OpenInVsCode(MainPath) is { } error) _workspace.Host.ReportError(error);
     }
 
+    [RelayCommand]
+    private void OpenInTerminal() => _workspace.OpenTerminal(MainPath);
+
     internal WorkspaceViewModel Workspace => _workspace;
 
     [RelayCommand]
@@ -577,6 +588,9 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
     {
         if (ExternalTools.OpenInVsCode(Path) is { } error) repo.Workspace.Host.ReportError(error);
     }
+
+    [RelayCommand]
+    private void OpenInTerminal() => repo.Workspace.OpenTerminal(Path);
 
     [RelayCommand]
     private Task Remove() => repo.RemoveWorktreeAsync(this);
@@ -682,6 +696,9 @@ public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel 
     {
         if (ExternalTools.OpenInVsCode(Path) is { } error) Workspace.Host.ReportError(error);
     }
+
+    [RelayCommand]
+    private void OpenInTerminal() => Workspace.OpenTerminal(Path, folder: true);
 
     [RelayCommand]
     private Task CopyPath() => Workspace.Host.Dialogs.CopyTextAsync(Path);

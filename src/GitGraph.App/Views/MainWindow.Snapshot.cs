@@ -17,6 +17,7 @@ namespace GitGraph.App.Views;
 /// (=expanded also opens every fold in it); GITGRAPH_SNAPSHOT_HISTORY=history|blame renders the selected file's history window. GITGRAPH_SNAPSHOT_SCROLL=n scrolls the commit list to the end n times
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
 /// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_ABOUT=1 renders the About window.
+/// GITGRAPH_SNAPSHOT_TERMINAL=1 opens the embedded shell and waits for a command to complete before rendering.
 /// Each step waits for the loads it started (<see cref="PendingLoads"/>) and a layout pass, not for a fixed time.
 /// </summary>
 public partial class MainWindow
@@ -76,6 +77,30 @@ public partial class MainWindow
 
         Window target = this;
         var current = vm.SelectedWorkspace.SelectedRepoTab;
+        if (Env("TERMINAL") == "1" && vm.SelectedWorkspace.SelectedTab is { } terminalTab)
+        {
+            terminalTab.Terminal.ShowCommand.Execute(null);
+            await LaidOutAsync();
+            await TerminalPanel.WhenStartedAsync().WaitAsync(TimeSpan.FromSeconds(15));
+            var terminal = TerminalPanel.GetVisualDescendants().OfType<Iciclecreek.Terminal.TerminalControl>()
+                .Single(t => t.IsVisible);
+            var ready = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var output = new System.Text.StringBuilder();
+            void OnOutput(object? sender, Iciclecreek.Terminal.OutputReceivedEventArgs e)
+            {
+                output.Append(e.Output);
+                if (output.ToString().Contains("Git Graph terminal ready", StringComparison.Ordinal)) ready.TrySetResult();
+            }
+            terminal.OutputReceived += OnOutput;
+            try
+            {
+                await terminal.SendInputAsync(OperatingSystem.IsWindows()
+                    ? "Get-Location; Write-Output ('Git Graph terminal ' + 'ready')\r"
+                    : "pwd; tty; printf 'Git Graph terminal %s\\n' ready\r");
+                await ready.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            }
+            finally { terminal.OutputReceived -= OnOutput; }
+        }
         if (Env("FULLDIFF") is "1" or "expanded" && current != null)
         {
             await current.Details.OpenFullDiffCommand.ExecuteAsync(null);

@@ -2,6 +2,10 @@
 
 > Non-obvious problems hit while building this project, and what fixed them.
 
+- 2026-10-26 Dockerfile and Makefile appeared as plain text because `SyntaxHighlighter.GrammarFor` only resolved extensions; TextMateSharp's bundled grammar metadata includes these names but `GetLanguageByExtension` does not match them. Resolve build filenames explicitly and key grammar/token caches by grammar scope, since extensionless files from different languages share the same empty extension (`SyntaxHighlighterTests`).
+
+- 2026-10-26 An embedded terminal must retain its control when switching tabs: Iciclecreek terminal views stop their reader on logical-tree detachment. `TerminalPanelView` keeps inactive controls attached and hidden, while `TerminalSession` owns PTY disposal; headless tests verify PID preservation, resize, Ctrl+C and shutdown. `MainWindow` must bypass its tunnel shortcut handler for terminal descendants so shell keys reach the PTY.
+
 - 2026-10-17 Snapshots: `grim` can't capture the screen on GNOME Wayland → the window renders itself with `RenderTargetBitmap` when `GITGRAPH_SNAPSHOT` is set (`src/GitGraph.App/Views/MainWindow.Snapshot.cs`). Separate windows such as dialogs are not captured.
 - 2026-10-17 Fonts: the IBM Plex packages on npm / jsdelivr contain no TTF files (404) → take Mono from google/fonts and the static Sans weights from `cdn.jsdelivr.net/gh/IBM/plex@v6.4.0/IBM-Plex-Sans/fonts/complete/ttf/`.
 - 2026-10-17 Repaint on theme change: Avalonia 12 `Control` has no `ActualThemeVariantProperty` to observe → custom-drawn controls subscribe to the `ActualThemeVariantChanged` event and call `InvalidateVisual()` (`Controls/GraphCell.cs`).
@@ -26,3 +30,7 @@
 - 2026-10-24 A closed folder tab stayed in memory → `FolderTabView` lives on in the main window for every folder tab, and its `TreeView._selectedItem` kept the last tab's node (whose `Owner` is the tab); the view clears the tree's selection when its DataContext goes null.
 - 2026-10-25 Notes commits ("Notes added by 'git notes append'") showed up in the commit graph → `git log --all` includes `refs/notes/*`, whose commits are notes history, not project history → `GetCommitsAsync` passes `--exclude=refs/notes/*` before `--all` (covered in `GitRepositoryTests.Comments_are_added_edited_and_deleted_on_a_commit`).
 - 2026-10-25 Ctrl+Enter never reached a `KeyDown +=` handler on a multiline TextBox → with `AcceptsReturn` the TextBox handles every Enter, modifiers included, before bubbling handlers run → handle it with `AddHandler(KeyDownEvent, ..., RoutingStrategies.Tunnel)` (`PromptDialog`).
+
+- 2026-10-26: Embedded terminal swallowed Chinese composition because TerminalView 4.1.0 treats the retained KeySymbol on Avalonia Key.ImeProcessed events as printable input and marks them handled, preventing macOS from invoking its input context. ImeTerminalView leaves these events unhandled and inherits committed TextInput handling; TerminalTests covers composition keys and a single Chinese commit.
+
+- 2026-10-27: Codex wrapped and positioned text incorrectly in the embedded terminal: the visible grid was 207x13 but the PTY started at 100x24, and AttachConnection does not resize it. Spawn with the rendered grid and resize again before attach; the real PTY initial-size test fails before the fix and passes after. Native screenshots also exposed misplaced glyphs despite correct emulator buffer contents in Iciclecreek 4.1.0; 4.1.1 resolves the observed mixed-style/fallback rendering. Headless buffer/pixel probes did not reproduce that native rendering defect, so verify with a native Codex screenshot after startup, including its Braille star animation.

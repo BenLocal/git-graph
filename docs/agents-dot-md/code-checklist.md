@@ -54,3 +54,19 @@ MVVM is CommunityToolkit.Mvvm, JSON is System.Text.Json, git goes through the CL
 ## 10. Desktop-specific tweaks run only where they apply
 
 Releases ship for Linux, Windows and macOS. Settings tuned for GNOME, X11, Wayland, Mesa or libc go behind `OperatingSystem.IsLinux()` (plus a backend check where it matters), with a comment saying why the other platforms keep the defaults.
+
+## 11. Embedded terminals own their input and process lifecycle
+
+Shell input bypasses window shortcuts. Hiding or switching tabs preserves the PTY and screen; closing the terminal, tab or window releases them, including startup that is still pending. Verify directory, interactive input, resize and cleanup with a real PTY, not redirected process streams.
+
+## 12. Syntax detection and caching include extensionless filenames
+
+Resolve known build filenames as well as extensions. Key coloured-text caches by the resolved grammar, not just the extension: Dockerfile and Makefile both have an empty extension. Cover both file-viewer highlighting and diff-cache isolation when adding a filename rule.
+
+## 13. Terminal composition keys belong to the input method
+
+Leave Key.ImeProcessed unhandled even when KeySymbol is present; only committed TextInput may enter the PTY. Verify the key-event path as well as Unicode transport: SendInputAsync alone cannot test IME support.
+
+## 14. Initial PTY dimensions match the visible character grid
+
+Spawn with the laid-out terminal columns and rows, then synchronise again before attaching because layout may change during startup. Verify `stty size` before any window resize; a resize-only test misses a stale initial size. Validate renderer updates with native screenshots of mixed-style text and fallback symbols, not only emulator-buffer assertions.

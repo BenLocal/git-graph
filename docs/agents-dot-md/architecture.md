@@ -40,6 +40,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 | Repository tab | `RepoTabViewModel` / `CommitRowViewModel` | Load commits, refs and worktrees; build rows and badges; find, compare, context-menu commands; watch `.git` |
 | Details | `DetailsViewModel` | Two tabs: Commit (message and metadata; for uncommitted changes, the commit form) and Changes (file list and diff). For uncommitted changes the list is grouped into conflicts, staged and unstaged, with stage / unstage / discard per file, group and hunk |
 | History window | `FileHistoryViewModel` / `FileHistoryWindow` | One file's commits (`log --follow`) with their diffs, and its blame |
+| Embedded terminal | `TerminalViewModel` / `TerminalPanelView` / `TerminalSession` | A PTY shell per repository or folder tab; the view renders ANSI output with Iciclecreek's terminal control, and the session owns the process |
 | Services | `SyntaxHighlighter`, `AvatarService`, `UpdateCheck`, `ShortcutService` | Diff colours (TextMate, Dark+/Light+), avatars, the release check, keyboard shortcuts |
 | Views | `Views/*.axaml` | Bindings and a little keyboard and pointer handling only |
 
@@ -68,6 +69,8 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 - The refresh's `git status` also returns the untracked files, which the uncommitted view reuses instead of scanning again (the untracked scan is most of status's time in a large repository). Picking the row by hand scans, since new files don't touch `.git`.
 
 ## 5. Data and persistence
+
+- Terminal sessions are transient. Opening a terminal pins its tab. Hiding the panel or switching tabs preserves the shell and its scrollback; closing the terminal, tab or window disposes the PTY. The shared terminal panel keeps inactive controls attached because detaching a terminal view stops its reader. Terminal input bypasses the main window's shortcuts. The shell starts in the tab's directory, using `SHELL` on Unix (with a platform fallback) or Windows PowerShell.
 
 - git itself is always the source of truth; the app does not cache commit history.
 - `state.json` (`WorkspaceStore`, source-generated System.Text.Json) holds the workspace list, each workspace's folders, open tabs and active tab, the theme, whether remote branches are shown, the diff mode and diff options, the fetch interval, the pull mode, avatars, shortcuts and folder tab state. Writes are atomic (write a tmp file, then replace). The path is `ApplicationData/GitGraph/state.json`; `GITGRAPH_STATE` overrides it.

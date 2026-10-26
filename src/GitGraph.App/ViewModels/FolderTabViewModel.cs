@@ -418,7 +418,11 @@ public sealed partial class FolderTabViewModel : TabViewModel
         CopyNote.Show(note);
     }
 
-    public override void Dispose() => _fileCts?.Cancel();
+    public override void Dispose()
+    {
+        Terminal.CloseCommand.Execute(null);
+        _fileCts?.Cancel();
+    }
 }
 
 /// <summary>A file or folder in a folder tab's tree. A folder lists its contents when first opened.</summary>

@@ -164,6 +164,10 @@
           <Button Classes="ghost" Command="{Binding FetchCommand}" ToolTip.Tip="{Binding Tips[Fetch], Source={x:Static svc:ShortcutService.Instance}}">
             <LucideIcon Kind="CloudDownload" />
           </Button>
+          <ToggleButton Classes="ghost" IsChecked="{Binding Terminal.IsVisible, Mode=OneWay}"
+                        Command="{Binding ToggleTerminalCommand}" ToolTip.Tip="Toggle terminal">
+            <LucideIcon Kind="Terminal" />
+          </ToggleButton>
           <Button Classes="ghost" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding Tips[Refresh], Source={x:Static svc:ShortcutService.Instance}}">
             <LucideIcon Kind="RotateCw" />
           </Button>

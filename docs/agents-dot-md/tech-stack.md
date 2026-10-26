@@ -19,6 +19,8 @@ Structure and design trade-offs are in `architecture.md`.
 | MVVM | CommunityToolkit.Mvvm | 8.4.2 | `[ObservableProperty]` fields + `[RelayCommand]` |
 | Serialization | System.Text.Json | BCL | source generator |
 | Text diff | DiffPlex | 1.9.0 | line diff plus word diff inside modified lines (`Diff/TextDiff.cs`) |
+| Embedded terminal | Iciclecreek.Avalonia.Terminal | 4.1.1 | ANSI rendering and keyboard input; its Porta.Pty dependency provides Unix PTYs and Windows ConPTY. Existing editors do not emulate a terminal. |
+| Terminal UI tests | Avalonia.Headless | 12.1.3 | Real PTY integration tests dispatched on the headless UI thread, using the existing xunit v2 runner |
 | Tests | xunit / Microsoft.NET.Test.Sdk | 2.9.3 / 17.14.1 | |
 | Fonts | Segoe UI → Noto Sans → IBM Plex Sans (UI, as GitHub's system stack); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
 | Icons | Lucide.Avalonia (`<LucideIcon Kind="GitBranch" Size="14" />`) | 0.2.24 | default size, stroke and colour set by the `LucideIcon` style in `Controls.axaml` |
@@ -48,6 +50,7 @@ For UI changes, check a snapshot. On GNOME Wayland `grim` doesn't work, so use t
 
 ```bash
 make snapshot SELECT=3 COMPARE=6 THEME=Light SHOT=.demo/light.png
+GITGRAPH_SNAPSHOT_TERMINAL=1 make snapshot SHOT=.demo/terminal.png
 ```
 
 This recreates the demo repositories in `.demo/` (`scripts/make_demo.py`), starts the app on them, and once what is on screen has loaded (it waits for the loads, not for a set time) the window renders itself to a PNG and exits (`Views/MainWindow.Snapshot.cs`). More `GITGRAPH_SNAPSHOT_*` variables (listed at the top of that file) pick a changed file, a details tab, the panel and sidebar layout, or render the full diff, file history, keyboard shortcuts or About window instead.
