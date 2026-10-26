@@ -59,7 +59,7 @@ public static class SyntaxHighlighter
                 // AllRows holds every line of both versions in order; the text already has tabs expanded.
                 var oldLines = diff.AllRows.Select(r => r.Left).OfType<DiffLine>().Where(l => l.OldLine != null).Select(l => (l.OldLine!.Value, l.Text));
                 var newLines = diff.AllRows.Select(r => r.Right).OfType<DiffLine>().Where(l => l.NewLine != null).Select(l => (l.NewLine!.Value, l.Text));
-                return new DiffSyntax(Cached(path, grammar, oldLines, ct), Cached(path, grammar, newLines, ct));
+                return new DiffSyntax(Cached(grammar, oldLines, ct), Cached(grammar, newLines, ct));
             }
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -74,11 +74,11 @@ public static class SyntaxHighlighter
     private static readonly Dictionary<string, Dictionary<int, SyntaxSpan[]>> Cache = [];
     private static readonly LinkedList<string> CacheOrder = [];
 
-    private static Dictionary<int, SyntaxSpan[]> Cached(string path, IGrammar grammar, IEnumerable<(int Number, string Text)> lines, CancellationToken ct)
+    private static Dictionary<int, SyntaxSpan[]> Cached(IGrammar grammar, IEnumerable<(int Number, string Text)> lines, CancellationToken ct)
     {
         var list = lines.ToList();
         var hash = System.Security.Cryptography.SHA1.HashData(System.Text.Encoding.UTF8.GetBytes(string.Join('\n', list.Select(l => $"{l.Number}\t{l.Text}"))));
-        var key = Path.GetExtension(path) + ":" + Convert.ToHexString(hash);
+        var key = grammar.GetScopeName() + ":" + Convert.ToHexString(hash);
         if (Cache.TryGetValue(key, out var hit))
         {
             CacheOrder.Remove(key);
@@ -112,12 +112,22 @@ public static class SyntaxHighlighter
 
     private static IGrammar? GrammarFor(string path)
     {
-        var extension = Path.GetExtension(path);
-        if (extension.Length == 0) return null;
-        if (Grammars.TryGetValue(extension, out var cached)) return cached;
-        var language = Options.GetLanguageByExtension(extension);
-        var grammar = language is null ? null : Registry.LoadGrammar(Options.GetScopeByLanguageId(language.Id));
-        Grammars[extension] = grammar;
+        var filename = Path.GetFileName(path);
+        // TextMate's extension lookup does not match its filename or filenamePatterns metadata.
+        var languageId = filename switch
+        {
+            "Dockerfile" or "Containerfile" => "dockerfile",
+            "Makefile" or "makefile" or "GNUmakefile" or "OCamlMakefile" => "makefile",
+            _ when filename.StartsWith("Dockerfile.", StringComparison.Ordinal)
+                || filename.StartsWith("Containerfile.", StringComparison.Ordinal) => "dockerfile",
+            _ when filename.StartsWith("Makefile.", StringComparison.Ordinal) => "makefile",
+            _ => Options.GetLanguageByExtension(Path.GetExtension(path))?.Id,
+        };
+        if (languageId is null) return null;
+        var scope = Options.GetScopeByLanguageId(languageId);
+        if (Grammars.TryGetValue(scope, out var cached)) return cached;
+        var grammar = Registry.LoadGrammar(scope);
+        Grammars[scope] = grammar;
         return grammar;
     }
 
