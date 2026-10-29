@@ -48,8 +48,13 @@ public sealed class ContributionHeatmap : Control
     protected override Size MeasureOverride(Size availableSize)
     {
         var (_, weeks) = Range();
-        return new Size(Left + weeks * (Cell + Gap), Top + 7 * (Cell + Gap) + LegendHeight);
+        return new Size(Left + Math.Max(weeks * (Cell + Gap), LegendWidth() + Gap), Top + 7 * (Cell + Gap) + LegendHeight);
     }
+
+    private FormattedText Text(string text) => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+        new Typeface(FontFamily.Default), GitGraph.App.Services.FontScale.Of(10.5), this.Brush("MutedBrush", Brushes.Gray));
+
+    private double LegendWidth() => Text("Less").Width + 6 + 5 * (Cell + Gap) - Gap + 6 + Text("More").Width;
 
     /// <summary>Five shades: none, then four steps up to the busiest days (quartiles of the days with commits).</summary>
     private (IBrush[] Shades, int[] Steps) Scale()
@@ -74,10 +79,7 @@ public sealed class ContributionHeatmap : Control
     {
         var (start, weeks) = Range();
         var (shades, steps) = Scale();
-        var muted = this.Brush("MutedBrush", Brushes.Gray);
-        var typeface = new Typeface(FontFamily.Default);
         var today = DateOnly.FromDateTime(DateTime.Now);
-        FormattedText Text(string s) => new(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, GitGraph.App.Services.FontScale.Of(10.5), muted);
 
         foreach (var (row, name) in new[] { (1, "Mon"), (3, "Wed"), (5, "Fri") })
             ctx.DrawText(Text(name), new Point(0, Top + row * (Cell + Gap) - 1));
@@ -108,10 +110,10 @@ public sealed class ContributionHeatmap : Control
             }
         }
 
-        // Legend under the grid, at the right: Less ▢▢▢▢▢ More
+        // Short histories need more room for the legend than for the calendar columns.
         var more = Text("More");
         var y = Top + 7 * (Cell + Gap) + 6;
-        var right = Left + weeks * (Cell + Gap) - Gap;
+        var right = Left + Math.Max(weeks * (Cell + Gap) - Gap, LegendWidth());
         var xEnd = right - more.Width;
         ctx.DrawText(more, new Point(xEnd, y - 1));
         var sx = xEnd - 6 - 5 * (Cell + Gap) + Gap;

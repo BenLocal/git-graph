@@ -70,3 +70,7 @@ Leave Key.ImeProcessed unhandled even when KeySymbol is present; only committed 
 ## 14. Initial PTY dimensions match the visible character grid
 
 Spawn with the laid-out terminal columns and rows, then synchronise again before attaching because layout may change during startup. Verify `stty size` before any window resize; a resize-only test misses a stale initial size. Validate renderer updates with native screenshots of mixed-style text and fallback symbols, not only emulator-buffer assertions.
+
+## 15. Custom-drawn content fits its measured bounds
+
+Include labels and legends in a control's desired size using the same text metrics as rendering. Check empty or minimal data as well as long histories and enlarged fonts; a normal demo dataset can hide drawing outside the control.

@@ -15,13 +15,15 @@ namespace GitGraph.App.Tests;
 
 public static class TerminalTestApp
 {
+    internal static readonly HeadlessUnitTestSession Ui = HeadlessUnitTestSession.StartNew(typeof(TerminalTestApp), AvaloniaTestIsolationLevel.PerAssembly);
+
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UseHeadless(new AvaloniaHeadlessPlatformOptions());
 }
 
 public sealed class TerminalTests
 {
-    private static readonly HeadlessUnitTestSession Ui = HeadlessUnitTestSession.StartNew(typeof(TerminalTestApp), AvaloniaTestIsolationLevel.PerAssembly);
+    private static HeadlessUnitTestSession Ui => TerminalTestApp.Ui;
 
     [Fact]
     public async Task Missing_directory_does_not_start_a_shell()
