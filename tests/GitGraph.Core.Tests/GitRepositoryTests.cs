@@ -41,6 +41,35 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Languages_are_empty_before_the_first_commit_and_can_be_cancelled()
+    {
+        var empty = Path.Combine(_root, "empty");
+        Directory.CreateDirectory(empty);
+        await GitRunner.RunAsync(empty, ["init", "-q"]);
+        var repo = new GitRepository(empty);
+        Assert.Empty(await repo.GetLanguagesAsync());
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => repo.GetLanguagesAsync(cts.Token));
+    }
+
+    [Fact]
+    public async Task Languages_count_committed_utf8_bytes_and_follow_head()
+    {
+        Commit("hello 世界.py", "print('你好')\n", "python");
+        Commit("app.cs", "class App {}\n", "csharp");
+        File.WriteAllText(Path.Combine(_repo, "hello 世界.py"), "uncommitted change");
+        File.WriteAllText(Path.Combine(_repo, "untracked.js"), "not committed");
+        var repo = new GitRepository(_repo);
+        var languages = await repo.GetLanguagesAsync();
+        Assert.Equal(2, languages.Count);
+        Assert.Equal(System.Text.Encoding.UTF8.GetByteCount("print('你好')\n"), languages.Single(x => x.Name == "Python").Bytes);
+        Assert.Equal(1, languages.Sum(x => x.Share), 8);
+        Git("checkout", "-q", "--detach", "HEAD~1");
+        Assert.Equal("Python", Assert.Single(await repo.GetLanguagesAsync()).Name);
+    }
+
+    [Fact]
     public async Task Commits_refs_and_head_are_read()
     {
         var repo = new GitRepository(_repo);

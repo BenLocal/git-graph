@@ -29,6 +29,12 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
     private List<CommitStat>? _commits;
     private CancellationTokenSource? _cts;
 
+    [ObservableProperty]
+    private IReadOnlyList<LanguageRowViewModel> _languages = [];
+
+    [ObservableProperty]
+    private string _languageMessage = "Reading languages…";
+
     public IReadOnlyList<PeriodOption> Periods { get; } =
     [
         new("All time", null),
@@ -108,8 +114,14 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
         var cts = _cts = new CancellationTokenSource();
         IsLoading = true;
         Message = null;
+        Languages = [];
+        LanguageMessage = "Reading languages…";
         try
         {
+            var languages = await repo.GetLanguagesAsync(cts.Token);
+            if (cts.IsCancellationRequested) return;
+            Languages = languages.Select((language, index) => new LanguageRowViewModel(language, index)).ToList();
+            LanguageMessage = languages.Count == 0 ? "No recognized source files in this commit." : "";
             var commitsTask = repo.GetCommitStatsAsync(withLines: false, ct: cts.Token);
             var commonDir = await repo.GetCommonDirAsync(cts.Token) ?? repo.Path;
             var cache = await Task.Run(() => StatsCache.Load(commonDir), cts.Token);
@@ -132,7 +144,12 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
             if (missing > 0) await CountLinesAsync(cache, cts.Token);
         }
         catch (OperationCanceledException) { }
-        catch (GitException e) { Message = $"Could not read the history: {e.Message}"; }
+        catch (GitException e)
+        {
+            if (cts.IsCancellationRequested) return;
+            Message = $"Could not read repository statistics: {e.Message}";
+            if (LanguageMessage == "Reading languages…") LanguageMessage = "Could not read languages.";
+        }
         finally
         {
             if (_cts == cts)
@@ -166,6 +183,8 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
     {
         _cts?.Cancel();
         _commits = null;
+        Languages = [];
+        LanguageMessage = "Reading languages…";
         IsLoading = false;
     }
 
@@ -211,6 +230,15 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
 
     private const int CardsPerPass = 4;
     private int _fillVersion;
+}
+
+public sealed class LanguageRowViewModel(LanguageSummary language, int index)
+{
+    public string Name { get; } = language.Name;
+    public double Share { get; } = language.Share;
+    public string ShareText { get; } = language.Share.ToString("P1", CultureInfo.CurrentCulture);
+    public string SizeText { get; } = $"{language.Bytes:N0} bytes";
+    public IBrush Brush { get; } = LanePalette.Brush(index);
 }
 
 public sealed class ContributorCardViewModel(ContributorSummary person, int rank, int totalCommits, bool countingLines)

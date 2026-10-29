@@ -10,6 +10,14 @@ public sealed class GitRepository(string path)
 
     private Task<string> Git(CancellationToken ct, params string[] args) => GitRunner.RunAsync(Path, args, ct);
 
+    public async Task<IReadOnlyList<Stats.LanguageSummary>> GetLanguagesAsync(CancellationToken ct = default)
+    {
+        var head = await GetHeadAsync(ct);
+        if (head.Hash is null) return [];
+        var tree = await Git(ct, "ls-tree", "-r", "-l", "-z", head.Hash);
+        return await Task.Run(() => Stats.LanguageStats.ParseTree(tree, ct), ct);
+    }
+
     public static async Task<string?> FindTopLevelAsync(string dir, CancellationToken ct = default)
     {
         var r = await GitRunner.RunRawAsync(dir, ["rev-parse", "--show-toplevel"], ct);

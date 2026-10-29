@@ -26,6 +26,31 @@
                  IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- Activity by day, then by week, for everyone -->
+      <Border Classes="statcard">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="section" Text="Languages" />
+          <TextBlock Classes="muted small" Text="By file size in the current commit. Independent of the contribution period."
+                     TextWrapping="Wrap" />
+          <ctl:LanguageBar Items="{Binding Languages}" Height="10" />
+          <ItemsControl ItemsSource="{Binding Languages}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:LanguageRowViewModel">
+                <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,20,6" ToolTip.Tip="{Binding SizeText}">
+                  <Ellipse Width="8" Height="8" Fill="{Binding Brush}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Name}" FontWeight="Medium" />
+                  <TextBlock Classes="muted" Text="{Binding ShareText}" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <TextBlock Classes="muted small" Text="{Binding LanguageMessage}" IsVisible="{Binding !Languages.Count}" />
+          <TextBlock Classes="muted small" Text="Local estimate for common languages; skips common dependency, documentation and generated paths. Results may differ from GitHub."
+                     TextWrapping="Wrap" />
+        </StackPanel>
+      </Border>
       <Border Classes="statcard" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
         <StackPanel Spacing="10">
           <TextBlock Classes="section" Text="Activity" />
