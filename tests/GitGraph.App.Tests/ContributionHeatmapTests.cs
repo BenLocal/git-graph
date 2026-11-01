@@ -11,20 +11,25 @@ public sealed class ContributionHeatmapTests
     private static HeadlessUnitTestSession Ui => TerminalTestApp.Ui;
 
     [Theory]
-    [InlineData(0, 1)]
-    [InlineData(7, 1)]
-    [InlineData(14, 1)]
-    [InlineData(365, 1)]
-    [InlineData(0, 1.6)]
-    [InlineData(365, 1.6)]
-    public Task Legend_fits_inside_the_measured_control_for_short_and_long_histories(int ageDays, double fontScale) => Ui.Dispatch<bool>(() =>
+    [InlineData("2026-11-01", 0, 1)]
+    [InlineData("2026-11-01", 7, 1)]
+    [InlineData("2026-11-01", 14, 1)]
+    [InlineData("2026-11-01", 365, 1)]
+    [InlineData("2026-11-01", 0, 1.6)]
+    [InlineData("2026-11-01", 365, 1.6)]
+    [InlineData("2027-01-03", 0, 1)]
+    [InlineData("2027-01-03", 365, 1)]
+    [InlineData("2027-01-03", 0, 1.6)]
+    [InlineData("2027-01-03", 365, 1.6)]
+    public Task Labels_fit_inside_the_measured_control_at_month_and_year_boundaries(string today, int ageDays, double fontScale) => Ui.Dispatch<bool>(() =>
     {
         var previousScale = FontScale.Current;
         try
         {
             FontScale.Apply(fontScale);
-            var first = DateTimeOffset.Now.AddDays(-ageDays);
-            var heatmap = new ContributionHeatmap
+            var clock = new FixedTimeProvider(DateOnly.ParseExact(today, "yyyy-MM-dd"));
+            var first = clock.GetUtcNow().AddDays(-ageDays);
+            var heatmap = new ContributionHeatmap(clock)
             {
                 From = first,
                 Days = new Dictionary<DateOnly, int> { [DateOnly.FromDateTime(first.DateTime)] = 3 },
@@ -41,4 +46,10 @@ public sealed class ContributionHeatmapTests
         }
         finally { FontScale.Apply(previousScale); }
     }, CancellationToken.None);
+
+    private sealed class FixedTimeProvider(DateOnly today) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(today.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
+    }
 }

@@ -21,6 +21,7 @@ public sealed class ContributionHeatmap : Control
 
     private const double Cell = 12, Gap = 3, Left = 30, Top = 18, LegendHeight = 24;
     private const int MaxWeeks = 53;
+    private readonly TimeProvider _clock;
     private (int Week, int Day) _hover = (-1, -1);
 
     static ContributionHeatmap()
@@ -29,7 +30,15 @@ public sealed class ContributionHeatmap : Control
         AffectsMeasure<ContributionHeatmap>(DaysProperty, FromProperty);
     }
 
-    public ContributionHeatmap() => ActualThemeVariantChanged += (_, _) => InvalidateVisual();
+    public ContributionHeatmap() : this(TimeProvider.System) { }
+
+    public ContributionHeatmap(TimeProvider clock)
+    {
+        _clock = clock;
+        ActualThemeVariantChanged += (_, _) => InvalidateVisual();
+    }
+
+    private DateOnly Today => DateOnly.FromDateTime(_clock.GetLocalNow().DateTime);
 
     public IReadOnlyDictionary<DateOnly, int>? Days { get => GetValue(DaysProperty); set => SetValue(DaysProperty, value); }
     public DateTimeOffset? From { get => GetValue(FromProperty); set => SetValue(FromProperty, value); }
@@ -37,7 +46,7 @@ public sealed class ContributionHeatmap : Control
     /// <summary>The Sunday the first column starts on, and how many columns end at this week.</summary>
     private (DateOnly Start, int Weeks) Range()
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = Today;
         var thisWeek = today.AddDays(-(int)today.DayOfWeek);
         var from = From is { } f ? DateOnly.FromDateTime(f.DateTime)
             : Days is { Count: > 0 } d ? d.Keys.Min() : thisWeek;
@@ -47,14 +56,31 @@ public sealed class ContributionHeatmap : Control
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        var (_, weeks) = Range();
-        return new Size(Left + Math.Max(weeks * (Cell + Gap), LegendWidth() + Gap), Top + 7 * (Cell + Gap) + LegendHeight);
+        var (start, weeks) = Range();
+        var width = Left + Math.Max(weeks * (Cell + Gap), LegendWidth() + Gap);
+        var labelRight = MonthLabels(start, weeks).Max(label => label.X + label.Text.Width);
+        return new Size(Math.Max(width, labelRight), Top + 7 * (Cell + Gap) + LegendHeight);
     }
 
     private FormattedText Text(string text) => new(text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
         new Typeface(FontFamily.Default), GitGraph.App.Services.FontScale.Of(10.5), this.Brush("MutedBrush", Brushes.Gray));
 
     private double LegendWidth() => Text("Less").Width + 6 + 5 * (Cell + Gap) - Gap + 6 + Text("More").Width;
+
+    private IEnumerable<(double X, FormattedText Text)> MonthLabels(DateOnly start, int weeks)
+    {
+        var lastLabelRight = double.NegativeInfinity;
+        for (var w = 0; w < weeks; w++)
+        {
+            var weekStart = start.AddDays(7 * w);
+            if (w != 0 && weekStart.Month == weekStart.AddDays(-7).Month) continue;
+            var x = Left + w * (Cell + Gap);
+            if (x < lastLabelRight + 6) continue;
+            var label = Text(weekStart.ToString(weekStart.Month == 1 ? "MMM yyyy" : "MMM", CultureInfo.InvariantCulture));
+            lastLabelRight = x + label.Width;
+            yield return (x, label);
+        }
+    }
 
     /// <summary>Five shades: none, then four steps up to the busiest days (quartiles of the days with commits).</summary>
     private (IBrush[] Shades, int[] Steps) Scale()
@@ -79,25 +105,18 @@ public sealed class ContributionHeatmap : Control
     {
         var (start, weeks) = Range();
         var (shades, steps) = Scale();
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = Today;
 
         foreach (var (row, name) in new[] { (1, "Mon"), (3, "Wed"), (5, "Fri") })
             ctx.DrawText(Text(name), new Point(0, Top + row * (Cell + Gap) - 1));
 
-        var lastLabelRight = double.NegativeInfinity;
+        foreach (var label in MonthLabels(start, weeks))
+            ctx.DrawText(label.Text, new Point(label.X, 0));
+
         for (var w = 0; w < weeks; w++)
         {
             var weekStart = start.AddDays(7 * w);
             var x = Left + w * (Cell + Gap);
-            if (w == 0 || weekStart.Month != weekStart.AddDays(-7).Month)
-            {
-                var label = Text(weekStart.ToString(weekStart.Month == 1 ? "MMM yyyy" : "MMM", CultureInfo.InvariantCulture));
-                if (x >= lastLabelRight + 6)
-                {
-                    ctx.DrawText(label, new Point(x, 0));
-                    lastLabelRight = x + label.Width;
-                }
-            }
             for (var d = 0; d < 7; d++)
             {
                 var day = weekStart.AddDays(d);
@@ -132,7 +151,7 @@ public sealed class ContributionHeatmap : Control
         var d = (int)Math.Floor((p.Y - Top) / (Cell + Gap));
         var hit = w >= 0 && w < weeks && d >= 0 && d < 7 && p.X >= Left && p.Y >= Top ? (w, d) : (-1, -1);
         var day = hit.Item1 < 0 ? default : start.AddDays(7 * w + d);
-        if (hit.Item1 >= 0 && day > DateOnly.FromDateTime(DateTime.Now)) hit = (-1, -1);
+        if (hit.Item1 >= 0 && day > Today) hit = (-1, -1);
         if (hit == _hover) return;
         _hover = hit;
         InvalidateVisual();
