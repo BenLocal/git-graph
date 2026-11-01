@@ -55,8 +55,10 @@ public sealed class TerminalTests
                 $"test -t 0 && test -t 1 && test \"$PWD\" -ef {shellPath} && printf '__PTY_%s__\\n' OK\r", "__PTY_OK__");
             await OutputAfter(control, "printf '__UTF8_%s__\\n' '中文'\r", "__UTF8_中文__");
             await OutputAfter(control, "printf '\\033[?1049h__ALT_%s__\\n' ON\r", "__ALT_ON__");
+            await WaitForAlternateBuffer(control, expected: true);
             Assert.True(control.Terminal.IsAlternateBufferActive);
             await OutputAfter(control, "printf '\\033[?1049l__ALT_%s__\\n' OFF\r", "__ALT_OFF__");
+            await WaitForAlternateBuffer(control, expected: false);
             Assert.False(control.Terminal.IsAlternateBufferActive);
 
             await OutputAfter(control, "printf '__SLEEP_%s__\\n' READY; sleep 30\r", "__SLEEP_READY__");
@@ -174,6 +176,28 @@ public sealed class TerminalTests
         }
         return true;
     }, CancellationToken.None);
+
+    private static async Task WaitForAlternateBuffer(TerminalControl control, bool expected)
+    {
+        var view = Assert.Single(control.GetVisualDescendants().OfType<TerminalView>());
+        var changed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        void Check()
+        {
+            if (control.Terminal.IsAlternateBufferActive == expected) changed.TrySetResult();
+        }
+        void OnChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+        {
+            if (e.Property.Name == nameof(TerminalView.IsAlternateBuffer)) Check();
+        }
+        view.PropertyChanged += OnChanged;
+        try
+        {
+            // Raw PTY output can arrive before the emulator processes its escape sequences.
+            Check();
+            await changed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+        finally { view.PropertyChanged -= OnChanged; }
+    }
 
     private static async Task OutputAfter(TerminalControl control, string command, string marker)
     {
