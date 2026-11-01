@@ -28,26 +28,48 @@ public sealed record ContributorReport(
 /// </summary>
 public static class ContributorStats
 {
-    public static ContributorReport Build(IReadOnlyList<CommitStat> commits, DateTimeOffset? since, DateTimeOffset now)
+    public static ContributorReport Build(IReadOnlyList<CommitStat> commits, DateTimeOffset? since, DateTimeOffset now, CancellationToken ct = default)
     {
-        var inRange = since is { } s ? commits.Where(c => c.When >= s).ToList() : commits.ToList();
+        ct.ThrowIfCancellationRequested();
+        var inRange = new List<CommitStat>();
+        foreach (var c in commits)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (since is null || c.When >= since.Value) inRange.Add(c);
+        }
         if (inRange.Count == 0) return new ContributorReport(0, 0, 0, [], [], [], new Dictionary<DateOnly, int>());
 
         var firstWeek = WeekStart(since ?? inRange.Min(c => c.When));
         var lastWeek = WeekStart(now);
         var weeks = new List<DateTimeOffset>();
-        for (var w = firstWeek; w <= lastWeek; w = w.AddDays(7)) weeks.Add(w);
+        for (var w = firstWeek; w <= lastWeek; w = w.AddDays(7))
+        {
+            ct.ThrowIfCancellationRequested();
+            weeks.Add(w);
+        }
         int WeekIndex(DateTimeOffset when) => Math.Clamp((int)((WeekStart(when) - firstWeek).TotalDays / 7), 0, weeks.Count - 1);
 
         var total = new int[weeks.Count];
-        foreach (var c in inRange) total[WeekIndex(c.When)]++;
+        foreach (var c in inRange)
+        {
+            ct.ThrowIfCancellationRequested();
+            total[WeekIndex(c.When)]++;
+        }
 
         var people = inRange
-            .GroupBy(c => c.Email.Trim().ToLowerInvariant())
+            .GroupBy(c =>
+            {
+                ct.ThrowIfCancellationRequested();
+                return c.Email.Trim().ToLowerInvariant();
+            })
             .Select(g =>
             {
                 var weekly = new int[weeks.Count];
-                foreach (var c in g) weekly[WeekIndex(c.When)]++;
+                foreach (var c in g)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    weekly[WeekIndex(c.When)]++;
+                }
                 var latest = g.MaxBy(c => c.When)!;
                 return new ContributorSummary(latest.Name, latest.Email, g.Count(), g.Sum(c => c.Additions ?? 0), g.Sum(c => c.Deletions ?? 0),
                     g.Min(c => c.When), latest.When, weekly);
@@ -57,7 +79,12 @@ public static class ContributorStats
             .ToList();
 
         // Days in the commit's own time zone, as people experienced them.
-        var daily = inRange.GroupBy(c => DateOnly.FromDateTime(c.When.DateTime)).ToDictionary(g => g.Key, g => g.Count());
+        var daily = inRange.GroupBy(c =>
+        {
+            ct.ThrowIfCancellationRequested();
+            return DateOnly.FromDateTime(c.When.DateTime);
+        }).ToDictionary(g => g.Key, g => g.Count());
+        ct.ThrowIfCancellationRequested();
         return new ContributorReport(inRange.Count, inRange.Sum(c => c.Additions ?? 0), inRange.Sum(c => c.Deletions ?? 0), weeks, total, people, daily);
     }
 

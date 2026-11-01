@@ -24,10 +24,12 @@ public sealed record SortOption(string Label, Func<ContributorSummary, int> Key)
 /// Who contributed to the checked-out branch, like GitHub's Insights → Contributors: weekly commits for
 /// the whole repository, then one card per person, over a chosen period.
 /// </summary>
-public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableObject
+public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableObject, IDisposable
 {
     private List<CommitStat>? _commits;
     private CancellationTokenSource? _cts;
+    private CancellationTokenSource? _rebuildCts;
+    private bool _disposed;
 
     [ObservableProperty]
     private IReadOnlyList<LanguageRowViewModel> _languages = [];
@@ -108,25 +110,29 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
     /// </summary>
     public async Task EnsureLoadedAsync(string? branch)
     {
+        if (_disposed) return;
         Branch = branch;
         if (_commits != null || IsLoading) return;
-        _cts?.Cancel();
+        CancelPending();
         var cts = _cts = new CancellationTokenSource();
+        var ct = cts.Token;
         IsLoading = true;
         Message = null;
         Languages = [];
         LanguageMessage = "Reading languages…";
         try
         {
-            var languages = await repo.GetLanguagesAsync(cts.Token);
-            if (cts.IsCancellationRequested) return;
+            var languages = await repo.GetLanguagesAsync(ct);
+            ct.ThrowIfCancellationRequested();
             Languages = languages.Select((language, index) => new LanguageRowViewModel(language, index)).ToList();
             LanguageMessage = languages.Count == 0 ? "No recognized source files in this commit." : "";
-            var commitsTask = repo.GetCommitStatsAsync(withLines: false, ct: cts.Token);
-            var commonDir = await repo.GetCommonDirAsync(cts.Token) ?? repo.Path;
-            var cache = await Task.Run(() => StatsCache.Load(commonDir), cts.Token);
+            var commitsTask = repo.GetCommitStatsAsync(withLines: false, ct: ct);
+            var commonDir = await repo.GetCommonDirAsync(ct) ?? repo.Path;
+            ct.ThrowIfCancellationRequested();
+            var cache = await Task.Run(() => StatsCache.Load(commonDir), ct);
+            ct.ThrowIfCancellationRequested();
             var commits = await commitsTask;
-            if (cts.IsCancellationRequested) return;
+            ct.ThrowIfCancellationRequested();
 
             var missing = 0;
             for (var i = 0; i < commits.Count; i++)
@@ -140,13 +146,14 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
             IsLoading = false;
             IsCountingLines = missing > 0;
             await RebuildAsync();
+            ct.ThrowIfCancellationRequested();
 
-            if (missing > 0) await CountLinesAsync(cache, cts.Token);
+            if (missing > 0) await CountLinesAsync(cache, ct);
         }
         catch (OperationCanceledException) { }
         catch (GitException e)
         {
-            if (cts.IsCancellationRequested) return;
+            if (ct.IsCancellationRequested) return;
             Message = $"Could not read repository statistics: {e.Message}";
             if (LanguageMessage == "Reading languages…") LanguageMessage = "Could not read languages.";
         }
@@ -164,12 +171,17 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
     private async Task CountLinesAsync(StatsCache cache, CancellationToken ct)
     {
         var counted = await repo.GetCommitStatsAsync(withLines: true, exclude: cache.Heads, ct);
+        ct.ThrowIfCancellationRequested();
         // A remembered head may be gone (branch deleted and collected); then count everything once.
         if (counted.Count == 0 && cache.Heads.Count > 0) counted = await repo.GetCommitStatsAsync(withLines: true, ct: ct);
-        if (ct.IsCancellationRequested || _commits is null) return;
+        ct.ThrowIfCancellationRequested();
+        if (_commits is null) return;
         foreach (var c in counted) cache.Lines[c.Hash] = (c.Additions ?? 0, c.Deletions ?? 0);
-        if (await repo.GetHeadAsync(ct) is { Hash: { } head }) cache.AddHead(head);
+        var head = await repo.GetHeadAsync(ct);
+        ct.ThrowIfCancellationRequested();
+        if (head.Hash is { } hash) cache.AddHead(hash);
         await Task.Run(cache.Save, ct);
+        ct.ThrowIfCancellationRequested();
 
         for (var i = 0; i < _commits.Count; i++)
             if (_commits[i].Additions is null && cache.Lines.TryGetValue(_commits[i].Hash, out var l))
@@ -181,55 +193,93 @@ public sealed partial class RepoStatsViewModel(GitRepository repo) : ObservableO
     /// <summary>New commits arrived; the next look reads the history again.</summary>
     public void Invalidate()
     {
-        _cts?.Cancel();
+        if (_disposed) return;
+        CancelPending();
         _commits = null;
         Languages = [];
         LanguageMessage = "Reading languages…";
         IsLoading = false;
+        IsCountingLines = false;
+    }
+
+    private void CancelPending()
+    {
+        _rebuildCts?.Cancel();
+        _rebuildCts = null;
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        CancelPending();
+        _commits = null;
+        Languages = [];
+        Contributors.Clear();
+        Weeks = [];
+        WeeklyCommits = [];
+        DailyCommits = new Dictionary<DateOnly, int>();
+        Summary = null;
+        IsLoading = false;
+        IsCountingLines = false;
     }
 
     /// <summary>Aggregates in the background (large histories have many thousands of commits), then shows the result.</summary>
     private async Task RebuildAsync()
     {
-        if (_commits is null || Period is null || Sort is null) return;
-        var commits = _commits.ToList();
-        var now = DateTimeOffset.Now;
-        var since = Period.Months is { } m ? now.AddMonths(-m) : (DateTimeOffset?)null;
-        var sort = Sort;
-        var report = await Task.Run(() => ContributorStats.Build(commits, since, now));
-        var ranked = report.Contributors.OrderByDescending(sort.Key).ThenByDescending(p => p.Commits).ToList();
-
-        Weeks = report.Weeks;
-        WeeklyCommits = report.WeeklyCommits;
-        DailyCommits = report.DailyCommits;
-        HeatmapFrom = since ?? (report.Weeks.Count > 0 ? report.Weeks[0] : null);
-        PersonMaximum = ranked.Count == 0 ? 1 : Math.Max(1, ranked.Take(MaxCards).Max(c => c.WeeklyCommits.Max()));
-        var people = ranked.Count;
-        Summary = report.TotalCommits == 0
-            ? null
-            : $"{report.TotalCommits:N0} {(report.TotalCommits == 1 ? "commit" : "commits")} by {people:N0} {(people == 1 ? "person" : "people")}" +
-              (IsCountingLines ? ". Counting lines added and removed…" : $", {report.TotalAdditions:N0} lines added and {report.TotalDeletions:N0} removed");
-        Message = report.TotalCommits == 0 && !IsLoading
-            ? (_commits.Count == 0 ? "No commits on this branch yet." : "No commits in this period. Choose a longer one.")
-            : null;
-        MoreNote = people > MaxCards ? $"Showing the top {MaxCards} of {people:N0} people." : null;
-
-        // Up to 100 cards took over a second to lay out in one go, freezing the window; a few at a time, with layout
-        // and drawing in between, the top ones show at once and the window keeps responding. A newer rebuild stops this one.
-        var version = ++_fillVersion;
-        Contributors.Clear();
-        var rank = 0;
-        foreach (var p in ranked.Take(MaxCards))
+        if (_disposed || _commits is null || Period is null || Sort is null || _cts is null) return;
+        _rebuildCts?.Cancel();
+        using var cts = _rebuildCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        var ct = cts.Token;
+        try
         {
-            Contributors.Add(new ContributorCardViewModel(p, ++rank, report.TotalCommits, IsCountingLines));
-            if (rank % CardsPerPass != 0) continue;
-            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
-            if (version != _fillVersion) return;
+            var commits = _commits.ToList();
+            var now = DateTimeOffset.Now;
+            var since = Period.Months is { } m ? now.AddMonths(-m) : (DateTimeOffset?)null;
+            var sort = Sort;
+            var report = await Task.Run(() => ContributorStats.Build(commits, since, now, ct), ct);
+            ct.ThrowIfCancellationRequested();
+            var ranked = report.Contributors.OrderByDescending(sort.Key).ThenByDescending(p => p.Commits).ToList();
+            ct.ThrowIfCancellationRequested();
+
+            Weeks = report.Weeks;
+            WeeklyCommits = report.WeeklyCommits;
+            DailyCommits = report.DailyCommits;
+            HeatmapFrom = since ?? (report.Weeks.Count > 0 ? report.Weeks[0] : null);
+            PersonMaximum = ranked.Count == 0 ? 1 : Math.Max(1, ranked.Take(MaxCards).Max(c => c.WeeklyCommits.Max()));
+            var people = ranked.Count;
+            Summary = report.TotalCommits == 0
+                ? null
+                : $"{report.TotalCommits:N0} {(report.TotalCommits == 1 ? "commit" : "commits")} by {people:N0} {(people == 1 ? "person" : "people")}" +
+                  (IsCountingLines ? ". Counting lines added and removed…" : $", {report.TotalAdditions:N0} lines added and {report.TotalDeletions:N0} removed");
+            Message = report.TotalCommits == 0 && !IsLoading
+                ? (_commits.Count == 0 ? "No commits on this branch yet." : "No commits in this period. Choose a longer one.")
+                : null;
+            MoreNote = people > MaxCards ? $"Showing the top {MaxCards} of {people:N0} people." : null;
+
+            // Up to 100 cards took over a second to lay out in one go, freezing the window; a few at a time, with layout
+            // and drawing in between, the top ones show at once and the window keeps responding. A newer rebuild stops this one.
+            Contributors.Clear();
+            var rank = 0;
+            foreach (var p in ranked.Take(MaxCards))
+            {
+                Contributors.Add(new ContributorCardViewModel(p, ++rank, report.TotalCommits, IsCountingLines));
+                if (rank % CardsPerPass != 0) continue;
+                await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+                ct.ThrowIfCancellationRequested();
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
+        finally
+        {
+            if (_rebuildCts == cts) _rebuildCts = null;
         }
     }
 
     private const int CardsPerPass = 4;
-    private int _fillVersion;
 }
 
 public sealed class LanguageRowViewModel(LanguageSummary language, int index)
