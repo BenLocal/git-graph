@@ -11,18 +11,19 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
      │                         │              ├─ Git/        command wrapper + output parsers
      └─ Controls/GraphCell     │              ├─ Graph/      lane layout (pure computation)
         (draws one row)        │              ├─ Diff/       DiffPlex diffs, hunk patches
+                               │              ├─ Navigation/ tree-sitter parsing, SQLite symbol index, code lookups
                                │              └─ Workspaces/ state persistence + repository discovery
                                └─ IAppHost / IDialogService (implemented by MainWindow)
 ```
 
 - A single-process desktop app. Entry point: `src/GitGraph.App/Program.cs` → `App.axaml.cs`.
-- No database and no server. The only external dependency is `git` on `PATH`. Persisted: `state.json`, plus caches (avatars, contributor line counts). The network is used only for avatars and, when asked, the update check in Help → About.
+- No server. The only external dependency is `git` on `PATH`. Persisted: `state.json`, plus caches (avatars, contributor line counts, the code navigation index in SQLite). The network is used only for avatars and, when asked, the update check in Help → About.
 
 ## 2. Projects and dependency direction
 
 | Project | Responsibility | May depend on | Must not depend on |
 |---|---|---|---|
-| `GitGraph.Core` | Run git, parse output, graph layout, diff parsing, workspace persistence and repository discovery | BCL | Avalonia or any UI type |
+| `GitGraph.Core` | Run git, parse output, graph layout, diff parsing, workspace persistence, repository discovery, code navigation | BCL, DiffPlex, TreeSitter.DotNet, Microsoft.Data.Sqlite | Avalonia or any UI type |
 | `GitGraph.App` | Avalonia UI, MVVM | Core, Avalonia, CommunityToolkit.Mvvm | — |
 | `GitGraph.Core.Tests` | Unit tests for Core, plus integration tests on real temporary repositories | Core | App |
 | `GitGraph.App.Tests` | View model tests (no window): a fake `IAppHost` / `IDialogService` and real temporary repositories | App, Core | — |
@@ -41,7 +42,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 | Details | `DetailsViewModel` | Two tabs: Commit (message and metadata; for uncommitted changes, the commit form) and Changes (file list and diff). For uncommitted changes the list is grouped into conflicts, staged and unstaged, with stage / unstage / discard per file, group and hunk |
 | History window | `FileHistoryViewModel` / `FileHistoryWindow` | One file's commits (`log --follow`) with their diffs, and its blame |
 | Embedded terminal | `TerminalViewModel` / `TerminalPanelView` / `TerminalSession` | A PTY shell per repository or folder tab; the view renders ANSI output with Iciclecreek's terminal control, and the session owns the process |
-| Services | `SyntaxHighlighter`, `AvatarService`, `UpdateCheck`, `ShortcutService` | Diff colours (TextMate, Dark+/Light+), avatars, the release check, keyboard shortcuts |
+| Services | `SyntaxHighlighter`, `AvatarService`, `UpdateCheck`, `ShortcutService`, `CodeIndex` | Diff colours (TextMate, Dark+/Light+), avatars, the release check, keyboard shortcuts, one work tree's symbol index and navigator |
 | Views | `Views/*.axaml` | Bindings and a little keyboard and pointer handling only |
 
 ## 4. Key flows
@@ -58,6 +59,8 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 
 **Staging and committing**: selecting the uncommitted row shows `GetWorkingChangesAsync` (staged `diff --cached`, unstaged `diff`, untracked, conflicts). A file moves with `add -A` / `restore --staged` / `restore --worktree` (`clean` for untracked). A hunk moves with `TextDiff.HunkPatch` + `git apply --recount [--cached] [-R]`; the patch takes its lines from the original texts, not the displayed ones (tabs are expanded there). Commit and amend are on the Commit tab. Every change calls `RepoChanged`, the tab's `RefreshAsync`.
 
+**Code navigation in a folder tab**: showing a supported file opens the `CodeIndex` of its work tree (`GitRepository.FindTopLevelAsWrittenAsync`, or the folder itself outside git) and syncs it in the background; activating the tab syncs again. `IndexSync` lists tracked files with `git ls-files -s` (blob hashes) and changed or untracked ones with `git status`, compares them with the index and parses only content it doesn't have yet, in parallel (`SourceParser`, one per worker). A lookup (`CodeNavigator`) parses the open file, resolves a local by scope from the language's `locals.scm` query, and otherwise looks the name up in the index: definitions and supertypes directly, references by parsing the files the index says mention the name. Without an index it finds candidate files with `git grep -l -w`. One result jumps (`RevealRequest`, applied by the view after the file is on screen); several open a list.
+
 **Operations that can stop part-way**: merge, cherry-pick, revert and rebase run through `RunOperationAsync`. If git stops on conflicts, `GetOperationInProgressAsync` (from `MERGE_HEAD`, `CHERRY_PICK_HEAD`, `REVERT_HEAD`, `rebase-*`) makes a bar above the graph offer Continue and Abort, and the conflicted files show under the uncommitted changes.
 
 **Stashes** come from `stash list` and are drawn as dashed rows just above their base commit; a stash's untracked files live in its third parent.
@@ -73,6 +76,7 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 - Terminal sessions are transient. Opening a terminal pins its tab. Hiding the panel or switching tabs preserves the shell and its scrollback; closing the terminal, tab or window disposes the PTY. The shared terminal panel keeps inactive controls attached because detaching a terminal view stops its reader. Terminal input bypasses the main window's shortcuts. The shell starts in the tab's directory, using `SHELL` on Unix (with a platform fallback) or Windows PowerShell.
 
 - git itself is always the source of truth; the app does not cache commit history.
+- The code navigation index is `LocalApplicationData/GitGraph/index/<md5 of the common git dir or folder>.db` (`SymbolIndex`, WAL mode). Parse results are stored per blob hash and shared by the repository's worktrees; `files(root, path)` maps each work tree's paths to blobs. A schema or query change (`NavLanguage.QueriesHash`) empties it. Only definitions, supertypes and the set of names per file are stored, not every reference.
 - `state.json` (`WorkspaceStore`, source-generated System.Text.Json) holds the workspace list, each workspace's folders, open tabs and active tab, the theme, whether remote branches are shown, the diff mode and diff options, the fetch interval, the pull mode, avatars, shortcuts and folder tab state. Writes are atomic (write a tmp file, then replace). The path is `ApplicationData/GitGraph/state.json`; `GITGRAPH_STATE` overrides it.
 
 ## 6. Key design decisions
@@ -82,6 +86,9 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
   - Parsing always uses NUL / `0x1e`-separated format strings and `-z`, never human-readable output. The environment is fixed to `LC_ALL=C`, `GIT_OPTIONAL_LOCKS=0` and `GIT_TERMINAL_PROMPT=0`.
 - **Diff with DiffPlex instead of parsing `git diff`**: both file versions come from git and DiffPlex computes the diff in-process, which gives word-level highlights inside modified lines. Change lists and +/− counts still come from git (`--numstat`), so rename detection and binary detection match git. Line-ending-only changes show as no text changes.
 - **Hunk staging with `git apply`** rather than editing the index directly: one patch format serves stage, unstage (reverse, cached) and discard (reverse, working tree), and `--recount` lets a single hunk of a larger diff apply. Not offered while whitespace is ignored, since those hunks hide changes.
+- **Code navigation with embedded tree-sitter and a SQLite index, not language servers**
+  - Trade-off: nothing to install and no server process per language; first indexing takes seconds (2,655 TypeScript files: 3.8 s on an M-series Mac; a sync without changes: about 60 ms). The cost is that cross-file results are by name, not by type, so overloads and same-named symbols are listed together (ranked: same file, same folder, same language).
+  - Each language needs a grammar (shipped by TreeSitter.DotNet; `Directory.Build.targets` keeps only the ones listed, as all of them are 62 MB per platform) and two queries in `Core/Navigation/Queries`: `<lang>.definitions.scm` and `<lang>.locals.scm`.
 - **Self-contained graph rows**: each row records its own segments and doesn't depend on its neighbours being rendered, which allows list virtualization. Lanes keep a fixed column and free slots are reused; gaps are not compacted the way vscode-git-graph does.
 - **Worktrees grouped by `--git-common-dir`**: multiple working trees of one repository hang under a single repository node in the sidebar.
 - **Visual concept: GitHub's Primer around a transit map**: lane colors are the only strong color; the rest of the UI uses Primer's greys, 1 px borders and 6 px radii (badges are pills). Blue Signal means "where you are" (HEAD, selection, focus), green Primary is the main action, and a coral line marks the selected tab. Tokens live in `Styles/Tokens.axaml`; don't hard-code colors in views. Fluent's accent is set through `FluentTheme.Palettes` in `App.axaml`, or the light theme takes the desktop's accent. The chrome (menu bar, sidebar, tabs) sits on a darker `Frame`; the open repository is one bordered sheet (`Border.sheet`) in it.
@@ -91,5 +98,6 @@ Views (axaml) ──binding──> ViewModels ──> GitGraph.Core ──Proces
 
 - New git operation: add a method to `GitRepository` → add a `[RelayCommand]` to `RepoTabViewModel` / `CommitRowViewModel` → add it to the context menu in `RepoTabView.axaml`. Use `IDialogService.PromptAsync` when input is needed.
 - New keyboard-shortcut command: add it to `ShortcutService.Commands` (default gesture matching VS Code if VS Code has the command) and its action to the table in `Views/MainWindow.Shortcuts.cs`. Show it in menus with `InputGesture="{Binding Keys[Id], Source={x:Static svc:ShortcutService.Instance}}"` and in tooltips with `Tips[Id]`; never hard-code a key in a tooltip or `KeyBinding`.
+- New language for code navigation: add it to `NavLanguage` and its grammar to `TreeSitterGrammars` in `Directory.Build.targets`, write its two queries (dump a sample's tree with tree-sitter to see the node names), and add a definitions-and-locals test to `SourceParserTests`.
 - New icon: use a Lucide icon (`<LucideIcon Kind="…" />`, names at lucide.dev/icons); don't draw icons by hand.
 - Not allowed: starting git with `new Process` in a view model; referencing Avalonia from Core; hard-coding colors in axaml.

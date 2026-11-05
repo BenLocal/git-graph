@@ -461,6 +461,15 @@
     <Setter Property="RenderTransform" Value="translateY(0px)" />
   </Style>
 
+  <!-- Code navigation results over the code viewer, raised like the toast. -->
+  <Style Selector="Border.peek">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="BoxShadow" Value="0 4 14 0 #33000000" />
+  </Style>
+
   <!-- Dense lists: commit graph, file changes, diff -->
   <Style Selector="ListBox.dense">
     <Setter Property="Background" Value="Transparent" />

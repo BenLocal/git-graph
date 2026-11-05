@@ -18,6 +18,8 @@ namespace GitGraph.App.Views;
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
 /// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_ABOUT=1 renders the About window.
 /// GITGRAPH_SNAPSHOT_TERMINAL=1 opens the embedded shell and waits for a command to complete before rendering.
+/// In a folder tab, GITGRAPH_SNAPSHOT_NAV=definition|references|implementations:word puts the caret on the first
+/// occurrence of the word in the open file and runs that lookup.
 /// Each step waits for the loads it started (<see cref="PendingLoads"/>) and a layout pass, not for a fixed time.
 /// </summary>
 public partial class MainWindow
@@ -73,6 +75,17 @@ public partial class MainWindow
             await LaidOutAsync();
             if (vm.SelectedWorkspace.SelectedRepoTab is { } t)
                 Console.WriteLine($"snapshot: {t.Rows.Count} rows, offset {list.Offset.Y:0}, extent {list.Extent.Height:0}");
+        }
+
+        if (Env("NAV")?.Split(':', 2) is [var kind, var word] && Enum.TryParse<NavKind>(kind, true, out var navKind)
+            && vm.SelectedWorkspace.SelectedFolderTab is { FileText: { } text } folderTab
+            && this.GetVisualDescendants().OfType<FolderTabView>().FirstOrDefault(v => v.IsEffectivelyVisible) is { } folderView
+            && System.Text.RegularExpressions.Regex.Match(text, $@"\b{System.Text.RegularExpressions.Regex.Escape(word)}\b") is { Success: true } at)
+        {
+            folderView.MoveCaret(at.Index);
+            await SettledAsync();
+            folderView.Navigate(navKind);
+            await SettledAsync();
         }
 
         Window target = this;

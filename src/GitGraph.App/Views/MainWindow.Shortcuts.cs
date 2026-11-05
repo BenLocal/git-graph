@@ -56,6 +56,11 @@ public partial class MainWindow
             ["PreviousTab"] = () => MoveTab(-1),
             ["AddFolder"] = () => Workspace?.AddFolderCommand.Execute(null),
             ["NewWorkspace"] = () => Vm?.NewWorkspaceCommand.Execute(null),
+            ["GoToDefinition"] = () => VisibleFolder()?.Navigate(NavKind.Definition),
+            ["FindReferences"] = () => VisibleFolder()?.Navigate(NavKind.References),
+            ["GoToImplementation"] = () => VisibleFolder()?.Navigate(NavKind.Implementations),
+            ["NavigateBack"] = () => Workspace?.SelectedFolderTab?.GoBackCommand.Execute(null),
+            ["NavigateForward"] = () => Workspace?.SelectedFolderTab?.GoForwardCommand.Execute(null),
             ["KeyboardShortcuts"] = OpenKeyboardShortcuts,
             ["Quit"] = Close,
         };
@@ -74,10 +79,13 @@ public partial class MainWindow
         if (_actions?.TryGetValue(id, out var action) == true) action();
     }
 
+    private FolderTabView? VisibleFolder() =>
+        this.GetVisualDescendants().OfType<FolderTabView>().FirstOrDefault(v => v.IsEffectivelyVisible);
+
     /// <summary>Find commits in a repository tab, or search the open file in a folder tab.</summary>
     private void FocusFind()
     {
-        if (this.GetVisualDescendants().OfType<FolderTabView>().FirstOrDefault(v => v.IsEffectivelyVisible) is { } folder)
+        if (VisibleFolder() is { } folder)
             folder.OpenSearch();
         else
             this.GetVisualDescendants().OfType<RepoTabView>().FirstOrDefault(v => v.IsEffectivelyVisible)?.FocusFind();

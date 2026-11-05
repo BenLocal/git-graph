@@ -78,10 +78,11 @@ public sealed partial class FolderTabViewModel : TabViewModel
     [ObservableProperty]
     private LineNote? _lineBlame;
 
-    /// <summary>The caret moved to 0-based <paramref name="line"/> of the file.</summary>
-    public void SetCaret(int line)
+    /// <summary>The caret moved to 0-based <paramref name="line"/> of the file, at text offset <paramref name="offset"/>.</summary>
+    public void SetCaret(int line, int offset)
     {
         _caretLine = line;
+        _caretOffset = offset;
         LineBlame = LineNote.Blame(_blame, line) is { } text ? new LineNote(false, line, text) : null;
     }
 
@@ -196,7 +197,8 @@ public sealed partial class FolderTabViewModel : TabViewModel
     /// Finds a node by relative path, reading folders on the way. A compact row covers several path
     /// segments, so each step takes the child whose path is the target or a folder above it.
     /// </summary>
-    private FileNodeViewModel? Find(string relative)
+    /// <param name="expand">Open the folders on the way, so the node's row is visible.</param>
+    private FileNodeViewModel? Find(string relative, bool expand = false)
     {
         var node = Root;
         while (node.RelativePath != relative)
@@ -205,6 +207,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
             var next = node.Children.FirstOrDefault(c => !c.IsPlaceholder &&
                 (c.RelativePath == relative || relative.StartsWith(c.RelativePath + "/", StringComparison.Ordinal)));
             if (next is null) return null;
+            if (expand && next.IsDirectory) next.IsExpanded = true;
             node = next;
         }
         return node;
@@ -258,6 +261,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
         FileSyntax = null;
         _blame = null;
         _caretLine = 0;
+        _caretOffset = 0;
         LineBlame = null;
         Image = null;
         FileMessage = null;
@@ -300,12 +304,13 @@ public sealed partial class FolderTabViewModel : TabViewModel
                 return;
             }
             FileText = text;
+            _ = Loads.Track(OnFileShownAsync(node));
             var blame = BlameAsync(node, cts.Token);
             var lines = text.Split('\n').Select((line, i) => (i + 1, line.TrimEnd('\r')));
             var syntax = await Task.Run(() => SyntaxHighlighter.HighlightLines(node.Name, lines, cts.Token), cts.Token);
             if (!cts.IsCancellationRequested) FileSyntax = syntax;
             _blame = await blame;
-            if (!cts.IsCancellationRequested) SetCaret(_caretLine);
+            if (!cts.IsCancellationRequested) SetCaret(_caretLine, _caretOffset);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -369,7 +374,11 @@ public sealed partial class FolderTabViewModel : TabViewModel
         if (SelectedNode is { IsDirectory: false } file) _ = Loads.Track(LoadFileAsync(file));
     }
 
-    public override void OnActivated() => RefreshTree();
+    public override void OnActivated()
+    {
+        RefreshTree();
+        SyncIndexes();
+    }
 
     [RelayCommand]
     private void OpenInVsCode(FileNodeViewModel? node)
@@ -422,6 +431,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
     {
         Terminal.CloseCommand.Execute(null);
         _fileCts?.Cancel();
+        DisposeNavigation();
     }
 }
 

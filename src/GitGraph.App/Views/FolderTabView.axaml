@@ -3,6 +3,7 @@
              xmlns:vm="using:GitGraph.App.ViewModels"
              xmlns:ctl="using:GitGraph.App.Controls"
              xmlns:ae="using:AvaloniaEdit"
+             xmlns:svc="using:GitGraph.App.Services"
              x:Class="GitGraph.App.Views.FolderTabView"
              x:DataType="vm:FolderTabViewModel">
   <UserControl.Resources>
@@ -130,7 +131,12 @@
                     ToolTip.Tip="Copy path">
               <LucideIcon Kind="Copy" Size="13" />
             </Button>
-            <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding FileInfo}" VerticalAlignment="Center" Margin="12,0,8,0" />
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" Margin="12,0,8,0">
+              <TextBlock Classes="muted small" Text="{Binding IndexStatus}" VerticalAlignment="Center"
+                         IsVisible="{Binding IndexStatus, Converter={x:Static ObjectConverters.IsNotNull}}"
+                         ToolTip.Tip="Code navigation reads the files once; until then it searches with git grep." />
+              <TextBlock Classes="muted small" Text="{Binding FileInfo}" VerticalAlignment="Center" />
+            </StackPanel>
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2">
               <Button Classes="ghost text" Command="{Binding CopyContentsCommand}" ToolTip.Tip="Copy the whole file">
                 <StackPanel Orientation="Horizontal" Spacing="6">
@@ -159,7 +165,57 @@
         <ae:TextEditor x:Name="Editor" Grid.Row="1" IsReadOnly="True" ShowLineNumbers="True"
                        FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeCode}"
                        HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8,6,0,0"
-                       IsVisible="{Binding FileText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                       IsVisible="{Binding FileText, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <ae:TextEditor.ContextFlyout>
+            <MenuFlyout>
+              <MenuItem Header="Go to Definition" Tag="{x:Static vm:NavKind.Definition}" Click="OnNavMenu"
+                        InputGesture="{Binding Keys[GoToDefinition], Source={x:Static svc:ShortcutService.Instance}}" />
+              <MenuItem Header="Find References" Tag="{x:Static vm:NavKind.References}" Click="OnNavMenu"
+                        InputGesture="{Binding Keys[FindReferences], Source={x:Static svc:ShortcutService.Instance}}" />
+              <MenuItem Header="Go to Implementations" Tag="{x:Static vm:NavKind.Implementations}" Click="OnNavMenu"
+                        InputGesture="{Binding Keys[GoToImplementation], Source={x:Static svc:ShortcutService.Instance}}" />
+              <Separator />
+              <MenuItem Header="Go Back" Command="{Binding GoBackCommand}"
+                        InputGesture="{Binding Keys[NavigateBack], Source={x:Static svc:ShortcutService.Instance}}" />
+              <MenuItem Header="Go Forward" Command="{Binding GoForwardCommand}"
+                        InputGesture="{Binding Keys[NavigateForward], Source={x:Static svc:ShortcutService.Instance}}" />
+            </MenuFlyout>
+          </ae:TextEditor.ContextFlyout>
+        </ae:TextEditor>
+
+        <!-- Lookup results: definitions, references or implementations. Picking one previews it on the left;
+             a double-click or Enter jumps there, Esc closes. -->
+        <Border Grid.Row="1" Classes="peek" IsVisible="{Binding IsNavOpen}" VerticalAlignment="Top" Margin="24,8,24,0" Height="340">
+          <Grid RowDefinitions="Auto,*">
+            <Grid ColumnDefinitions="*,Auto" Margin="12,6,4,6">
+              <TextBlock Classes="small" FontWeight="SemiBold" Text="{Binding NavTitle}" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding CloseNavCommand}" ToolTip.Tip="Close (Esc)">
+                <LucideIcon Kind="X" Size="13" />
+              </Button>
+            </Grid>
+            <Grid Grid.Row="1" ColumnDefinitions="3*,2*">
+              <ae:TextEditor x:Name="Preview" IsReadOnly="True" ShowLineNumbers="True"
+                             FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeCode}"
+                             HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8,4,0,0" />
+              <Border Grid.Column="1" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="1,0,0,0">
+                <ListBox x:Name="NavList" Classes="dense" ItemsSource="{Binding NavResults}" SelectedItem="{Binding SelectedNavItem}"
+                         KeyDown="OnNavListKeyDown" IsVisible="{Binding NavResults.Count}">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:NavItem">
+                      <StackPanel Background="Transparent" Margin="10,3" DoubleTapped="OnNavItemDoubleTapped">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <TextBlock Classes="mono small muted" Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
+                          <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding Detail}" Margin="12,0,0,0" />
+                        </Grid>
+                        <TextBlock Classes="mono small" Text="{Binding LineText}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+              </Border>
+            </Grid>
+          </Grid>
+        </Border>
       </Grid>
     </Grid>
 
