@@ -24,6 +24,21 @@ public sealed class GitRepository(string path)
         return r.ExitCode == 0 ? r.StdOut.Trim() : null;
     }
 
+    /// <summary>
+    /// The top of the work tree <paramref name="dir"/> is in, spelled the way <paramref name="dir"/> is; null outside
+    /// one. Unlike --show-toplevel, symlinks on the way stay as they are (/var stays /var on macOS, not /private/var),
+    /// so the result can be compared with paths the user opened.
+    /// </summary>
+    public static async Task<string?> FindTopLevelAsWrittenAsync(string dir, CancellationToken ct = default)
+    {
+        var r = await GitRunner.RunRawAsync(dir, ["rev-parse", "--show-prefix"], ct);
+        if (r.ExitCode != 0) return null;
+        var top = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(dir));
+        foreach (var _ in r.StdOut.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries))
+            top = System.IO.Path.GetDirectoryName(top)!;
+        return top;
+    }
+
     /// <summary>Absolute path of the shared .git directory; identical for a repository and all its worktrees.</summary>
     public async Task<string?> GetCommonDirAsync(CancellationToken ct = default)
     {

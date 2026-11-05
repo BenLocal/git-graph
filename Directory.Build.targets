@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    TreeSitter.DotNet ships about 30 grammars (62 MB per platform). Code navigation uses only these; the rest are
+    removed from build and publish output. Keep this list in sync with GitGraph.Core/Navigation/NavLanguage.cs.
+  -->
+  <PropertyGroup>
+    <TreeSitterGrammars>tree-sitter;tree-sitter-c-sharp;tree-sitter-go;tree-sitter-rust;tree-sitter-python;tree-sitter-javascript;tree-sitter-typescript;tree-sitter-tsx</TreeSitterGrammars>
+  </PropertyGroup>
+
+  <Target Name="TrimTreeSitterGrammars" AfterTargets="ResolvePackageAssets">
+    <ItemGroup>
+      <_TreeSitterNative Include="@(RuntimeTargetsCopyLocalItems);@(NativeCopyLocalItems)"
+                         Condition="$([System.String]::new('%(Filename)').StartsWith('tree-sitter')) Or $([System.String]::new('%(Filename)').StartsWith('libtree-sitter'))" />
+      <!-- Native files are named tree-sitter-x.dll on Windows and libtree-sitter-x.so / .dylib elsewhere. -->
+      <_TreeSitterNative Update="@(_TreeSitterNative)" Grammar="$([System.String]::new('%(Filename)').Replace('libtree-sitter', 'tree-sitter'))" />
+      <_TreeSitterDrop Include="@(_TreeSitterNative)" Condition="!$([System.String]::new(';$(TreeSitterGrammars);').Contains(';%(Grammar);'))" />
+      <RuntimeTargetsCopyLocalItems Remove="@(_TreeSitterDrop)" />
+      <NativeCopyLocalItems Remove="@(_TreeSitterDrop)" />
+    </ItemGroup>
+  </Target>
+</Project>

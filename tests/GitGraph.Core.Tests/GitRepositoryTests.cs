@@ -41,6 +41,18 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task The_top_level_is_found_from_a_subfolder_as_written()
+    {
+        var sub = Path.Combine(_repo, "src", "deep");
+        Directory.CreateDirectory(sub);
+        Assert.Equal(_repo, await GitRepository.FindTopLevelAsWrittenAsync(sub));
+        Assert.Equal(_repo, await GitRepository.FindTopLevelAsWrittenAsync(_repo));
+        var outside = Path.Combine(_root, "plain");
+        Directory.CreateDirectory(outside);
+        Assert.Null(await GitRepository.FindTopLevelAsWrittenAsync(outside));
+    }
+
+    [Fact]
     public async Task Languages_are_empty_before_the_first_commit_and_can_be_cancelled()
     {
         var empty = Path.Combine(_root, "empty");
