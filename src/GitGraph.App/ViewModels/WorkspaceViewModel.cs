@@ -191,6 +191,14 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     public void OpenFolderTab(string path, bool pin = false) =>
         Open(new FolderTabViewModel(path, this, _host), pin);
 
+    /// <summary>Opens a folder's files in a window of their own, beside the tabs rather than among them.</summary>
+    public void OpenFolderWindow(string path)
+    {
+        var folder = new FolderTabViewModel(path, this, _host);
+        folder.EnsureLoaded();
+        _host.Dialogs.ShowFolder(folder);
+    }
+
     /// <summary>Opens and pins the target tab before showing its embedded terminal.</summary>
     public void OpenTerminal(string path, bool folder = false)
     {
@@ -509,6 +517,9 @@ public partial class RepoNodeViewModel : ObservableObject
     private void BrowseFiles() => _workspace.OpenFolderTab(MainPath, pin: true);
 
     [RelayCommand]
+    private void BrowseFilesInWindow() => _workspace.OpenFolderWindow(MainPath);
+
+    [RelayCommand]
     private void OpenInVsCode()
     {
         if (ExternalTools.OpenInVsCode(MainPath) is { } error) _workspace.Host.ReportError(error);
@@ -582,6 +593,9 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
     /// <summary>The worktree's files in a folder tab, even when it lives outside the workspace folders.</summary>
     [RelayCommand]
     private void BrowseFiles() => repo.Workspace.OpenFolderTab(Path, pin: true);
+
+    [RelayCommand]
+    private void BrowseFilesInWindow() => repo.Workspace.OpenFolderWindow(Path);
 
     [RelayCommand]
     private void OpenInVsCode()
@@ -690,6 +704,9 @@ public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel 
 
     [RelayCommand]
     private void Pin() => Workspace.OpenFolderTab(Path, pin: true);
+
+    [RelayCommand]
+    private void OpenInWindow() => Workspace.OpenFolderWindow(Path);
 
     [RelayCommand]
     private void OpenInVsCode()

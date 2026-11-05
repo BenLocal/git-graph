@@ -50,6 +50,9 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public void ShowInteractiveRebase(InteractiveRebaseViewModel rebase) { }
     public void ShowOutput(string title, string text) { }
     public void ShowCustomCommands(CustomCommandsViewModel commands) { }
+    /// <summary>The folder windows opened.</summary>
+    public List<FolderTabViewModel> FolderWindows { get; } = [];
+    public void ShowFolder(FolderTabViewModel folder) => FolderWindows.Add(folder);
 }
 
 /// <summary>A throwaway repository with one commit of a.txt and b.txt.</summary>

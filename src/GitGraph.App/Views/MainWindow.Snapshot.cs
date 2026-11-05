@@ -18,6 +18,7 @@ namespace GitGraph.App.Views;
 /// first, to exercise infinite scrolling; the row count is printed. GITGRAPH_SNAPSHOT_SHORTCUTS=1 renders the
 /// Keyboard Shortcuts window instead (any other value searches it). GITGRAPH_SNAPSHOT_STATS=1 shows Contributors. GITGRAPH_SNAPSHOT_ABOUT=1 renders the About window.
 /// GITGRAPH_SNAPSHOT_TERMINAL=1 opens the embedded shell and waits for a command to complete before rendering.
+/// GITGRAPH_SNAPSHOT_FOLDERWINDOW=path renders that folder's files in a window of their own.
 /// In a folder tab, GITGRAPH_SNAPSHOT_NAV=definition|references|implementations:word puts the caret on the first
 /// occurrence of the word in the open file and runs that lookup.
 /// Each step waits for the loads it started (<see cref="PendingLoads"/>) and a layout pass, not for a fixed time.
@@ -126,6 +127,13 @@ public partial class MainWindow
             else current.Details.FileHistoryCommand.Execute(null);
             target = OwnedWindows.LastOrDefault() ?? this;
             if (target.DataContext is FileHistoryViewModel history) await history.Loads.WhenIdleAsync();
+        }
+        if (Env("FOLDERWINDOW") is { Length: > 0 } folderPath)
+        {
+            vm.SelectedWorkspace.OpenFolderWindow(folderPath);
+            await LaidOutAsync();
+            target = OwnedWindows.LastOrDefault() ?? this;
+            if (target.DataContext is FolderTabViewModel folder) await folder.Loads.WhenIdleAsync();
         }
         if (Env("ABOUT") == "1")
         {

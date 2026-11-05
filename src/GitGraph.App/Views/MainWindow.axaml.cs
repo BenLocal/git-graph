@@ -95,4 +95,6 @@ public partial class MainWindow : Window, IDialogService
     public void ShowOutput(string title, string text) => new OutputWindow(title, text).Show(this);
 
     public void ShowCustomCommands(CustomCommandsViewModel commands) => new CustomCommandsWindow { DataContext = commands }.ShowDialog(this);
+
+    public void ShowFolder(FolderTabViewModel folder) => new FolderWindow { DataContext = folder }.Show(this);
 }

@@ -45,6 +45,19 @@ public sealed class FolderNavigationTests : IDisposable
     }
 
     [Fact]
+    public async Task Browsing_files_in_a_new_window_opens_the_folder_there_and_not_as_a_tab()
+    {
+        _workspace.OpenFolderWindow(_repo.Path);
+
+        var folder = Assert.Single(_host.FolderWindows);
+        await folder.Loads.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(30));
+        Assert.Equal(_repo.Path, folder.Path);
+        Assert.Contains(folder.Root.Children, n => n.Name == "src");
+        Assert.DoesNotContain(_workspace.Tabs, t => t.IsFolder);
+        folder.Dispose();
+    }
+
+    [Fact]
     public async Task Go_to_definition_with_one_result_opens_the_file_there()
     {
         var text = await Show("src/App.cs");

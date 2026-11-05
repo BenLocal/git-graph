@@ -32,4 +32,7 @@ public interface IDialogService
 
     /// <summary>Shows the custom commands to add, change or remove.</summary>
     void ShowCustomCommands(ViewModels.CustomCommandsViewModel commands);
+
+    /// <summary>Shows a folder's files in a window of its own, which disposes the folder when it closes.</summary>
+    void ShowFolder(ViewModels.FolderTabViewModel folder);
 }
