@@ -70,6 +70,25 @@ public sealed class IndexSyncTests : IDisposable
     }
 
     [Fact]
+    public async Task Large_and_binary_files_are_not_parsed()
+    {
+        // MPEG transport stream videos share the .ts extension with TypeScript.
+        var large = string.Concat(Enumerable.Repeat("export class Large {}\n", 60_000));
+        Write("media/large.ts", large);
+        File.WriteAllBytes(Path.Combine(_repo, "media/clip.ts"), [.. "class Video {}"u8, 0, 0x47]);
+        Git("add", "media");
+        Git("commit", "-q", "-m", "media");
+        Write("media/untracked.ts", large.Replace("Large", "Untracked"));
+
+        var result = await Sync();
+
+        Assert.Equal(4, result.Parsed);
+        Assert.Empty(Defined("Large"));
+        Assert.Empty(Defined("Untracked"));
+        Assert.Empty(Defined("Video"));
+    }
+
+    [Fact]
     public async Task A_second_sync_without_changes_parses_nothing()
     {
         await Sync();

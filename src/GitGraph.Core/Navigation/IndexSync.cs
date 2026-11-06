@@ -21,6 +21,9 @@ public static class IndexSync
 
     private const int BatchSize = 200;
 
+    // git's own heuristic: a NUL byte in the first 8000 bytes makes a file binary.
+    private const int BinarySniffLength = 8000;
+
     // One sync per index file at a time; a second caller waits, then finds little left to do.
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> Locks = new(StringComparer.Ordinal);
 
@@ -58,6 +61,8 @@ public static class IndexSync
             var meta = entry[..tab].Split(' ');
             var path = entry[(tab + 1)..];
             if (meta.Length < 3 || meta[0] == "160000" || meta[2] != "0" || NavLanguage.ForPath(path) == null) continue;
+            // The size limit applies to committed files too; a deleted one is left to the status below.
+            if (new FileInfo(Path.Combine(root, path)) is { Exists: true, Length: > MaxFileBytes }) continue;
             wanted[path] = new Wanted(path, meta[1], 0, 0);
         }
 
@@ -199,9 +204,14 @@ public static class IndexSync
                 FileSymbols? symbols = null;
                 try
                 {
-                    var text = File.ReadAllText(Path.Combine(root, w.Path));
-                    using var src = parser.Parse(language, text);
-                    symbols = FileSymbols.From(src);
+                    var bytes = File.ReadAllBytes(Path.Combine(root, w.Path));
+                    // Binary files with a source extension (.ts videos) are stored empty instead of parsed.
+                    if (!bytes.AsSpan(0, Math.Min(bytes.Length, BinarySniffLength)).Contains((byte)0))
+                    {
+                        using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                        using var src = parser.Parse(language, reader.ReadToEnd());
+                        symbols = FileSymbols.From(src);
+                    }
                 }
                 catch (IOException)
                 {
