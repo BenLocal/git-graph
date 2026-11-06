@@ -14,12 +14,15 @@ public sealed class NavLanguage
     public static readonly NavLanguage Go = new("go", "go", "go", ".go");
     public static readonly NavLanguage Rust = new("rust", "rust", "rust", ".rs") { ShadowsInScope = true };
     public static readonly NavLanguage Java = new("java", "java", "java", ".java");
+    public static readonly NavLanguage C = new("c", "c", "c", ".c");
+    // Headers go to C++: its grammar also parses C declarations, and `.h` is common in C++ projects.
+    public static readonly NavLanguage Cpp = new("cpp", "cpp", "cpp", ".cpp", ".cc", ".cxx", ".c++", ".h", ".hpp", ".hh", ".hxx", ".h++", ".inl", ".ipp");
     public static readonly NavLanguage Python = new("python", "python", "python", ".py", ".pyi") { DeclareBeforeUse = false };
     public static readonly NavLanguage JavaScript = new("javascript", "javascript", "javascript", ".js", ".mjs", ".cjs", ".jsx");
     public static readonly NavLanguage TypeScript = new("typescript", "typescript", "typescript", ".ts", ".mts", ".cts");
     public static readonly NavLanguage Tsx = new("tsx", "tsx", "typescript", ".tsx");
 
-    public static IReadOnlyList<NavLanguage> All { get; } = [CSharp, Go, Rust, Java, Python, JavaScript, TypeScript, Tsx];
+    public static IReadOnlyList<NavLanguage> All { get; } = [CSharp, Go, Rust, Java, C, Cpp, Python, JavaScript, TypeScript, Tsx];
 
     private static readonly Dictionary<string, NavLanguage> ByExtension =
         All.SelectMany(l => l.Extensions.Select(e => (e, l))).ToDictionary(x => x.e, x => x.l, StringComparer.OrdinalIgnoreCase);

@@ -4,7 +4,7 @@
     removed from build and publish output. Keep this list in sync with GitGraph.Core/Navigation/NavLanguage.cs.
   -->
   <PropertyGroup>
-    <TreeSitterGrammars>tree-sitter;tree-sitter-c-sharp;tree-sitter-go;tree-sitter-rust;tree-sitter-java;tree-sitter-python;tree-sitter-javascript;tree-sitter-typescript;tree-sitter-tsx</TreeSitterGrammars>
+    <TreeSitterGrammars>tree-sitter;tree-sitter-c-sharp;tree-sitter-go;tree-sitter-rust;tree-sitter-java;tree-sitter-c;tree-sitter-cpp;tree-sitter-python;tree-sitter-javascript;tree-sitter-typescript;tree-sitter-tsx</TreeSitterGrammars>
   </PropertyGroup>
 
   <Target Name="TrimTreeSitterGrammars" AfterTargets="ResolvePackageAssets">

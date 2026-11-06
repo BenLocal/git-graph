@@ -34,6 +34,9 @@ public sealed class SourceParserTests : IDisposable
         Assert.Equal(NavLanguage.Tsx, NavLanguage.ForPath("ui/App.tsx"));
         Assert.Equal(NavLanguage.JavaScript, NavLanguage.ForPath("a.mjs"));
         Assert.Equal(NavLanguage.Java, NavLanguage.ForPath("src/Main.java"));
+        Assert.Equal(NavLanguage.C, NavLanguage.ForPath("src/list.c"));
+        Assert.Equal(NavLanguage.Cpp, NavLanguage.ForPath("src/geo.cc"));
+        Assert.Equal(NavLanguage.Cpp, NavLanguage.ForPath("include/list.h"));
         Assert.Null(NavLanguage.ForPath("README.md"));
         Assert.Null(_parser.Parse("notes.txt", "hello"));
     }
@@ -323,6 +326,145 @@ public sealed class SourceParserTests : IDisposable
         // `this.radius` and `c.radius` are the field, not the constructor parameter.
         Assert.Null(src.ResolveLocal(src.Text.IndexOf("radius = radius", StringComparison.Ordinal)));
         Assert.Null(src.ResolveLocal(src.Text.IndexOf("radius > 0", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void C_definitions_and_locals()
+    {
+        using var src = Parse("list.c", """
+            #define MAX(a, b) ((a) > (b) ? (a) : (b))
+            #define LIMIT 10
+            typedef struct { int x, y; } point_t;
+            typedef int (*cmp_fn)(const void *, const void *);
+            struct node { struct node *next; int value; void (*visit)(struct node *); };
+            union num { int i; float f; };
+            enum colour { RED, GREEN = 2 };
+            static int counter = 0, *cursor;
+            int area(int w, int h);
+            static const char *name_of(struct node *n) { return n->next ? "node" : 0; }
+            int sum(int items[], int count, int (*pick)(int)) {
+                int total = 0;
+                for (int i = 0; i < count; i++) total += pick(items[i]);
+                struct node *p = 0, value;
+                p->value = 1; value.value = 2;
+                if (total) { int total = 1; return total; }
+                return total + counter;
+            }
+            """);
+        Assert.Equal("""
+            Function MAX @1
+            Constant LIMIT @2
+            Field x in point_t @3
+            Field y in point_t @3
+            Type point_t @3
+            Type cmp_fn @4
+            Struct node @5
+            Field next in node @5
+            Field value in node @5
+            Field visit in node @5
+            Struct num @6
+            Field i in num @6
+            Field f in num @6
+            Enum colour @7
+            Constant RED in colour @7
+            Constant GREEN in colour @7
+            Variable counter @8
+            Variable cursor @8
+            Function name_of @10
+            Function sum @11
+            """, Defs(src));
+        Assert.Equal("", Supers(src));
+        Assert.Equal([10, 10], LocalUses(src, "n) {"));
+        Assert.Equal([11, 13], LocalUses(src, "items[]"));
+        Assert.Equal([11, 13], LocalUses(src, "pick)"));
+        Assert.Equal([12, 13, 16, 17], LocalUses(src, "total = 0"));
+        Assert.Equal([16, 16], LocalUses(src, "total = 1"));
+        Assert.Equal([13, 13, 13, 13], LocalUses(src, "i = 0"));
+        Assert.Equal([14, 15], LocalUses(src, "p = 0"));
+        Assert.Equal([14, 15], LocalUses(src, "value;", 1));
+        // `p->value` is the field, `counter` a global, and the prototype's parameters belong to no function.
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("value = 1", StringComparison.Ordinal)));
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("counter;", StringComparison.Ordinal)));
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("w, int h", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Cpp_definitions_and_locals()
+    {
+        using var src = Parse("geo.cpp", """
+            namespace geo {
+            template <typename T>
+            class Circle : public Shape<T>, private ns::IShape {
+            public:
+                explicit Circle(double radius) : radius_(radius) {}
+                ~Circle() override;
+                virtual double area() const = 0;
+                double perimeter() const { return 2 * radius_; }
+                bool operator==(const Circle &other) const;
+                static constexpr int kSides = 0;
+                using value_type = T;
+            private:
+                double radius_, unused_;
+            };
+            struct Point final : Base { int x; };
+            enum class Colour : int { Red, Green };
+            using Map = std::map<int, int>;
+            int counter = 0;
+            }
+            Circle::~Circle() {}
+            double geo::Circle::area() const { return this->radius_; }
+            int sum(std::vector<int> &items, const std::string &name, int scale = 1) {
+                int total = 0;
+                for (auto &item : items) total += item * scale;
+                auto twice = [&total](int v) { return v * 2 + total; };
+                try { total += twice(1); } catch (const std::exception &err) { log(err); }
+                if (auto *p = find(name); p) total += p->size;
+                auto [first, second] = pair();
+                return geo::counter + total + first;
+            }
+            """);
+        Assert.Equal("""
+            Namespace geo @1
+            Class Circle in geo @3
+            Constructor Circle in Circle @5
+            Method ~Circle in Circle @6
+            Method area in Circle @7
+            Method perimeter in Circle @8
+            Method operator== in Circle @9
+            Field kSides in Circle @10
+            Type value_type in Circle @11
+            Field radius_ in Circle @13
+            Field unused_ in Circle @13
+            Struct Point in geo @15
+            Field x in Point @15
+            Enum Colour in geo @16
+            Constant Red in Colour @16
+            Constant Green in Colour @16
+            Type Map in geo @17
+            Variable counter in geo @18
+            Method ~Circle in Circle @20
+            Method area in Circle @21
+            Function sum @22
+            """, Defs(src));
+        Assert.Equal("""
+            Circle : Shape
+            Circle : IShape
+            Point : Base
+            """, Supers(src));
+        Assert.Equal([5, 5], LocalUses(src, "radius) :"));
+        Assert.Equal([22, 24], LocalUses(src, "items,"));
+        Assert.Equal([22, 27], LocalUses(src, "name,"));
+        Assert.Equal([22, 24], LocalUses(src, "scale = 1"));
+        Assert.Equal([23, 24, 25, 25, 26, 27, 29], LocalUses(src, "total = 0"));
+        Assert.Equal([24, 24], LocalUses(src, "item :"));
+        Assert.Equal([25, 25], LocalUses(src, "v)"));
+        Assert.Equal([25, 26], LocalUses(src, "twice ="));
+        Assert.Equal([26, 26], LocalUses(src, "err)"));
+        Assert.Equal([27, 27, 27], LocalUses(src, "p = find"));
+        Assert.Equal([28, 29], LocalUses(src, "first,"));
+        // `this->radius_` is the field and `geo::counter` the namespace's variable.
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("radius_; }", StringComparison.Ordinal)));
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("counter +", StringComparison.Ordinal)));
     }
 
     [Fact]
