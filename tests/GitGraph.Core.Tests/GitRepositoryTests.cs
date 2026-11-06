@@ -82,6 +82,20 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Languages_skip_binary_blobs_with_source_extensions()
+    {
+        Commit("app.ts", "export const a = 1;\n", "typescript");
+        var video = new byte[100_000];
+        video[0] = 0x47;
+        File.WriteAllBytes(Path.Combine(_repo, "clip.ts"), video);
+        Git("add", "clip.ts");
+        Git("commit", "-q", "-m", "mpeg-ts sample");
+        var typeScript = Assert.Single(await new GitRepository(_repo).GetLanguagesAsync());
+        Assert.Equal("TypeScript", typeScript.Name);
+        Assert.Equal("export const a = 1;\n".Length, typeScript.Bytes);
+    }
+
+    [Fact]
     public async Task Commits_refs_and_head_are_read()
     {
         var repo = new GitRepository(_repo);

@@ -45,6 +45,36 @@ public static class GitRunner
         return buffer.ToArray();
     }
 
+    /// <summary>Writes <paramref name="input"/> to stdin while <paramref name="read"/> consumes stdout, for <c>--batch</c> commands.</summary>
+    public static async Task<T> RunPipedAsync<T>(string workDir, IReadOnlyList<string> args, string input,
+        Func<Stream, CancellationToken, Task<T>> read, CancellationToken ct = default)
+    {
+        using var proc = Start(workDir, args, keepInput: true);
+        using var output = proc.StandardOutput;
+        using var error = proc.StandardError;
+        var stderr = error.ReadToEndAsync(ct);
+        T result;
+        try
+        {
+            var write = WriteAndCloseAsync(proc.StandardInput, input, ct);
+            result = await read(output.BaseStream, ct);
+            await write;
+        }
+        catch
+        {
+            try { proc.Kill(true); } catch { /* already gone */ }
+            throw;
+        }
+        await WaitAsync(proc, ct);
+        if (proc.ExitCode != 0) throw new GitException((await stderr).Trim(), proc.ExitCode, string.Join(' ', args));
+        return result;
+    }
+
+    private static async Task WriteAndCloseAsync(StreamWriter input, string text, CancellationToken ct)
+    {
+        await using (input) await input.WriteAsync(text.AsMemory(), ct);
+    }
+
     private static async Task WaitAsync(Process proc, CancellationToken ct)
     {
         try
@@ -58,7 +88,7 @@ public static class GitRunner
         }
     }
 
-    private static Process Start(string workDir, IEnumerable<string> args)
+    private static Process Start(string workDir, IEnumerable<string> args, bool keepInput = false)
     {
         var psi = new ProcessStartInfo(GitPath)
         {
@@ -70,6 +100,7 @@ public static class GitRunner
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
+            StandardInputEncoding = new UTF8Encoding(false),
         };
         // Read-only queries must never take the index lock away from the user's own git commands.
         psi.Environment["GIT_OPTIONAL_LOCKS"] = "0";
@@ -82,7 +113,7 @@ public static class GitRunner
         foreach (var a in args) psi.ArgumentList.Add(a);
 
         var proc = Process.Start(psi) ?? throw new GitException("Could not start git.", -1, string.Join(' ', args));
-        proc.StandardInput.Close();
+        if (!keepInput) proc.StandardInput.Close();
         return proc;
     }
 

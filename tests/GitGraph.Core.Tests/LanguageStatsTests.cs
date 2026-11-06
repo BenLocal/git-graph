@@ -1,3 +1,4 @@
+using System.Text;
 using GitGraph.Core.Stats;
 
 namespace GitGraph.Core.Tests;
@@ -17,7 +18,7 @@ public sealed class LanguageStatsTests
             "160000 commit abc -\tsubmodule",
             "100644 blob abc 0\tempty.rs", "");
 
-        var result = LanguageStats.ParseTree(tree);
+        var result = LanguageStats.Summarize(LanguageStats.ParseTree(tree));
 
         Assert.Equal(2, result.Count);
         Assert.Equal("C#", result[0].Name);
@@ -30,9 +31,33 @@ public sealed class LanguageStatsTests
     [Fact]
     public void Recognizes_build_filenames_and_orders_ties_by_name()
     {
-        var result = LanguageStats.ParseTree("100644 blob abc 10\tMakefile\0" +
-            "100644 blob abc 10\tDockerfile\0" + "100644 blob abc 10\tsrc/a.C\0");
+        var result = LanguageStats.Summarize(LanguageStats.ParseTree("100644 blob abc 10\tMakefile\0" +
+            "100644 blob abc 10\tDockerfile\0" + "100644 blob abc 10\tsrc/a.C\0"));
         Assert.Equal(new[] { "C++", "Dockerfile", "Makefile" }, result.Select(x => x.Name));
         Assert.Empty(LanguageStats.ParseTree(""));
+    }
+
+    [Fact]
+    public async Task Binary_blobs_have_a_nul_byte_in_their_first_8000_bytes()
+    {
+        static byte[] Blob(string hash, byte[] content) =>
+            [.. Encoding.ASCII.GetBytes($"{hash} blob {content.Length}\n"), .. content, (byte)'\n'];
+        var lateNul = new byte[8001];
+        lateNul.AsSpan().Fill((byte)'a');
+        lateNul[8000] = 0;
+        var largeVideo = new byte[200_000];
+        largeVideo[7999] = 0x47;
+        largeVideo[0] = 0x47;
+        using var stream = new MemoryStream([
+            .. Blob("text", "const a = 1;\n"u8.ToArray()),
+            .. Blob("video", largeVideo),
+            .. "gone missing\n"u8.ToArray(),
+            .. Blob("late", lateNul),
+            .. Blob("nul", [0x47, 0, 0x10]),
+        ]);
+
+        var binary = await LanguageStats.ReadBinaryBlobsAsync(stream);
+
+        Assert.Equal(new[] { "nul", "video" }, binary.Order());
     }
 }

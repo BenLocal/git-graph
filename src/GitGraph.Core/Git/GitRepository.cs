@@ -15,7 +15,12 @@ public sealed class GitRepository(string path)
         var head = await GetHeadAsync(ct);
         if (head.Hash is null) return [];
         var tree = await Git(ct, "ls-tree", "-r", "-l", "-z", head.Hash);
-        return await Task.Run(() => Stats.LanguageStats.ParseTree(tree, ct), ct);
+        var files = await Task.Run(() => Stats.LanguageStats.ParseTree(tree, ct), ct);
+        if (files.Count == 0) return [];
+        // Extensions can be shared with binary formats (.ts is also an MPEG transport stream), so read the blobs.
+        var hashes = string.Concat(files.Select(f => f.Hash).Distinct().Select(h => h + "\n"));
+        var binary = await GitRunner.RunPipedAsync(Path, ["cat-file", "--batch"], hashes, Stats.LanguageStats.ReadBinaryBlobsAsync, ct);
+        return Stats.LanguageStats.Summarize(files.Where(f => !binary.Contains(f.Hash)));
     }
 
     public static async Task<string?> FindTopLevelAsync(string dir, CancellationToken ct = default)

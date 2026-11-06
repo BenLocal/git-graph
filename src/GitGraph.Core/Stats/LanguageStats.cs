@@ -1,12 +1,18 @@
 using System.Globalization;
+using System.Text;
 
 namespace GitGraph.Core.Stats;
 
 public sealed record LanguageSummary(string Name, long Bytes, double Share);
 
+public sealed record LanguageFile(string Hash, string Language, long Bytes);
+
 /// <summary>Offline estimates from committed blob sizes, using common filenames and extensions.</summary>
 public static class LanguageStats
 {
+    // git's own heuristic: a NUL byte in the first 8000 bytes makes a blob binary.
+    private const int BinarySniffLength = 8000;
+
     private static readonly Dictionary<string, string> Extensions = new(StringComparer.OrdinalIgnoreCase)
     {
         [".cs"] = "C#",
@@ -88,9 +94,10 @@ public static class LanguageStats
         "docs", "doc", "documentation",
     };
 
-    public static IReadOnlyList<LanguageSummary> ParseTree(string output, CancellationToken ct = default)
+    /// <summary>Files from <c>git ls-tree -r -l -z</c> output that count towards a language, before the binary check.</summary>
+    public static IReadOnlyList<LanguageFile> ParseTree(string output, CancellationToken ct = default)
     {
-        var totals = new Dictionary<string, long>(StringComparer.Ordinal);
+        var files = new List<LanguageFile>();
         foreach (var entry in output.Split('\0', StringSplitOptions.RemoveEmptyEntries))
         {
             ct.ThrowIfCancellationRequested();
@@ -116,10 +123,65 @@ public static class LanguageStats
                 _ when System.IO.Path.GetExtension(name) == ".C" => "C++",
                 _ => Extensions.GetValueOrDefault(System.IO.Path.GetExtension(name)),
             };
-            if (language != null) totals[language] = totals.GetValueOrDefault(language) + size;
+            if (language != null) files.Add(new LanguageFile(metadata[2], language, size));
         }
+        return files;
+    }
+
+    public static IReadOnlyList<LanguageSummary> Summarize(IEnumerable<LanguageFile> files)
+    {
+        var totals = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var file in files) totals[file.Language] = totals.GetValueOrDefault(file.Language) + file.Bytes;
         var total = totals.Values.Sum();
         return totals.OrderByDescending(x => x.Value).ThenBy(x => x.Key, StringComparer.Ordinal)
             .Select(x => new LanguageSummary(x.Key, x.Value, (double)x.Value / total)).ToList();
+    }
+
+    /// <summary>Reads <c>git cat-file --batch</c> output and returns the hashes of binary blobs.</summary>
+    public static async Task<HashSet<string>> ReadBinaryBlobsAsync(Stream stream, CancellationToken ct = default)
+    {
+        var binary = new HashSet<string>(StringComparer.Ordinal);
+        var buffer = new byte[64 * 1024];
+        int start = 0, end = 0;
+
+        async ValueTask<bool> FillAsync()
+        {
+            if (start < end) return true;
+            start = 0;
+            end = await stream.ReadAsync(buffer, ct);
+            return end > 0;
+        }
+
+        async ValueTask<string?> ReadLineAsync()
+        {
+            var line = new StringBuilder();
+            while (await FillAsync())
+            {
+                var newline = buffer.AsSpan(start, end - start).IndexOf((byte)'\n');
+                var length = newline < 0 ? end - start : newline;
+                line.Append(Encoding.ASCII.GetString(buffer, start, length));
+                start += newline < 0 ? length : length + 1;
+                if (newline >= 0) return line.ToString();
+            }
+            return line.Length == 0 ? null : throw new EndOfStreamException();
+        }
+
+        while (await ReadLineAsync() is { } header)
+        {
+            // "<hash> <type> <size>", followed by the content and a newline; "<hash> missing" has no content.
+            var fields = header.Split(' ');
+            if (fields.Length != 3) continue;
+            var size = long.Parse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture);
+            for (long read = 0; read <= size;)
+            {
+                if (!await FillAsync()) throw new EndOfStreamException();
+                var n = (int)Math.Min(size + 1 - read, end - start);
+                var sniff = (int)Math.Clamp(Math.Min(BinarySniffLength, size) - read, 0, n);
+                if (buffer.AsSpan(start, sniff).Contains((byte)0)) binary.Add(fields[0]);
+                start += n;
+                read += n;
+            }
+        }
+        return binary;
     }
 }
