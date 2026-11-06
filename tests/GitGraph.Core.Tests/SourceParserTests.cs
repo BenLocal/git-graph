@@ -33,6 +33,7 @@ public sealed class SourceParserTests : IDisposable
         Assert.Equal(NavLanguage.CSharp, NavLanguage.ForPath("src/A.CS"));
         Assert.Equal(NavLanguage.Tsx, NavLanguage.ForPath("ui/App.tsx"));
         Assert.Equal(NavLanguage.JavaScript, NavLanguage.ForPath("a.mjs"));
+        Assert.Equal(NavLanguage.Java, NavLanguage.ForPath("src/Main.java"));
         Assert.Null(NavLanguage.ForPath("README.md"));
         Assert.Null(_parser.Parse("notes.txt", "hello"));
     }
@@ -251,6 +252,77 @@ public sealed class SourceParserTests : IDisposable
         Assert.Equal([16, 18], LocalUses(src, "a, b"));
         Assert.Equal([17, 17], LocalUses(src, "v)"));
         Assert.Equal([10, 10], LocalUses(src, "radius: f64)"));
+    }
+
+    [Fact]
+    public void Java_definitions_and_locals()
+    {
+        using var src = Parse("Shapes.java", """
+            package demo;
+
+            public class Circle extends Shape<Double> implements IShape, Comparable<Circle> {
+                private final double radius, unused;
+                public Circle(double radius) { this.radius = radius; }
+                public double area() { return Math.PI * this.radius; }
+                static int sum(int[] items, String... names) {
+                    int total = 0;
+                    for (int item : items) total += item;
+                    for (int i = 0; i < items.length; i++) total += i;
+                    Function<Integer, Integer> twice = item -> item * 2;
+                    BiFunction<Integer, Integer, Integer> add = (a, b) -> a + b;
+                    try (var in = open()) { total += in.read(); } catch (IOException | RuntimeException err) { log(err); }
+                    if (shape instanceof Circle c && c.radius > 0) total += 1;
+                    return twice.apply(total) + add.apply(total, names.length);
+                }
+            }
+            interface IShape extends Base { int SIDES = 0; double area(); }
+            enum Colour implements IShape { RED, GREEN; public double area() { return 0; } }
+            record Point(int x, int y) implements IShape { Point { } public double area() { return x * y; } }
+            @interface Marker { String value(); }
+            """);
+        Assert.Equal("""
+            Class Circle @3
+            Field radius in Circle @4
+            Field unused in Circle @4
+            Constructor Circle in Circle @5
+            Method area in Circle @6
+            Method sum in Circle @7
+            Interface IShape @18
+            Constant SIDES in IShape @18
+            Method area in IShape @18
+            Enum Colour @19
+            Constant RED in Colour @19
+            Constant GREEN in Colour @19
+            Method area in Colour @19
+            Class Point @20
+            Field x in Point @20
+            Field y in Point @20
+            Constructor Point in Point @20
+            Method area in Point @20
+            Interface Marker @21
+            Method value in Marker @21
+            """, Defs(src));
+        Assert.Equal("""
+            Circle : Shape
+            Circle : IShape
+            Circle : Comparable
+            IShape : Base
+            Colour : IShape
+            Point : IShape
+            """, Supers(src));
+        Assert.Equal([5, 5], LocalUses(src, "radius) {"));
+        Assert.Equal([8, 9, 10, 13, 14, 15, 15], LocalUses(src, "total = 0"));
+        Assert.Equal([9, 9], LocalUses(src, "item :"));
+        Assert.Equal([10, 10, 10, 10], LocalUses(src, "i = 0"));
+        Assert.Equal([11, 11], LocalUses(src, "item ->"));
+        Assert.Equal([12, 12], LocalUses(src, "a, b"));
+        Assert.Equal([13, 13], LocalUses(src, "in ="));
+        Assert.Equal([13, 13], LocalUses(src, "err)"));
+        Assert.Equal([14, 14], LocalUses(src, "c &&"));
+        Assert.Equal([7, 15], LocalUses(src, "names"));
+        // `this.radius` and `c.radius` are the field, not the constructor parameter.
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("radius = radius", StringComparison.Ordinal)));
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("radius > 0", StringComparison.Ordinal)));
     }
 
     [Fact]
