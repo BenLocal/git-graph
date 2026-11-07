@@ -61,6 +61,9 @@ public partial class MainWindow
             ["GoToImplementation"] = () => VisibleFolder()?.Navigate(NavKind.Implementations),
             ["NavigateBack"] = () => Workspace?.SelectedFolderTab?.GoBackCommand.Execute(null),
             ["NavigateForward"] = () => Workspace?.SelectedFolderTab?.GoForwardCommand.Execute(null),
+            ["QuickOpen"] = () => VisibleFolder()?.StartSearch(SearchKind.Files),
+            ["GoToSymbol"] = () => VisibleFolder()?.StartSearch(SearchKind.Symbols),
+            ["FindInFiles"] = () => VisibleFolder()?.StartSearch(SearchKind.Text),
             ["KeyboardShortcuts"] = OpenKeyboardShortcuts,
             ["Quit"] = Close,
         };

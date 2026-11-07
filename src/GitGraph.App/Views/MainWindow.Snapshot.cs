@@ -20,7 +20,8 @@ namespace GitGraph.App.Views;
 /// GITGRAPH_SNAPSHOT_TERMINAL=1 opens the embedded shell and waits for a command to complete before rendering.
 /// GITGRAPH_SNAPSHOT_FOLDERWINDOW=path renders that folder's files in a window of their own.
 /// In a folder tab, GITGRAPH_SNAPSHOT_NAV=definition|references|implementations:word puts the caret on the first
-/// occurrence of the word in the open file and runs that lookup.
+/// occurrence of the word in the open file and runs that lookup; GITGRAPH_SNAPSHOT_SEARCH=files|symbols|text:query
+/// opens that search and types the query.
 /// Each step waits for the loads it started (<see cref="PendingLoads"/>) and a layout pass, not for a fixed time.
 /// </summary>
 public partial class MainWindow
@@ -86,6 +87,15 @@ public partial class MainWindow
             folderView.MoveCaret(at.Index);
             await SettledAsync();
             folderView.Navigate(navKind);
+            await SettledAsync();
+        }
+
+        if (Env("SEARCH")?.Split(':', 2) is [var searchKind, var query] && Enum.TryParse<SearchKind>(searchKind, true, out var search)
+            && vm.SelectedWorkspace.SelectedFolderTab is { } searchTab
+            && this.GetVisualDescendants().OfType<FolderTabView>().FirstOrDefault(v => v.IsEffectivelyVisible) is { } searchView)
+        {
+            searchView.StartSearch(search);
+            searchTab.SearchQuery = query;
             await SettledAsync();
         }
 

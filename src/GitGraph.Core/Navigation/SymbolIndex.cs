@@ -241,6 +241,29 @@ public sealed class SymbolIndex : IDisposable
         return result;
     }
 
+    /// <summary>
+    /// Definitions in a work tree whose name contains the characters of <paramref name="query"/> in order, ignoring
+    /// (ASCII) case, in files whose path starts with <paramref name="under"/> ("" for all); at most
+    /// <paramref name="limit"/>, shortest names first, as they hold the closest matches.
+    /// </summary>
+    public List<IndexedSymbol> SearchDefinitions(string root, string query, int limit, string under = "")
+    {
+        // "abc" → "%a%b%c%"; LIKE's own wildcards in the query are escaped.
+        var pattern = "%" + string.Concat(query.Select(c => (c is '%' or '_' or '\\' ? "\\" : "") + c + "%"));
+        using var cmd = Command("""
+            SELECT f.path, s.name, s.kind, s.start, s.end, s.line, s.col, s.container
+            FROM symbols s JOIN files f ON f.blob_id = s.blob_id
+            WHERE s.name LIKE $q ESCAPE '\' AND f.root = $r AND substr(f.path, 1, length($u)) = $u
+            ORDER BY length(s.name) LIMIT $l
+            """, ("$q", pattern), ("$r", root), ("$u", under), ("$l", limit));
+        using var r = cmd.ExecuteReader();
+        var result = new List<IndexedSymbol>();
+        while (r.Read())
+            result.Add(new IndexedSymbol(r.GetString(0), new SymbolDef(r.GetString(1), (SymbolKind)r.GetInt32(2),
+                new TextSpan(r.GetInt32(3), r.GetInt32(4), r.GetInt32(5), r.GetInt32(6)), r.IsDBNull(7) ? null : r.GetString(7))));
+        return result;
+    }
+
     /// <summary>Types in a work tree that name <paramref name="superName"/> as a supertype.</summary>
     public List<IndexedSuper> FindSubtypes(string root, string superName)
     {

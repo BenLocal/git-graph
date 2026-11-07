@@ -73,6 +73,30 @@ public sealed class CodeNavigator(string root, bool isGit, SymbolIndex? index) :
             return WordSpanAt(text, offset) is var (start, end) ? SpanAt(text, start, end - start) : (TextSpan?)null;
         }, ct);
 
+    /// <summary>The most definitions a symbol search reads from the index before ranking them.</summary>
+    private const int MaxSymbolCandidates = 5000;
+
+    /// <summary>
+    /// Definitions in the work tree whose name fuzzily matches <paramref name="query"/>, best first (closest match,
+    /// then shorter name, then path); at most <paramref name="max"/>. Only indexed files take part, and of those only
+    /// the ones whose path starts with <paramref name="under"/> (a folder of the work tree, as "src/").
+    /// </summary>
+    public Task<IReadOnlyList<NavLocation>> SearchSymbolsAsync(string query, int max, string under = "", CancellationToken ct = default) =>
+        RunAsync<IReadOnlyList<NavLocation>>(() =>
+        {
+            if (index == null || query.Length == 0) return [];
+            return index.SearchDefinitions(Root, query, MaxSymbolCandidates, under)
+                .Select(d => (d, Score: FuzzyMatch.Score(query, d.Symbol.Name)))
+                .Where(x => x.Score != null)
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.d.Symbol.Name.Length)
+                .ThenBy(x => x.d.Path, StringComparer.Ordinal)
+                .ThenBy(x => x.d.Symbol.Span.Start)
+                .Take(max)
+                .Select(x => new NavLocation(x.d.Path, x.d.Symbol.Span, x.d.Symbol.Name, Describe(x.d.Symbol)))
+                .ToList();
+        }, ct);
+
     private ParsedSource? Current(string path, string text)
     {
         if (_current is { } c && c.Path == path && ReferenceEquals(c.Text, text)) return c.Source;

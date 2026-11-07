@@ -138,6 +138,8 @@ public sealed partial class FolderTabViewModel
             if (!_lifetime.IsCancellationRequested) _host.ReportError($"Could not index {index.Root}: {e.Message}");
         }
         UpdateIndexStatus();
+        // A symbol search typed while the index was being built only saw part of it.
+        if (SearchKind == ViewModels.SearchKind.Symbols && !_lifetime.IsCancellationRequested) _ = Loads.Track(SearchAsync());
     }
 
     /// <summary>Brings every index opened in this tab up to date, as files may have changed while it was hidden.</summary>
@@ -187,6 +189,7 @@ public sealed partial class FolderTabViewModel
             if (cts.IsCancellationRequested || !ReferenceEquals(text, FileText)) return;
             if (result.Name is null) return;
             var items = result.Locations.Select(l => Item(root, l)).ToList();
+            SearchKind = null;
             if (kind == NavKind.Definition && items.Count == 1)
             {
                 Open(items[0]);
@@ -250,6 +253,8 @@ public sealed partial class FolderTabViewModel
     partial void OnIsNavOpenChanged(bool value)
     {
         if (value) return;
+        _searchCts?.Cancel();
+        SearchKind = null;
         _previewCts?.Cancel();
         _previewPath = null;
         SelectedNavItem = null;
@@ -270,8 +275,16 @@ public sealed partial class FolderTabViewModel
             {
                 var text = _shownNode != null && PathComparer.Equals(_shownNode.FullPath, item.FullPath) && FileText is { } shown
                     ? shown
-                    : await Task.Run(() => Decode(File.ReadAllBytes(item.FullPath)), cts.Token);
+                    : await Task.Run(() => ReadPreviewText(item.FullPath), cts.Token);
                 if (cts.IsCancellationRequested) return;
+                if (text is null)
+                {
+                    // Go to file lists every file: an image or a large file has no text to preview.
+                    _previewPath = null;
+                    PreviewItem = null;
+                    PreviewText = null;
+                    return;
+                }
                 _previewPath = item.FullPath;
                 PreviewSyntax = null;
                 PreviewText = text;
@@ -290,6 +303,14 @@ public sealed partial class FolderTabViewModel
             PreviewItem = null;
             PreviewText = null;
         }
+    }
+
+    /// <summary>A file's text for the preview; null for a file too large for the viewer or binary.</summary>
+    private static string? ReadPreviewText(string path)
+    {
+        if (new FileInfo(path).Length > MaxFileBytes) return null;
+        var bytes = File.ReadAllBytes(path);
+        return bytes.AsSpan(0, Math.Min(bytes.Length, 8000)).Contains((byte)0) ? null : Decode(bytes);
     }
 
     /// <summary>Jumps to a result, remembering where it came from.</summary>

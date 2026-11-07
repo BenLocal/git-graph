@@ -185,4 +185,90 @@ public sealed class FolderNavigationTests : IDisposable
         Assert.Equal(2, spans.Count);
         Assert.All(spans, s => Assert.Equal("shape", text[s.Start..s.End]));
     }
+
+    private async Task Search(SearchKind kind, string query)
+    {
+        _folder.StartSearch(kind);
+        _folder.SearchQuery = query;
+        await Idle();
+    }
+
+    [Fact]
+    public async Task Go_to_file_ranks_file_names_and_jumps_to_the_pick()
+    {
+        _repo.Write("notes.txt", "not code\n");
+
+        await Search(SearchKind.Files, "circ");
+
+        Assert.True(_folder.IsNavOpen);
+        Assert.True(_folder.IsSearching);
+        Assert.Equal(["src/Circle.cs"], _folder.NavResults.Select(r => r.Location));
+        Assert.Equal("1 file", _folder.NavTitle);
+        Assert.StartsWith("class Circle", _folder.PreviewText);
+
+        _folder.SearchQuery = "sq";
+        await Idle();
+        Assert.Equal("src/Square.cs", _folder.NavResults[0].Location);
+
+        _folder.OpenCommand.Execute(_folder.NavResults[0]);
+        await Idle();
+        Assert.False(_folder.IsNavOpen);
+        Assert.False(_folder.IsSearching);
+        Assert.Equal("src/Square.cs", _folder.FilePath);
+        Assert.Empty(_host.Errors);
+    }
+
+    [Fact]
+    public async Task Go_to_symbol_finds_definitions_in_the_index_without_a_file_open()
+    {
+        await Search(SearchKind.Symbols, "circle");
+
+        var first = _folder.NavResults[0];
+        Assert.Equal("src/Circle.cs:1", first.Location);
+        Assert.Equal("Circle", first.LineText);
+        Assert.Equal("class", first.Detail);
+
+        _folder.OpenCommand.Execute(first);
+        await Idle();
+        Assert.Equal(new RevealRequest("src/Circle.cs", "class ".Length, "Circle".Length), _folder.Reveal);
+    }
+
+    [Fact]
+    public async Task Find_in_files_lists_matching_lines_and_an_empty_query_lists_nothing()
+    {
+        await Search(SearchKind.Text, "area()");
+
+        Assert.Equal("4 matches", _folder.NavTitle);
+        Assert.Contains(_folder.NavResults, r => r.Location == "src/Shape.cs:1" && r.LineText == "interface IShape { double Area(); }");
+        var square = _folder.NavResults.Single(r => r.Location == "src/Square.cs:3");
+        Assert.Equal("Area", File.ReadAllText(square.FullPath).Substring(square.Offset, 4));
+
+        _folder.SearchQuery = "";
+        await Idle();
+        Assert.Empty(_folder.NavResults);
+        Assert.Equal("Type the text to find", _folder.NavTitle);
+
+        _folder.SearchQuery = "no such text";
+        await Idle();
+        Assert.Equal("No matches found", _folder.NavTitle);
+    }
+
+    [Fact]
+    public async Task A_lookup_after_a_search_shows_its_own_results_without_the_query_box()
+    {
+        var text = await Show("src/App.cs");
+        await Search(SearchKind.Files, "shape");
+
+        await _folder.NavigateAsync(NavKind.Implementations, text.IndexOf("IShape", StringComparison.Ordinal));
+        await Idle();
+
+        Assert.False(_folder.IsSearching);
+        Assert.Equal("2 implementations of IShape", _folder.NavTitle);
+
+        _folder.CloseNavCommand.Execute(null);
+        await Search(SearchKind.Text, "Circle");
+        Assert.True(_folder.IsSearching);
+        _folder.CloseNavCommand.Execute(null);
+        Assert.False(_folder.IsSearching);
+    }
 }

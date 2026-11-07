@@ -38,6 +38,9 @@ public partial class FolderWindow : Window
             ["GoToImplementation"] = () => Folder.Navigate(NavKind.Implementations),
             ["NavigateBack"] = () => (DataContext as FolderTabViewModel)?.GoBackCommand.Execute(null),
             ["NavigateForward"] = () => (DataContext as FolderTabViewModel)?.GoForwardCommand.Execute(null),
+            ["QuickOpen"] = () => Folder.StartSearch(SearchKind.Files),
+            ["GoToSymbol"] = () => Folder.StartSearch(SearchKind.Symbols),
+            ["FindInFiles"] = () => Folder.StartSearch(SearchKind.Text),
         };
         // Tunnel, so the keys reach the window before the editor or the tree takes them.
         AddHandler(KeyDownEvent, OnShortcutKeyDown, RoutingStrategies.Tunnel);

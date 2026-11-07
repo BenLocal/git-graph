@@ -174,4 +174,23 @@ public sealed class CodeNavigatorTests : IDisposable
         Assert.Equal([5, 8], property.Select(u => u.Line));
         Assert.Empty(await nav.OccurrencesAsync("notes.md", "Circle", 1));
     }
+
+    [Fact]
+    public async Task Symbol_search_ranks_the_closest_names_first()
+    {
+        using var nav = await Navigator(useIndex: true);
+
+        var circles = await nav.SearchSymbolsAsync("circle", 10);
+        Assert.Equal(["Circle", "BigCircle"], circles.Select(l => l.LineText));
+        Assert.Equal("src/Shapes/Circle.cs", circles[0].Path);
+        Assert.Equal(1, circles[0].Span.Line);
+        Assert.Equal("class", circles[0].Detail);
+
+        // Characters in order, not adjacent: "IShape" for "ish", "Area" in Circle for "ar".
+        Assert.Equal("IShape", (await nav.SearchSymbolsAsync("ish", 10))[0].LineText);
+        Assert.Contains(await nav.SearchSymbolsAsync("ar", 10), l => l.Detail == "method in Circle");
+        Assert.Empty(await nav.SearchSymbolsAsync("zzz", 10));
+        // LIKE's wildcards are plain characters in a query.
+        Assert.Empty(await nav.SearchSymbolsAsync("%", 10));
+    }
 }

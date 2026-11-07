@@ -68,6 +68,47 @@ public partial class FolderTabView : UserControl
         _previewMark = new OccurrenceRenderer(Preview);
         // Each folder remembers how wide its tree was dragged.
         TreeSplitter.DragCompleted += (_, _) => _vm?.SaveTreeWidth(Columns.ColumnDefinitions[0].ActualWidth);
+        // The query box steers the results list: arrows pick, Enter jumps, Esc closes. Tunnel, before the box moves its caret.
+        SearchBox.AddHandler(KeyDownEvent, OnSearchBoxKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>Opens go to file, go to symbol or find in files, for their shortcuts and the search button.</summary>
+    public void StartSearch(SearchKind kind)
+    {
+        if (_vm is null) return;
+        _vm.StartSearch(kind);
+        // The box shows once the list is laid out.
+        Dispatcher.UIThread.Post(() => SearchBox.Focus(), DispatcherPriority.Background);
+    }
+
+    private void OnSearchMenu(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: SearchKind kind }) StartSearch(kind);
+    }
+
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null) return;
+        var items = _vm.NavResults;
+        var at = _vm.SelectedNavItem is { } selected ? items.IndexOf(selected) : -1;
+        switch (e.Key)
+        {
+            case Key.Down or Key.Up when items.Count > 0:
+                at = Math.Clamp(at + (e.Key == Key.Down ? 1 : -1), 0, items.Count - 1);
+                _vm.SelectedNavItem = items[at];
+                NavList.ScrollIntoView(at);
+                break;
+            case Key.Enter when _vm.SelectedNavItem is { } item:
+                _vm.OpenCommand.Execute(item);
+                break;
+            case Key.Escape:
+                _vm.CloseNavCommand.Execute(null);
+                Editor.Focus();
+                break;
+            default:
+                return;
+        }
+        e.Handled = true;
     }
 
     /// <summary>Looks up the name at the caret, for the navigation shortcuts and the editor's context menu.</summary>
@@ -309,7 +350,8 @@ public partial class FolderTabView : UserControl
         if (e.PropertyName == nameof(FolderTabViewModel.PreviewSyntax)) Preview.TextArea.TextView.Redraw();
         if (e.PropertyName == nameof(FolderTabViewModel.PreviewItem)) ShowPreviewItem();
         // The results list takes the keys while it is open.
-        if (e.PropertyName == nameof(FolderTabViewModel.IsNavOpen) && _vm?.IsNavOpen == true)
+        // A search's query box keeps them instead (StartSearch focuses it).
+        if (e.PropertyName == nameof(FolderTabViewModel.IsNavOpen) && _vm is { IsNavOpen: true, IsSearching: false })
             Dispatcher.UIThread.Post(() => NavList.Focus(), DispatcherPriority.Background);
         // A newly opened file fades in, to show the content was replaced.
         if (e.PropertyName is nameof(FolderTabViewModel.FileText) or nameof(FolderTabViewModel.Image)) Motion.FadeIn(FileArea);

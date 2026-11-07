@@ -71,6 +71,19 @@
             <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Path}" />
           </StackPanel>
           <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+            <Button Classes="ghost" Padding="5" ToolTip.Tip="Search the folder">
+              <LucideIcon Kind="Search" Size="14" />
+              <Button.Flyout>
+                <MenuFlyout>
+                  <MenuItem Header="Go to File…" Tag="{x:Static vm:SearchKind.Files}" Click="OnSearchMenu"
+                            InputGesture="{Binding Keys[QuickOpen], Source={x:Static svc:ShortcutService.Instance}}" />
+                  <MenuItem Header="Go to Symbol…" Tag="{x:Static vm:SearchKind.Symbols}" Click="OnSearchMenu"
+                            InputGesture="{Binding Keys[GoToSymbol], Source={x:Static svc:ShortcutService.Instance}}" />
+                  <MenuItem Header="Find in Files…" Tag="{x:Static vm:SearchKind.Text}" Click="OnSearchMenu"
+                            InputGesture="{Binding Keys[FindInFiles], Source={x:Static svc:ShortcutService.Instance}}" />
+                </MenuFlyout>
+              </Button.Flyout>
+            </Button>
             <ToggleButton Classes="ghost" Padding="5" IsChecked="{Binding Terminal.IsVisible, Mode=OneWay}"
                           Command="{Binding ToggleTerminalCommand}" ToolTip.Tip="Toggle terminal">
               <LucideIcon Kind="Terminal" />
@@ -183,13 +196,18 @@
           </ae:TextEditor.ContextFlyout>
         </ae:TextEditor>
 
-        <!-- Lookup results: definitions, references or implementations. Picking one previews it on the left;
-             a double-click or Enter jumps there, Esc closes. -->
+        <!-- Lookup results: definitions, references or implementations; or a search's (go to file, go to symbol,
+             find in files), with a query box above. Picking one previews it on the left; a double-click or Enter
+             jumps there, Esc closes. -->
         <Border Grid.Row="1" Classes="peek" IsVisible="{Binding IsNavOpen}" VerticalAlignment="Top" Margin="24,8,24,0" Height="340">
           <Grid RowDefinitions="Auto,*">
-            <Grid ColumnDefinitions="*,Auto" Margin="12,6,4,6">
-              <TextBlock Classes="small" FontWeight="SemiBold" Text="{Binding NavTitle}" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding CloseNavCommand}" ToolTip.Tip="Close (Esc)">
+            <Grid ColumnDefinitions="*,Auto,Auto" Margin="12,6,4,6">
+              <TextBlock Classes="small" FontWeight="SemiBold" Text="{Binding NavTitle}" VerticalAlignment="Center" IsVisible="{Binding !IsSearching}" />
+              <TextBox x:Name="SearchBox" Text="{Binding SearchQuery}" PlaceholderText="{Binding SearchPlaceholder}"
+                       IsVisible="{Binding IsSearching}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding NavTitle}" VerticalAlignment="Center" Margin="12,0,4,0"
+                         IsVisible="{Binding IsSearching}" />
+              <Button Grid.Column="2" Classes="ghost" Padding="4" Command="{Binding CloseNavCommand}" ToolTip.Tip="Close (Esc)">
                 <LucideIcon Kind="X" Size="13" />
               </Button>
             </Grid>
@@ -207,7 +225,8 @@
                           <TextBlock Classes="mono small muted" Text="{Binding Location}" TextTrimming="CharacterEllipsis" />
                           <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding Detail}" Margin="12,0,0,0" />
                         </Grid>
-                        <TextBlock Classes="mono small" Text="{Binding LineText}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="mono small" Text="{Binding LineText}" TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding LineText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                       </StackPanel>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
