@@ -188,14 +188,17 @@ public partial class RepoTabView : UserControl
     private void OnCommitPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is not RepoTabViewModel vm) return;
-        if (!e.KeyModifiers.HasFlag(KeyModifiers.Control) || !e.GetCurrentPoint(CommitList).Properties.IsLeftButtonPressed) return;
+        // Ctrl+click compares two commits; Shift+click selects the commits between, to cherry-pick or revert together.
+        var shift = e.KeyModifiers.HasFlag(KeyModifiers.Shift);
+        if (!(e.KeyModifiers.HasFlag(KeyModifiers.Control) || shift) || !e.GetCurrentPoint(CommitList).Properties.IsLeftButtonPressed) return;
         var row = (e.Source as Visual)?.GetSelfAndVisualAncestors()
             .OfType<Control>()
             .Select(c => c.DataContext)
             .OfType<CommitRowViewModel>()
             .FirstOrDefault();
         if (row is null) return;
-        vm.SetCompare(row);
+        if (shift) vm.SelectRange(row);
+        else vm.SetCompare(row);
         e.Handled = true;
     }
 }

@@ -388,6 +388,28 @@ public sealed class GitRepository(string path)
         return GitRunner.RunAsync(Path, args, ct);
     }
 
+    /// <summary>
+    /// Applies several commits (none of them a merge) in the order given, oldest first. git would otherwise sort them
+    /// by commit date. Stopping on a conflict leaves the rest to <c>cherry-pick --continue</c>.
+    /// </summary>
+    public Task CherryPickAsync(IReadOnlyList<string> hashes, bool recordOrigin, bool noCommit, CancellationToken ct = default)
+    {
+        var args = new List<string> { "cherry-pick", "--no-walk=unsorted" };
+        if (recordOrigin) args.Add("-x");
+        if (noCommit) args.Add("--no-commit");
+        args.AddRange(hashes);
+        return GitRunner.RunAsync(Path, args, ct);
+    }
+
+    /// <summary>Undoes several commits (none of them a merge) with a new commit each, in the order given, newest first.</summary>
+    public Task RevertAsync(IReadOnlyList<string> hashes, bool noCommit, CancellationToken ct = default)
+    {
+        var args = new List<string> { "revert", "--no-edit", "--no-walk=unsorted" };
+        if (noCommit) args.Add("--no-commit");
+        args.AddRange(hashes);
+        return GitRunner.RunAsync(Path, args, ct);
+    }
+
     /// <summary>Undoes a commit with a new commit. A merge commit is undone relative to its first parent.</summary>
     public Task RevertAsync(string hash, bool isMerge, bool noCommit, CancellationToken ct = default)
     {

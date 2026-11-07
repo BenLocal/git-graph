@@ -21,7 +21,7 @@
       <MenuItem Header="Copy stash name" Command="{Binding CopyStashNameCommand}" IsVisible="{Binding IsStash}" />
       <Separator IsVisible="{Binding !IsCommit}" />
       <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
-                ToolTip.Tip="Or Ctrl+click a second commit" />
+                ToolTip.Tip="Or Ctrl+click a second commit. Shift+click selects the commits in between, to cherry-pick or revert them together" />
       <Separator IsVisible="{Binding !IsStash}" />
       <MenuItem Header="Add worktree here…" Command="{Binding AddWorktreeCommand}" IsVisible="{Binding !IsStash}" />
       <MenuItem Header="Create branch here…" Command="{Binding CreateBranchCommand}" IsVisible="{Binding IsCommit}" />
@@ -30,6 +30,8 @@
       <Separator IsVisible="{Binding CanApply}" />
       <MenuItem Header="Merge into current branch…" Command="{Binding MergeCommand}" IsVisible="{Binding CanApply}" />
       <MenuItem Header="Cherry-pick onto current branch…" Command="{Binding CherryPickCommand}" IsVisible="{Binding CanApply}" />
+      <MenuItem Header="{Binding CherryPickRangeHeader}" Command="{Binding CherryPickRangeCommand}" IsVisible="{Binding CanApplyRange}"
+                ToolTip.Tip="The commits selected with Shift+click, oldest first" />
       <MenuItem Header="Rebase current branch onto this commit…" Command="{Binding RebaseCommand}" IsVisible="{Binding CanApply}" />
       <MenuItem Header="Interactive rebase from here…" Command="{Binding InteractiveRebaseCommand}" IsVisible="{Binding CanApply}"
                 ToolTip.Tip="Reorder, reword, squash, fix up or drop the commits after this one" />
@@ -38,6 +40,8 @@
       <Separator IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Revert this commit…" Command="{Binding RevertCommand}" IsVisible="{Binding IsCommit}"
                 ToolTip.Tip="Undo its changes with a new commit" />
+      <MenuItem Header="{Binding RevertRangeHeader}" Command="{Binding RevertRangeCommand}" IsVisible="{Binding CanApplyRange}"
+                ToolTip.Tip="The commits selected with Shift+click, newest first, each with a new commit" />
       <MenuItem Header="Reset current branch to here" IsVisible="{Binding CanApply}">
         <MenuItem Header="Soft: keep the changes staged…" Command="{Binding ResetCommand}" CommandParameter="Soft" />
         <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding ResetCommand}" CommandParameter="Mixed" />
@@ -239,7 +243,7 @@
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="vm:CommitRowViewModel">
             <Grid Classes="commit" Classes.uncommitted="{Binding IsUncommitted}" Classes.stash="{Binding IsStash}" Classes.match="{Binding IsMatch}"
-                  Classes.compare="{Binding IsCompareTarget}" Classes.dimmed="{Binding IsDimmed}"
+                  Classes.compare="{Binding IsCompareTarget}" Classes.inrange="{Binding IsInRange}" Classes.dimmed="{Binding IsDimmed}"
                   ColumnDefinitions="Auto,*,140,150,84" Height="{DynamicResource RowHeight}" ContextFlyout="{StaticResource CommitMenu}">
 
               <ctl:GraphCell Row="{Binding Graph}" IsHead="{Binding IsHead}"

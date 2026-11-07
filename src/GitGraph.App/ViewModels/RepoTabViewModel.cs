@@ -252,6 +252,7 @@ public partial class RepoTabViewModel : TabViewModel
         // While the rows are replaced, the list drops its selection for a moment; showing that would blank the details.
         if (_rebuilding) return;
         if (CompareRow != null && value == CompareRow) ClearCompare();
+        ClearRange();
         ShowDetails();
     }
 
@@ -448,6 +449,10 @@ public partial class RepoTabViewModel : TabViewModel
 
         var selectedHash = SelectedRow?.Hash;
         var compareHash = CompareRow?.Hash;
+        // A range keeps the commits still listed; it would be lost on every automatic refresh otherwise.
+        var rangeHashes = _range.Select(r => r.Hash).ToHashSet(StringComparer.Ordinal);
+        _range = rows.Where(r => rangeHashes.Contains(r.Hash)).ToList();
+        foreach (var r in _range) r.IsInRange = true;
         // At least wide enough for the "Graph" column heading.
         GraphWidth = Math.Max(GraphCell.WidthFor(Math.Min(maxLanes, 24)), 52);
         _rebuilding = true;
@@ -516,6 +521,39 @@ public partial class RepoTabViewModel : TabViewModel
         if (row.IsUncommitted) Details.ShowUncommitted(row.Commit.Parents.Count > 0 ? "HEAD" : GitRepository.EmptyTree, fromRefresh ? _untracked : null);
         else if (row.Stash is { } stash) Details.ShowStash(stash);
         else Details.ShowCommit(row.Commit);
+    }
+
+    // The commits Shift+click selected, top to bottom (newest first).
+    private List<CommitRowViewModel> _range = [];
+
+    public int RangeCount => _range.Count;
+
+    /// <summary>The selected commits, newest first.</summary>
+    public IReadOnlyList<CommitRowViewModel> Range => _range;
+
+    /// <summary>
+    /// Shift+click: selects the commits from the selected row to <paramref name="row"/>, for cherry-picking or reverting
+    /// them together. The uncommitted changes and stashes in between are left out. Clicking a row ends it.
+    /// </summary>
+    public void SelectRange(CommitRowViewModel row)
+    {
+        if (SelectedRow is null || SelectedRow == row)
+        {
+            SelectedRow = row;
+            return;
+        }
+        ClearCompare();
+        ClearRange();
+        var (from, to) = (Rows.IndexOf(SelectedRow), Rows.IndexOf(row));
+        if (from < 0 || to < 0) return;
+        _range = Rows.Skip(Math.Min(from, to)).Take(Math.Abs(from - to) + 1).Where(r => r.IsCommit).ToList();
+        foreach (var r in _range) r.IsInRange = true;
+    }
+
+    public void ClearRange()
+    {
+        foreach (var r in _range) r.IsInRange = false;
+        _range = [];
     }
 
     public void SetCompare(CommitRowViewModel row)

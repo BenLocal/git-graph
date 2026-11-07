@@ -49,6 +49,17 @@ public partial class CommitRowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isCompareTarget;
 
+    /// <summary>One of the commits Shift+click selected together, for cherry-picking or reverting them at once.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanApplyRange), nameof(CherryPickRangeHeader), nameof(RevertRangeHeader))]
+    private bool _isInRange;
+
+    /// <summary>The range's menu items show on its rows while it holds more than one commit.</summary>
+    public bool CanApplyRange => IsInRange && _owner.RangeCount > 1;
+
+    public string CherryPickRangeHeader => $"Cherry-pick {_owner.RangeCount} selected commits onto current branch…";
+    public string RevertRangeHeader => $"Revert {_owner.RangeCount} selected commits…";
+
     /// <summary>Review comments on the commit's diff.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasComments), nameof(CommentTip))]
@@ -90,6 +101,12 @@ public partial class CommitRowViewModel : ObservableObject
 
     [RelayCommand]
     private Task Revert() => _owner.RevertAsync(this);
+
+    [RelayCommand]
+    private Task CherryPickRange() => _owner.CherryPickRangeAsync();
+
+    [RelayCommand]
+    private Task RevertRange() => _owner.RevertRangeAsync();
 
     /// <param name="mode">Soft, Mixed or Hard.</param>
     [RelayCommand]

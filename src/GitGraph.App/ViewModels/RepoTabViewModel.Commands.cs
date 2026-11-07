@@ -58,6 +58,48 @@ public partial class RepoTabViewModel
         await RunOperationAsync(() => _repo.RevertAsync(row.Hash, row.Commit.IsMerge, res[0] == "true"));
     }
 
+    /// <summary>Cherry-picks the Shift+click selected commits, oldest first, as one operation that can stop on a conflict.</summary>
+    public async Task CherryPickRangeAsync()
+    {
+        if (RangeCommits("cherry-pick") is not { } commits) return;
+        var res = await Host.Dialogs.PromptAsync("Cherry-pick",
+            $"Apply {commits.Count} commits onto {CurrentLabel}, oldest first, from {Describe(commits[^1])} to {Describe(commits[0])}.",
+            [
+                new PromptField("Add \"cherry picked from commit …\" to the messages", "false", IsCheckbox: true),
+                new PromptField("Apply the changes without committing", "false", IsCheckbox: true),
+            ],
+            "Cherry-pick");
+        if (res is null) return;
+        commits.Reverse();
+        await RunOperationAsync(() => _repo.CherryPickAsync(commits.Select(c => c.Hash).ToList(), res[0] == "true", res[1] == "true"));
+    }
+
+    /// <summary>Reverts the Shift+click selected commits, newest first, each with a new commit.</summary>
+    public async Task RevertRangeAsync()
+    {
+        if (RangeCommits("revert") is not { } commits) return;
+        var res = await Host.Dialogs.PromptAsync("Revert",
+            $"Undo {commits.Count} commits on {CurrentLabel}, newest first, with a new commit each: from {Describe(commits[0])} to {Describe(commits[^1])}.",
+            [new PromptField("Undo the changes without committing", "false", IsCheckbox: true)], "Revert");
+        if (res is null) return;
+        await RunOperationAsync(() => _repo.RevertAsync(commits.Select(c => c.Hash).ToList(), res[0] == "true"));
+    }
+
+    /// <summary>The selected commits, newest first; null (with the reason shown) when they can't go together.</summary>
+    private List<CommitRowViewModel>? RangeCommits(string verb)
+    {
+        var commits = Range.ToList();
+        if (commits.Count == 0) return null;
+        if (commits.FirstOrDefault(c => c.Commit.IsMerge) is { } merge)
+        {
+            Host.ReportError($"{merge.ShortHash} \"{merge.Subject}\" is a merge. Leave merges out of the selection and {verb} them on their own.");
+            return null;
+        }
+        return commits;
+    }
+
+    private static string Describe(CommitRowViewModel row) => $"{row.ShortHash} \"{row.Subject}\"";
+
     public Task ResetAsync(CommitRowViewModel row, ResetMode mode) => ResetToAsync(row.Hash, $"{row.ShortHash} \"{row.Subject}\"", mode);
 
     /// <param name="label">The target as the confirmation names it: short hash and subject.</param>

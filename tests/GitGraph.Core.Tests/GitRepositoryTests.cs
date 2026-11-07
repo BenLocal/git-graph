@@ -141,6 +141,31 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Several_commits_are_cherry_picked_and_reverted_in_the_order_given()
+    {
+        Git("checkout", "-q", "-b", "topic");
+        var hashes = new List<string>();
+        foreach (var n in new[] { "x", "y", "z" })
+        {
+            Commit($"{n}.txt", $"{n}\n", $"add {n}");
+            hashes.Add((await GitRunner.RunAsync(_repo, ["rev-parse", "HEAD"])).Trim());
+        }
+        Git("checkout", "-q", "main");
+        var repo = new GitRepository(_repo);
+        async Task<string[]> Subjects(int n) => (await GitRunner.RunAsync(_repo, ["log", $"-{n}", "--format=%s"])).Trim().Split('\n');
+
+        // Each touches its own file, so any order applies; the given one must be kept.
+        await repo.CherryPickAsync([hashes[2], hashes[0], hashes[1]], recordOrigin: true, noCommit: false);
+        Assert.Equal(["add y", "add x", "add z"], await Subjects(3));
+        Assert.Contains($"(cherry picked from commit {hashes[1]})", await repo.GetLastCommitMessageAsync());
+
+        var picked = (await GitRunner.RunAsync(_repo, ["rev-list", "-3", "HEAD"])).Trim().Split('\n');
+        await repo.RevertAsync(picked, noCommit: false);
+        Assert.Equal(["Revert \"add z\"", "Revert \"add x\"", "Revert \"add y\""], await Subjects(3));
+        Assert.False(File.Exists(Path.Combine(_repo, "x.txt")));
+    }
+
+    [Fact]
     public async Task Cherry_pick_conflict_is_detected_and_aborted()
     {
         // Branch from "first" and change the same line that "second" changed on main.

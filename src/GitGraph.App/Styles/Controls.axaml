@@ -578,6 +578,10 @@
   <Style Selector="Grid.commit.compare">
     <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
   </Style>
+  <!-- Commits selected together with Shift+click -->
+  <Style Selector="Grid.commit.inrange">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+  </Style>
 
   <!--
     Ref labels: pills like GitHub's labels, filled with the commit's lane colour, dark text and icon on it (a branch, tag or cloud icon
