@@ -29,6 +29,10 @@
         <TextBlock Classes="lineno" Text="{Binding OldNo}" />
         <TextBlock Grid.Column="1" Classes="lineno" Text="{Binding NewNo}" />
         <TextBlock Grid.Column="2" Classes="sign" Text="{Binding Sign}" />
+        <!-- On an added or deleted line of an uncommitted file: click the line numbers to pick the line, so its hunk's
+             buttons move only the picked lines. -->
+        <ToggleButton Grid.ColumnSpan="2" Classes="ghost linepick" IsChecked="{Binding IsPicked}" IsVisible="{Binding CanPick}"
+                      ToolTip.Tip="Pick this line, to stage, unstage or discard only the picked lines of the change" />
         <!-- On a commit's diff: comment on this line. It takes the place of the sign while the line is hovered. -->
         <Button Grid.Column="2" Classes="ghost commentadd" Command="{Binding Spot.AddCommand, FallbackValue={x:Null}}"
                 IsVisible="{Binding Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">
@@ -36,16 +40,18 @@
         </Button>
         <ctl:DiffText Grid.Column="3" Line="{Binding Text}" Segments="{Binding Segments}" Syntax="{Binding Syntax}" IsAdded="{Binding IsAdded}"
                       Classes="code" Margin="0,0,12,0" />
+        <TextBlock Grid.Column="3" Classes="small muted" Text="{Binding Hunk.PickedNote, FallbackValue={x:Null}}" HorizontalAlignment="Right"
+                   VerticalAlignment="Center" Margin="0,0,12,0" IsVisible="{Binding Hunk.PickedNote, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}" />
         <!-- On the hunk headers of an uncommitted file: move this hunk alone. They sit where line numbers go, so they stay
              in view when long lines scroll sideways. -->
         <StackPanel Orientation="Horizontal" Spacing="2" Grid.Column="0" Grid.ColumnSpan="3" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,4,0"
                     IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
           <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
-                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change, or the lines picked in it, from the working tree" />
           <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
-                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change, or only the lines picked in it" />
           <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
-                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+                  CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change, or only the lines picked in it" />
         </StackPanel>
       </Grid>
       <ItemsControl ItemsSource="{Binding Comments}" ItemTemplate="{StaticResource CommentTemplate}" IsVisible="{Binding HasComments}"
@@ -63,15 +69,17 @@
         <Border Classes="hunk" IsVisible="{Binding IsHunk}" Padding="12,0">
           <Grid Classes="diffline" ColumnDefinitions="Auto,*">
             <TextBlock Text="{Binding HunkText}" />
+            <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding Hunk.PickedNote, FallbackValue={x:Null}}" HorizontalAlignment="Right"
+                       VerticalAlignment="Center" IsVisible="{Binding Hunk.PickedNote, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}" />
             <!-- Right after the header, so they stay in view when long lines scroll sideways -->
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="12,0,0,0"
                         IsVisible="{Binding Hunk, Converter={x:Static ObjectConverters.IsNotNull}}">
               <Button Classes="ghost hunkaction" Content="Discard" Command="{Binding Hunk.Owner.DiscardHunkCommand, FallbackValue={x:Null}}"
-                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change from the working tree" />
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanDiscard, FallbackValue=False}" ToolTip.Tip="Discard this change, or the lines picked in it, from the working tree" />
               <Button Classes="ghost hunkaction" Content="Stage" Command="{Binding Hunk.Owner.StageHunkCommand, FallbackValue={x:Null}}"
-                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change" />
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanStage, FallbackValue=False}" ToolTip.Tip="Stage only this change, or only the lines picked in it" />
               <Button Classes="ghost hunkaction" Content="Unstage" Command="{Binding Hunk.Owner.UnstageHunkCommand, FallbackValue={x:Null}}"
-                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change" />
+                      CommandParameter="{Binding Hunk}" IsVisible="{Binding Hunk.CanUnstage, FallbackValue=False}" ToolTip.Tip="Unstage only this change, or only the lines picked in it" />
             </StackPanel>
           </Grid>
         </Border>

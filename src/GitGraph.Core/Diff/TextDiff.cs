@@ -113,7 +113,14 @@ public static class TextDiff
     /// texts), for <c>git apply --recount</c>. Lines come from the original texts rather than the displayed ones,
     /// so tabs and line endings survive.
     /// </summary>
-    public static string HunkPatch(string path, string oldText, string newText, FileDiff diff, int hunk)
+    /// <param name="picked">
+    /// Only these added and deleted lines (indexes into <see cref="FileDiff.Lines"/>), as <c>git add -p</c>'s edit
+    /// mode does; null for all of the hunk. The others stay as they are where the patch applies: applied forwards
+    /// (staging) that is the old side, so an unpicked deletion becomes context and an unpicked addition is left out;
+    /// applied in <paramref name="reverse"/> (unstaging, discarding) it is the new side, the other way round.
+    /// </param>
+    public static string HunkPatch(string path, string oldText, string newText, FileDiff diff, int hunk,
+        IReadOnlySet<int>? picked = null, bool reverse = false)
     {
         var (oldLines, oldEndsWithNewline) = RawLines(oldText);
         var (newLines, newEndsWithNewline) = RawLines(newText);
@@ -126,36 +133,61 @@ public static class TextDiff
             if (noNewline) sb.Append("\\ No newline at end of file\n");
         }
 
-        var index = -1;
-        foreach (var line in diff.Lines)
+        // The last line of a file without a final newline needs git's marker after it.
+        bool OldLast(DiffLine l) => l.OldLine == oldLines.Length && !oldEndsWithNewline;
+        bool NewLast(DiffLine l) => l.NewLine == newLines.Length && !newEndsWithNewline;
+        bool IsPicked(int at) => picked?.Contains(at) != false;
+
+        // A run of deleted and added lines, written out at the next context line or the end of the hunk. The n-th
+        // deletion and the n-th addition replace each other, so they go out together: a picked replacement then
+        // lands where its old line was, not after old lines kept as context.
+        var deleted = new List<int>();
+        var added = new List<int>();
+        void Flush()
         {
+            for (var k = 0; k < Math.Max(deleted.Count, added.Count); k++)
+            {
+                if (k < deleted.Count && diff.Lines[deleted[k]] is var d && (IsPicked(deleted[k]) || !reverse))
+                    Emit(IsPicked(deleted[k]) ? '-' : ' ', oldLines[d.OldLine!.Value - 1], OldLast(d));
+                if (k < added.Count && diff.Lines[added[k]] is var a && (IsPicked(added[k]) || reverse))
+                    Emit(IsPicked(added[k]) ? '+' : ' ', newLines[a.NewLine!.Value - 1], NewLast(a));
+            }
+            deleted.Clear();
+            added.Clear();
+        }
+
+        var index = -1;
+        for (var at = 0; at < diff.Lines.Count; at++)
+        {
+            var line = diff.Lines[at];
             if (line.Kind == DiffLineKind.Hunk)
             {
+                if (index == hunk) Flush();
                 if (++index == hunk) sb.Append(line.Text).Append('\n');
                 continue;
             }
             if (index != hunk) continue;
-            // The last line of a file without a final newline needs git's marker after it.
-            var oldLast = line.OldLine == oldLines.Length && !oldEndsWithNewline;
-            var newLast = line.NewLine == newLines.Length && !newEndsWithNewline;
             switch (line.Kind)
             {
-                case DiffLineKind.Context when oldLast == newLast:
-                    Emit(' ', oldLines[line.OldLine!.Value - 1], oldLast);
+                case DiffLineKind.Deleted:
+                    deleted.Add(at);
+                    break;
+                case DiffLineKind.Added:
+                    added.Add(at);
+                    break;
+                case DiffLineKind.Context when OldLast(line) == NewLast(line):
+                    Flush();
+                    Emit(' ', oldLines[line.OldLine!.Value - 1], OldLast(line));
                     break;
                 case DiffLineKind.Context:
                     // Same text, but only one side ends with a newline: to git that is a changed line.
-                    Emit('-', oldLines[line.OldLine!.Value - 1], oldLast);
-                    Emit('+', newLines[line.NewLine!.Value - 1], newLast);
-                    break;
-                case DiffLineKind.Deleted:
-                    Emit('-', oldLines[line.OldLine!.Value - 1], oldLast);
-                    break;
-                case DiffLineKind.Added:
-                    Emit('+', newLines[line.NewLine!.Value - 1], newLast);
+                    Flush();
+                    Emit('-', oldLines[line.OldLine!.Value - 1], OldLast(line));
+                    Emit('+', newLines[line.NewLine!.Value - 1], NewLast(line));
                     break;
             }
         }
+        Flush();
         return sb.ToString();
     }
 

@@ -13,12 +13,35 @@ public sealed record LoadedDiff(FileDiff Diff, DiffSyntax Syntax, string OldText
 /// <summary>Where a file in the changes list comes from: a commit (or comparison), or one of the staging groups.</summary>
 public enum FileGroup { Commit, Conflicted, Staged, Unstaged }
 
-/// <summary>The stage / unstage / discard buttons on a hunk header of an uncommitted file's diff.</summary>
-public sealed record HunkActions(DetailsViewModel Owner, FileChangeViewModel File, int Index)
+/// <summary>
+/// The stage / unstage / discard buttons on a hunk header of an uncommitted file's diff. They move the whole hunk, or
+/// only the lines of it picked in the line-number gutter.
+/// </summary>
+public sealed partial class HunkActions(DetailsViewModel owner, FileChangeViewModel file, int index) : ObservableObject
 {
+    public DetailsViewModel Owner { get; } = owner;
+    public FileChangeViewModel File { get; } = file;
+    public int Index { get; } = index;
     public bool CanStage => File.Group == FileGroup.Unstaged;
     public bool CanUnstage => File.Group == FileGroup.Staged;
     public bool CanDiscard => File.Group == FileGroup.Unstaged;
+
+    /// <summary>The picked added and deleted lines, as indexes into the diff's lines; empty for the whole hunk.</summary>
+    public HashSet<int> Picked { get; } = [];
+
+    /// <summary>"2 lines picked" on the hunk header while lines are picked; null otherwise.</summary>
+    public string? PickedNote => Picked.Count switch
+    {
+        0 => null,
+        1 => "1 line picked",
+        var n => $"{n} lines picked",
+    };
+
+    internal void SetPicked(int line, bool picked)
+    {
+        if (picked ? !Picked.Add(line) : !Picked.Remove(line)) return;
+        OnPropertyChanged(nameof(PickedNote));
+    }
 }
 
 /// <summary>A heading in the uncommitted changes list, with buttons for all of its files.</summary>
@@ -76,7 +99,11 @@ public sealed partial class FileChangeViewModel(FileChange change, DetailsViewMo
     }) ?? [];
 }
 
-public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActions? hunk = null) : ObservableObject
+/// <param name="hunk">The actions of the hunk this line heads, on a hunk header.</param>
+/// <param name="pickIn">The actions of the hunk this added or deleted line belongs to, which it can be picked for.</param>
+/// <param name="index">The line's index in the diff, for <paramref name="pickIn"/>.</param>
+public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, HunkActions? hunk = null, HunkActions? pickIn = null, int index = -1)
+    : ObservableObject
 {
     public string OldNo { get; } = line.OldLine?.ToString() ?? "";
     public string NewNo { get; } = line.NewLine?.ToString() ?? "";
@@ -94,6 +121,14 @@ public sealed partial class DiffLineViewModel(DiffLine line, DiffSyntax syntax, 
     public bool IsHunk { get; } = line.Kind == DiffLineKind.Hunk;
     /// <summary>Set on the hunk headers of an uncommitted file that can be staged a hunk at a time.</summary>
     public HunkActions? Hunk { get; } = hunk;
+
+    /// <summary>An added or deleted line of such a hunk can be picked, so the hunk's buttons move only the picked lines.</summary>
+    public bool CanPick => pickIn != null;
+
+    [ObservableProperty]
+    private bool _isPicked;
+
+    partial void OnIsPickedChanged(bool value) => pickIn?.SetPicked(index, value);
 
     /// <summary>Where a comment on this line goes; null where lines can't take comments (not a commit's diff).</summary>
     [ObservableProperty]

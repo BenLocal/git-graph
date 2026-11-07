@@ -91,6 +91,31 @@ public sealed class DetailsViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task Picked_lines_are_all_a_hunk_button_moves()
+    {
+        _repo.Write("a.txt", "ONE\nTWO\n");
+        _vm.ShowUncommitted("HEAD");
+        await Settled();
+        var hunk = _vm.DiffLines.Single(l => l.IsHunk).Hunk!;
+        Assert.Null(hunk.PickedNote);
+        Assert.False(_vm.DiffLines.Single(l => l.IsHunk).CanPick);
+        Assert.All(_vm.DiffLines.Where(l => !l.IsHunk), l => Assert.True(l.CanPick));
+
+        // Replace "one" with "ONE" only.
+        foreach (var line in _vm.DiffLines.Where(l => l.Text is "one" or "ONE")) line.IsPicked = true;
+        Assert.Equal("2 lines picked", hunk.PickedNote);
+        // The split layout's header is the same hunk, so it moves the same lines.
+        Assert.Same(hunk, _vm.SplitRows.Single(r => r.IsHunk).Hunk);
+
+        await _vm.StageHunkCommand.ExecuteAsync(hunk);
+        await Settled();
+
+        Assert.Empty(_host.Errors);
+        Assert.Equal("ONE\ntwo\n", _repo.Git("show", ":a.txt"));
+        Assert.Equal("ONE\nTWO\n", File.ReadAllText(Path.Combine(_repo.Path, "a.txt")));
+    }
+
+    [Fact]
     public async Task Committing_with_nothing_staged_asks_then_stages_everything()
     {
         _repo.Write("b.txt", "bee, changed\n");

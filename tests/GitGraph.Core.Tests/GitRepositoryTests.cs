@@ -300,6 +300,43 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task Picked_lines_of_a_hunk_can_be_staged_unstaged_or_discarded()
+    {
+        var repo = new GitRepository(_repo);
+        File.WriteAllText(Path.Combine(_repo, "f.txt"), "a\r\n\tb\r\nc\r\nd\r\n");
+        Git("add", "f.txt");
+        Git("commit", "-q", "-m", "four lines");
+        // One hunk: b and c replaced, and a line added after d.
+        File.WriteAllText(Path.Combine(_repo, "f.txt"), "a\r\n\tB\r\nC\r\nd\r\ne\r\n");
+
+        async Task<(string Old, string New, FileDiff Diff)> Versions(DiffTarget target)
+        {
+            var (o, n) = await repo.GetFileVersionsAsync(target, new FileChange(ChangeKind.Modified, "f.txt", null, 1, 1));
+            return (o, n, TextDiff.Build(o, n));
+        }
+        var unstaged = new DiffTarget(GitRepository.Index, null);
+        var staged = new DiffTarget("HEAD", GitRepository.Index);
+        HashSet<int> Pick(FileDiff diff, params string[] texts) =>
+            diff.Lines.Select((l, i) => (l, i)).Where(x => x.l.Kind != DiffLineKind.Context && texts.Contains(x.l.Text.Trim())).Select(x => x.i).ToHashSet();
+
+        // Stage the change of b alone (its deletion and its addition) and the new line e.
+        var (oldText, newText, diff) = await Versions(unstaged);
+        Assert.Single(diff.Lines, l => l.Kind == DiffLineKind.Hunk);
+        await repo.ApplyPatchAsync(TextDiff.HunkPatch("f.txt", oldText, newText, diff, 0, Pick(diff, "b", "B", "e")), cached: true, reverse: false);
+        Assert.Equal("a\r\n\tB\r\nc\r\nd\r\ne\r\n", await GitRunner.RunAsync(_repo, ["show", ":f.txt"]));
+
+        // Unstage e again: the staged B stays.
+        (oldText, newText, diff) = await Versions(staged);
+        await repo.ApplyPatchAsync(TextDiff.HunkPatch("f.txt", oldText, newText, diff, 0, Pick(diff, "e"), reverse: true), cached: true, reverse: true);
+        Assert.Equal("a\r\n\tB\r\nc\r\nd\r\n", await GitRunner.RunAsync(_repo, ["show", ":f.txt"]));
+
+        // Discard the change of c from the working tree, keeping e there.
+        (oldText, newText, diff) = await Versions(unstaged);
+        await repo.ApplyPatchAsync(TextDiff.HunkPatch("f.txt", oldText, newText, diff, 0, Pick(diff, "c", "C"), reverse: true), cached: false, reverse: true);
+        Assert.Equal("a\r\n\tB\r\nc\r\nd\r\ne\r\n", File.ReadAllText(Path.Combine(_repo, "f.txt")));
+    }
+
+    [Fact]
     public async Task Stashes_are_listed_applied_dropped_and_branched()
     {
         var repo = new GitRepository(_repo);

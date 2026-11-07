@@ -90,10 +90,20 @@ public partial class DetailsViewModel
                 return;
             }
             SetImages(null, null);
+            // One set of actions per hunk, shared by both layouts, so lines picked in one are moved from the other too.
+            var hunks = new List<HunkActions?>();
+            DiffLines = diff.Lines.Select((l, i) =>
+            {
+                if (l.Kind == DiffLineKind.Hunk)
+                {
+                    hunks.Add(HunkActionsFor(fileVm, hunks.Count));
+                    return new DiffLineViewModel(l, syntax, hunks[^1]);
+                }
+                var pickIn = l.Kind is DiffLineKind.Added or DiffLineKind.Deleted && hunks.Count > 0 ? hunks[^1] : null;
+                return new DiffLineViewModel(l, syntax, pickIn: pickIn, index: i);
+            }).ToList();
             var hunk = -1;
-            DiffLines = diff.Lines.Select(l => new DiffLineViewModel(l, syntax, l.Kind == DiffLineKind.Hunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
-            hunk = -1;
-            SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? HunkActionsFor(fileVm, ++hunk) : null)).ToList();
+            SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? hunks[++hunk] : null)).ToList();
             ShowComments();
             DiffMessage = null;
             HasDiff = true;
@@ -289,8 +299,9 @@ public partial class DetailsViewModel
     [RelayCommand]
     private async Task DiscardHunk(HunkActions hunk)
     {
-        if (!await _host.Dialogs.ConfirmAsync("Discard change", "Discard this change from the working tree? This can't be undone.",
-                "Discard change", destructive: true))
+        var what = hunk.Picked.Count switch { 0 => "this change", 1 => "this line", var n => $"these {n} lines" };
+        if (!await _host.Dialogs.ConfirmAsync("Discard change", $"Discard {what} from the working tree? This can't be undone.",
+                hunk.Picked.Count == 0 ? "Discard change" : "Discard lines", destructive: true))
             return;
         await ApplyHunkAsync(hunk, cached: false, reverse: true);
     }
@@ -309,11 +320,15 @@ public partial class DetailsViewModel
         if ((file ?? SelectedFile) is { } f && ExternalTools.OpenInVsCode(FullPath(f.Change.Path)) is { } error) _host.ReportError(error);
     }
 
-    /// <summary>Applies one hunk of the diff on screen; the staged side's hunks come out of the index in reverse.</summary>
+    /// <summary>
+    /// Applies one hunk of the diff on screen, or its picked lines; the staged side's hunks come out of the index in
+    /// reverse.
+    /// </summary>
     private async Task ApplyHunkAsync(HunkActions hunk, bool cached, bool reverse)
     {
         if (_shown is not { } s || s.Target != hunk.File.Target || s.File != hunk.File.Change) return;
-        var patch = TextDiff.HunkPatch(s.File.Path, s.Loaded.OldText, s.Loaded.NewText, s.Loaded.Diff, hunk.Index);
+        var patch = TextDiff.HunkPatch(s.File.Path, s.Loaded.OldText, s.Loaded.NewText, s.Loaded.Diff, hunk.Index,
+            hunk.Picked.Count > 0 ? hunk.Picked : null, reverse);
         await ChangeRepoAsync(() => _repo.ApplyPatchAsync(patch, cached, reverse));
     }
 

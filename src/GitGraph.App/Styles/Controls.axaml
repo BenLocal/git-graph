@@ -734,6 +734,21 @@
   <Style Selector="Grid.diffline.hunk SelectableTextBlock">
     <Setter Property="Foreground" Value="{DynamicResource HunkFgBrush}" />
   </Style>
+  <!-- Picking lines of an uncommitted hunk: the line-number gutter is a toggle; a picked line gets a signal bar -->
+  <Style Selector="ToggleButton.linepick">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderThickness" Value="3,0,0,0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="ToggleButton.linepick:checked /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SignalBrush}" />
+  </Style>
   <!-- Review comments: an add button that shows on the hovered line, and the comments under their lines -->
   <Style Selector="Button.commentadd">
     <Setter Property="Padding" Value="0" />
