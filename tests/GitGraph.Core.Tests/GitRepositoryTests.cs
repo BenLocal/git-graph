@@ -503,12 +503,12 @@ public sealed class GitRepositoryTests : IDisposable
         Assert.True(log[0].Time > DateTimeOffset.Now.AddMinutes(-5));
     }
 
-    // Four commits on top of the merge, one file each.
+    // Four commits on top of the merge, one file each. Not A.txt: on a case-insensitive file system that is a.txt.
     private async Task<(GitRepository Repo, string Base)> FourCommitsAsync()
     {
         var repo = new GitRepository(_repo);
         var @base = (await repo.GetHeadAsync()).Hash!;
-        foreach (var n in new[] { "A", "B", "C", "D" }) Commit($"{n}.txt", $"{n}\n", n);
+        foreach (var n in new[] { "A", "B", "C", "D" }) Commit($"{n}.md", $"{n}\n", n);
         return (repo, @base);
     }
 
@@ -544,8 +544,8 @@ public sealed class GitRepositoryTests : IDisposable
         Assert.Null(await repo.GetOperationInProgressAsync());
         Assert.Equal(["D", "B, reworded", "merge feature"], Subjects(3));
         Assert.Equal("B, reworded\n\nwith a body", (await repo.GetCommitDetailAsync("HEAD~1"))!.Message.Trim());
-        Assert.False(File.Exists(Path.Combine(_repo, "A.txt")));
-        Assert.True(File.Exists(Path.Combine(_repo, "C.txt")) && File.Exists(Path.Combine(_repo, "D.txt")));
+        Assert.False(File.Exists(Path.Combine(_repo, "A.md")));
+        Assert.True(File.Exists(Path.Combine(_repo, "C.md")) && File.Exists(Path.Combine(_repo, "D.md")));
     }
 
     [Fact]
@@ -587,26 +587,26 @@ public sealed class GitRepositoryTests : IDisposable
         var (repo, _) = await FourCommitsAsync();
         var b = (await repo.GetRebaseCommitsAsync("HEAD~4"))[1].Commit;
         Assert.False(await repo.HasStagedChangesAsync());
-        File.WriteAllText(Path.Combine(_repo, "B.txt"), "B, fixed\n");
-        Git("add", "B.txt");
-        File.WriteAllText(Path.Combine(_repo, "D.txt"), "D, still editing\n");
+        File.WriteAllText(Path.Combine(_repo, "B.md"), "B, fixed\n");
+        Git("add", "B.md");
+        File.WriteAllText(Path.Combine(_repo, "D.md"), "D, still editing\n");
         Assert.True(await repo.HasStagedChangesAsync());
 
         await repo.FoldStagedIntoAsync(b.Hash);
 
         // Same four commits on top of the merge; B now holds the fix, and the unstaged edit is still there.
         Assert.Equal(["D", "C", "B", "A", "merge feature"], Subjects(5));
-        Assert.Equal("B, fixed\n", await GitRunner.RunAsync(_repo, ["show", "HEAD~2:B.txt"]));
-        Assert.Equal("D, still editing\n", File.ReadAllText(Path.Combine(_repo, "D.txt")));
+        Assert.Equal("B, fixed\n", await GitRunner.RunAsync(_repo, ["show", "HEAD~2:B.md"]));
+        Assert.Equal("D, still editing\n", File.ReadAllText(Path.Combine(_repo, "D.md")));
         Assert.False(await repo.HasStagedChangesAsync());
         Assert.Null(await repo.GetOperationInProgressAsync());
 
         // Into HEAD itself it is a plain amend.
-        File.WriteAllText(Path.Combine(_repo, "A.txt"), "A, again\n");
-        Git("add", "A.txt");
+        File.WriteAllText(Path.Combine(_repo, "A.md"), "A, again\n");
+        Git("add", "A.md");
         await repo.FoldStagedIntoAsync((await repo.GetHeadAsync()).Hash!);
         Assert.Equal(["D", "C", "B", "A"], Subjects(4));
-        Assert.Equal("A, again\n", await GitRunner.RunAsync(_repo, ["show", "HEAD:A.txt"]));
+        Assert.Equal("A, again\n", await GitRunner.RunAsync(_repo, ["show", "HEAD:A.md"]));
         // Without an upstream nothing counts as pushed.
         Assert.False(await repo.IsPushedAsync("HEAD"));
     }

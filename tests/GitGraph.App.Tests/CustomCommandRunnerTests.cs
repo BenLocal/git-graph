@@ -29,9 +29,13 @@ public sealed class CustomCommandRunnerTests
         var dir = Directory.CreateTempSubdirectory().FullName;
         try
         {
+            File.WriteAllText(Path.Combine(dir, "marker"), "");
             var ok = await CustomCommandRunner.RunAsync("pwd; echo ${subject}; echo \"$GITGRAPH_SHA\"", dir, Values);
             Assert.Equal(0, ok.ExitCode);
-            Assert.Equal([Path.GetFullPath(dir), Values["subject"], "abc123"], ok.Output.TrimEnd().Split('\n'));
+            var lines = ok.Output.TrimEnd().Split('\n');
+            // pwd prints the resolved path (/private/var/... for /var/... on macOS), so check it is the same folder, not the same string.
+            Assert.True(File.Exists(Path.Combine(lines[0], "marker")), lines[0]);
+            Assert.Equal([Values["subject"], "abc123"], lines[1..]);
 
             var failed = await CustomCommandRunner.RunAsync("echo oops >&2; exit 3", dir, Values);
             Assert.Equal((3, "oops"), (failed.ExitCode, failed.Output.Trim()));
