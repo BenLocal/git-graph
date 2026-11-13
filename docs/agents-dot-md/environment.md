@@ -13,12 +13,12 @@
 - The `origin` remote is https://github.com/BenLocal/git-graph. The default gh account on this machine is benenen, so pushing this repository uses BenLocal's token without switching the active account:
 
 ```bash
-GH_TOKEN=$(gh auth token -u BenLocal) git -c http.proxy= -c https.proxy= \
+GH_TOKEN=$(gh auth token -u BenLocal) git \
   -c credential.helper= -c credential.helper='!f(){ echo username=BenLocal; echo password=$GH_TOKEN; }; f' \
   push
 ```
 
-- The local proxy is unreliable, so the push bypasses it as shown above.
+- Try the configured proxy first (git `http.proxy` / `HTTPS_PROXY`), as above; on 2026-11-14 a direct push timed out (`Recv failure: Operation timed out`) and the proxy worked. If the proxy fails instead, retry direct by adding `-c http.proxy= -c https.proxy=` after `git`.
 
 ## Releases
 
