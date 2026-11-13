@@ -41,7 +41,13 @@ internal static class Program
 #if DEBUG
             .WithDeveloperTools()
 #endif
-            .With(new FontManagerOptions { DefaultFamilyName = "avares://GitGraph/Assets/Fonts#IBM Plex Sans" })
+            // A system family later in a FontFamily list is not used as a per-character fallback: Chinese went to
+            // fontconfig's pick, Noto Sans CJK JP, so punctuation and some characters took Japanese forms.
+            .With(new FontManagerOptions
+            {
+                DefaultFamilyName = "avares://GitGraph/Assets/Fonts#IBM Plex Sans",
+                FontFallbacks = [new FontFallback { FontFamily = new FontFamily("Noto Sans CJK SC") }],
+            })
             .LogToTrace();
     }
 }
