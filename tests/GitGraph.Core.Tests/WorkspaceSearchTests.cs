@@ -12,6 +12,8 @@ public sealed class WorkspaceSearchTests : IDisposable
     {
         Directory.CreateDirectory(_repo);
         Git("init", "-q", "-b", "main");
+        Git("config", "user.name", "Tester");
+        Git("config", "user.email", "t@example.com");
         Write("src/App/Program.cs", "class Program\n{\n    // Find ME here\n}\n");
         Write("src/App/Readme.md", "﻿find me at the start\n");
         Write("docs/notes.txt", "naïve find me\r\nnothing\r\n");
