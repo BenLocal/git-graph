@@ -29,4 +29,13 @@ public sealed class GitRunnerTests
         // Without closing the streams, every run left two read ends open until the GC finalized them.
         Assert.InRange(OpenPipes() - before, int.MinValue, 4);
     }
+
+    [Fact]
+    public async Task A_deleted_repository_fails_with_a_git_exception()
+    {
+        // Callers handle GitException; the Win32Exception from Process.Start crashed the auto-fetch timer.
+        var gone = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+        var e = await Assert.ThrowsAsync<GitException>(() => GitRunner.RunRawAsync(gone, ["status"]));
+        Assert.Contains(gone, e.Message);
+    }
 }

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
 
@@ -112,7 +113,11 @@ public static class GitRunner
         psi.ArgumentList.Add("log.showSignature=false");
         foreach (var a in args) psi.ArgumentList.Add(a);
 
-        var proc = Process.Start(psi) ?? throw new GitException("Could not start git.", -1, string.Join(' ', args));
+        Process proc;
+        // A missing git or a deleted working directory (a repository removed while it is open) throws
+        // Win32Exception; report it as GitException, which every caller already handles.
+        try { proc = Process.Start(psi) ?? throw new GitException("Could not start git.", -1, string.Join(' ', args)); }
+        catch (Win32Exception e) { throw new GitException(e.Message, -1, string.Join(' ', args)); }
         if (!keepInput) proc.StandardInput.Close();
         return proc;
     }
