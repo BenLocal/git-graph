@@ -99,7 +99,7 @@ The macOS app is only ad-hoc signed, not notarized, so the first launch needs ri
 | Target | What it does |
 | --- | --- |
 | `make build` / `make test` / `make run` | Build, test or run (`CONFIG=Release` for a release build) |
-| `make publish RID=linux-x64` | Self-contained build in `artifacts/publish/<rid>` |
+| `make publish` | Self-contained build for this machine in `artifacts/publish/<rid>` (`RID=linux-x64` and so on to pick another) |
 | `make install` | Install or update the app in `~/.local` (`PREFIX=...` to change): files in `opt/gitgraph`, a `gitgraph` command in `bin`, an app-menu entry and a desktop shortcut on Linux (`SHORTCUT=0` skips the shortcut) |
 | `make uninstall` | Remove what `make install` added |
 | `make demo-run` | Create demo repositories in `.demo/` and open the app on them |

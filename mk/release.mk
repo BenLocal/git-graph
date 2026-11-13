@@ -10,5 +10,6 @@ tag: lint test ## Check, then create the tag vX.Y.Z locally (VERSION=X.Y.Z); pus
 
 .PHONY: deb
 
+deb: RID := linux-x64
 deb: publish ## Build a .deb from the linux-x64 build (VERSION=X.Y.Z, default 0.0.0-dev)
 	$(PYTHON) scripts/build_deb.py --from $(PUBLISH_DIR) --version $(or $(VERSION),0.0.0-dev) --out artifacts
