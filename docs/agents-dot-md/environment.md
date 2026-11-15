@@ -22,4 +22,7 @@ GH_TOKEN=$(gh auth token -u BenLocal) git \
 
 ## Releases
 
-No installer or CI yet; only `dotnet run` / `dotnet publish`.
+- `.github/workflows/ci.yml` runs lint, a Release build and the tests on every push and pull request.
+- `make tag VERSION=x.y.z` runs lint and the tests, then creates the annotated tag `vx.y.z` locally. Pushing the tag (with the command under Pushing, `push origin vx.y.z`) starts `.github/workflows/release.yml`, which builds the Linux tar.gz and .deb, the Windows zip and setup.exe and the macOS .dmg (Apple Silicon) and publishes them as a GitHub release; it took about 4 minutes for v0.5.0.
+- Versions: a new feature bumps the minor version (v0.4.0 → v0.5.0 for Zig support).
+- `make install` publishes for this machine and installs it under `~/.local/opt/gitgraph`, linked from `~/.local/bin/gitgraph`.
