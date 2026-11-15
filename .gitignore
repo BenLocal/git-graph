@@ -5,3 +5,4 @@ obj/
 .idea/
 artifacts/
 .demo/
+__pycache__/
