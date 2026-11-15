@@ -25,9 +25,9 @@ Structure and design trade-offs are in `architecture.md`.
 | Fonts | Segoe UI → Noto Sans → IBM Plex Sans (UI, as GitHub's system stack); Ubuntu Sans Mono → Noto Sans CJK SC → DejaVu Sans Mono → IBM Plex Mono (code) | Plex bundled in `Assets/Fonts` (OFL) | `UiFont` / `CodeFont` in `Tokens.axaml` |
 | Icons | Lucide.Avalonia (`<LucideIcon Kind="GitBranch" Size="14" />`) | 0.2.24 | default size, stroke and colour set by the `LucideIcon` style in `Controls.axaml` |
 | Code viewer | AvaloniaEdit | 12.0.0 | read-only file view in folder tabs and both sides of the full diff window |
-| Code navigation parsing | TreeSitter.DotNet | 1.3.0 | tree-sitter and its grammars in the package; only the grammars in `Directory.Build.targets` (C#, Go, Rust, Java, C, C++, Python, JavaScript, TypeScript, TSX) are shipped. Offsets and columns are UTF-16, as in .NET strings and AvaloniaEdit |
+| Code navigation parsing | TreeSitter.DotNet | 1.3.0 | tree-sitter and its grammars in the package; only the grammars in `Directory.Build.targets` (C#, Go, Rust, Java, C, C++, Python, JavaScript, TypeScript, TSX) are shipped. The package has no Zig grammar: `scripts/build_tree_sitter_zig.py` cross-compiles tree-sitter-zig at a pinned commit with `zig cc` into the committed `native/tree-sitter-zig/runtimes/<rid>/native/`, which `Directory.Build.targets` copies like the package's grammars (rerun the script only to change the commit). Offsets and columns are UTF-16, as in .NET strings and AvaloniaEdit |
 | Code navigation index | Microsoft.Data.Sqlite | 10.0.14 | one SQLite file per repository or folder (`SymbolIndex`); a connection per thread |
-| Syntax colours | TextMateSharp.Grammars | 2.0.3 | VS Code's grammars and Dark+/Light+ themes, in one registry (`Services/SyntaxHighlighter.cs`) for diffs, blame and the code viewer; editors take the colours through `Controls/SyntaxColours.cs` |
+| Syntax colours | TextMateSharp.Grammars | 2.0.3 | VS Code's grammars and Dark+/Light+ themes, plus grammars it lacks embedded from `src/GitGraph.App/Syntaxes/` (Zig), in one registry (`Services/SyntaxHighlighter.cs`) for diffs, blame and the code viewer; editors take the colours through `Controls/SyntaxColours.cs` |
 
 ## 3. Conventions
 

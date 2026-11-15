@@ -37,6 +37,7 @@ public sealed class SourceParserTests : IDisposable
         Assert.Equal(NavLanguage.C, NavLanguage.ForPath("src/list.c"));
         Assert.Equal(NavLanguage.Cpp, NavLanguage.ForPath("src/geo.cc"));
         Assert.Equal(NavLanguage.Cpp, NavLanguage.ForPath("include/list.h"));
+        Assert.Equal(NavLanguage.Zig, NavLanguage.ForPath("src/main.zig"));
         Assert.Null(NavLanguage.ForPath("README.md"));
         Assert.Null(_parser.Parse("notes.txt", "hello"));
     }
@@ -604,5 +605,77 @@ public sealed class SourceParserTests : IDisposable
             Assert.Equal([12, 12], LocalUses(src, "item of"));
             Assert.Equal([13, 13], LocalUses(src, "item: number)"));
         }
+    }
+
+    [Fact]
+    public void Zig_definitions_and_locals()
+    {
+        using var src = Parse("shapes.zig", """
+            const std = @import("std");
+            const mem = @import("std").mem;
+            pub const max_len: usize = 64;
+            var counter: u32 = 0;
+            pub const Point = struct {
+                x: i32,
+                y: i32 = 0,
+                const origin = Point{ .x = 0, .y = 0 };
+                pub fn add(self: Point, other: Point) Point {
+                    const x = self.x + other.x;
+                    return .{ .x = x, .y = self.y + other.y };
+                }
+            };
+            const Colour = enum { red, green };
+            const Shape = union(enum) { circle: f32, square: f32 };
+            const Error = error{ OutOfMemory, Invalid };
+            const Handle = opaque {};
+            pub fn sum(items: []const i32) !i32 {
+                var total: i32 = 0;
+                for (items, 0..) |item, i| {
+                    total += item + @as(i32, @intCast(i));
+                }
+                const r = blk: {
+                    break :blk total;
+                };
+                parse() catch |err| return err;
+                _ = mem;
+                return std.math.add(i32, total, r);
+            }
+            """);
+        // Imports and the locals of function bodies are not indexed.
+        Assert.Equal("""
+            Constant max_len @3
+            Variable counter @4
+            Struct Point @5
+            Field x in Point @6
+            Field y in Point @7
+            Constant origin in Point @8
+            Method add in Point @9
+            Enum Colour @14
+            Constant red in Colour @14
+            Constant green in Colour @14
+            Struct Shape @15
+            Field circle in Shape @15
+            Field square in Shape @15
+            Type Error @16
+            Constant OutOfMemory in Error @16
+            Constant Invalid in Error @16
+            Type Handle @17
+            Function sum @18
+            """, Defs(src));
+        Assert.Empty(src.Supers());
+        Assert.Equal([1, 28], LocalUses(src, "std ="));
+        Assert.Equal([2, 27], LocalUses(src, "mem ="));
+        // `total += …` assigns the variable; it doesn't declare another one.
+        Assert.Equal([19, 21, 24, 28], LocalUses(src, "total:"));
+        Assert.Equal([18, 20], LocalUses(src, "items:"));
+        Assert.Equal([20, 21], LocalUses(src, "item,"));
+        Assert.Equal([20, 21], LocalUses(src, "i|"));
+        Assert.Equal([23, 24], LocalUses(src, "blk:"));
+        Assert.Equal([26, 26], LocalUses(src, "err|"));
+        Assert.Equal([9, 10, 11], LocalUses(src, "self:"));
+        Assert.Equal([10, 11], LocalUses(src, "x = self"));
+        // `.x = x` and `self.x`: the field names are not the local.
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf(".x = x", StringComparison.Ordinal) + 1));
+        Assert.Null(src.ResolveLocal(src.Text.IndexOf("self.x", StringComparison.Ordinal) + 5));
     }
 }

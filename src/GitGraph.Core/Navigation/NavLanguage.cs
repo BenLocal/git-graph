@@ -6,7 +6,8 @@ namespace GitGraph.Core.Navigation;
 /// <summary>
 /// A language code navigation understands: its tree-sitter grammar and the two embedded queries
 /// (<c>Queries/&lt;query&gt;.definitions.scm</c> and <c>.locals.scm</c>). The grammars must also be listed in
-/// TreeSitterGrammars in Directory.Build.targets, or their native library isn't shipped.
+/// TreeSitterGrammars in Directory.Build.targets, or their native library isn't shipped; Zig's isn't in the package and
+/// comes from native/tree-sitter-zig instead.
 /// </summary>
 public sealed class NavLanguage
 {
@@ -21,8 +22,11 @@ public sealed class NavLanguage
     public static readonly NavLanguage JavaScript = new("javascript", "javascript", "javascript", ".js", ".mjs", ".cjs", ".jsx");
     public static readonly NavLanguage TypeScript = new("typescript", "typescript", "typescript", ".ts", ".mts", ".cts");
     public static readonly NavLanguage Tsx = new("tsx", "tsx", "typescript", ".tsx");
+    // Declarations in a file or container may come in any order (imports often sit at the bottom), and a local can't
+    // shadow another name, so a use never means a later declaration of something else.
+    public static readonly NavLanguage Zig = new("zig", "zig", "zig", ".zig") { DeclareBeforeUse = false };
 
-    public static IReadOnlyList<NavLanguage> All { get; } = [CSharp, Go, Rust, Java, C, Cpp, Python, JavaScript, TypeScript, Tsx];
+    public static IReadOnlyList<NavLanguage> All { get; } = [CSharp, Go, Rust, Java, C, Cpp, Python, JavaScript, TypeScript, Tsx, Zig];
 
     private static readonly Dictionary<string, NavLanguage> ByExtension =
         All.SelectMany(l => l.Extensions.Select(e => (e, l))).ToDictionary(x => x.e, x => x.l, StringComparer.OrdinalIgnoreCase);

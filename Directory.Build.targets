@@ -18,4 +18,19 @@
       <NativeCopyLocalItems Remove="@(_TreeSitterDrop)" />
     </ItemGroup>
   </Target>
+
+  <!--
+    The Zig grammar is not in the package; native/tree-sitter-zig holds it, built by scripts/build_tree_sitter_zig.py.
+    Projects that get the package's grammars get it too, laid out as the package's: under runtimes/<rid>/native for a
+    build without a runtime identifier, and next to the app for one runtime (TreeSitter's loader looks in both).
+  -->
+  <Target Name="AddTreeSitterZig" AfterTargets="TrimTreeSitterGrammars" Condition="'@(_TreeSitterNative)' != ''">
+    <ItemGroup Condition="'$(RuntimeIdentifier)' == ''">
+      <_TreeSitterZig Include="$(MSBuildThisFileDirectory)native/tree-sitter-zig/runtimes/**/*" />
+      <ReferenceCopyLocalPaths Include="@(_TreeSitterZig)" DestinationSubDirectory="runtimes/%(RecursiveDir)" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(RuntimeIdentifier)' != ''">
+      <ReferenceCopyLocalPaths Include="$(MSBuildThisFileDirectory)native/tree-sitter-zig/runtimes/$(RuntimeIdentifier)/native/*" />
+    </ItemGroup>
+  </Target>
 </Project>

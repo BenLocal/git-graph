@@ -33,6 +33,17 @@ public sealed class SyntaxHighlighterTests
     }
 
     [Fact]
+    public void Zig_files_have_syntax_colours()
+    {
+        // TextMateSharp has no Zig grammar; the app embeds one.
+        var colours = SyntaxHighlighter.HighlightLines("src/main.zig", [(1, "pub fn main() void {}"), (2, "// Entry point")]);
+
+        Assert.True(colours.TryGetValue(1, out var code), "No syntax colours for Zig code");
+        Assert.True(colours.TryGetValue(2, out var comment), "No syntax colours for a Zig comment");
+        Assert.Contains(code!, token => token.Dark != comment![0].Dark && token.Light != comment[0].Light);
+    }
+
+    [Fact]
     public void Diff_cache_keeps_extensionless_languages_separate()
     {
         const string text = "FROM alpine\nTARGET := app\n";
@@ -57,6 +68,7 @@ public sealed class SyntaxHighlighterTests
     [Theory]
     [InlineData("Dockerfile", "FROM alpine:3.20\n# Build image\n")]
     [InlineData("Makefile", "TARGET := app\n# Build project\n")]
+    [InlineData("main.zig", "pub fn main() void {}\n// Entry point\n")]
     public async Task Opening_build_files_populates_the_editors_syntax(string name, string text)
     {
         using var repo = new TempRepo();

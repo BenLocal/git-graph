@@ -1,6 +1,8 @@
 using Avalonia.Media;
 using GitGraph.Core.Diff;
 using TextMateSharp.Grammars;
+using TextMateSharp.Internal.Grammars.Reader;
+using TextMateSharp.Internal.Types;
 using TextMateSharp.Registry;
 using TextMateSharp.Themes;
 using FontStyle = Avalonia.Media.FontStyle;
@@ -38,7 +40,7 @@ public static class SyntaxHighlighter
 
     private static readonly Lock Gate = new();
     private static readonly RegistryOptions Options = new(ThemeName.DarkPlus);
-    private static readonly Registry Registry = new(Options);
+    private static readonly Registry Registry = new(new WithEmbeddedGrammars(Options));
     private static readonly Theme DarkTheme = Theme.CreateFromRawTheme(Options.LoadTheme(ThemeName.DarkPlus), Options);
     private static readonly Theme LightTheme = Theme.CreateFromRawTheme(Options.LoadTheme(ThemeName.LightPlus), Options);
     private static readonly Dictionary<string, IGrammar?> Grammars = [];
@@ -123,12 +125,39 @@ public static class SyntaxHighlighter
             _ when filename.StartsWith("Makefile.", StringComparison.Ordinal) => "makefile",
             _ => Options.GetLanguageByExtension(Path.GetExtension(path))?.Id,
         };
-        if (languageId is null) return null;
-        var scope = Options.GetScopeByLanguageId(languageId);
+        var scope = EmbeddedScopes.GetValueOrDefault(Path.GetExtension(path))
+            ?? (languageId is null ? null : Options.GetScopeByLanguageId(languageId));
+        if (scope is null) return null;
         if (Grammars.TryGetValue(scope, out var cached)) return cached;
         var grammar = Registry.LoadGrammar(scope);
         Grammars[scope] = grammar;
         return grammar;
+    }
+
+    // Grammars TextMateSharp lacks, embedded from Syntaxes/: file extension → scope, scope → resource. Zig's is
+    // ziglang/vscode-zig's (MIT, Syntaxes/zig.LICENSE.txt).
+    private static readonly Dictionary<string, string> EmbeddedScopes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".zig"] = "source.zig",
+        [".zon"] = "source.zig",
+    };
+    private static readonly Dictionary<string, string> EmbeddedGrammars = new() { ["source.zig"] = "zig.tmLanguage.json" };
+
+    /// <summary>TextMateSharp's grammars and themes, plus the embedded grammars.</summary>
+    private sealed class WithEmbeddedGrammars(RegistryOptions inner) : IRegistryOptions
+    {
+        public IRawGrammar GetGrammar(string scopeName)
+        {
+            if (!EmbeddedGrammars.TryGetValue(scopeName, out var file)) return inner.GetGrammar(scopeName);
+            using var stream = typeof(SyntaxHighlighter).Assembly.GetManifestResourceStream("GitGraph.App.Syntaxes." + file)
+                ?? throw new InvalidOperationException($"Missing embedded grammar {file}");
+            using var reader = new StreamReader(stream);
+            return GrammarReader.ReadGrammarSync(reader);
+        }
+
+        public IRawTheme GetTheme(string scopeName) => inner.GetTheme(scopeName);
+        public ICollection<string> GetInjections(string scopeName) => inner.GetInjections(scopeName);
+        public IRawTheme GetDefaultTheme() => inner.GetDefaultTheme();
     }
 
     private static Dictionary<int, SyntaxSpan[]> Tokenize(IGrammar grammar, IEnumerable<(int Number, string Text)> lines, CancellationToken ct)
