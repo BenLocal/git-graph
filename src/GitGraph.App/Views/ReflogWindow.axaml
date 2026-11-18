@@ -17,7 +17,7 @@
       <MenuItem Header="Reset current branch to here">
         <MenuItem Header="Soft: keep the changes staged…" Command="{Binding Owner.ResetSoftCommand}" CommandParameter="{Binding}" />
         <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding Owner.ResetMixedCommand}" CommandParameter="{Binding}" />
-        <MenuItem Header="Hard: discard the changes…" Command="{Binding Owner.ResetHardCommand}" CommandParameter="{Binding}" />
+        <MenuItem Classes="danger" Header="Hard: discard the changes…" Command="{Binding Owner.ResetHardCommand}" CommandParameter="{Binding}" />
       </MenuItem>
       <Separator />
       <MenuItem Header="Copy commit hash" Command="{Binding Owner.CopyHashCommand}" CommandParameter="{Binding}" />

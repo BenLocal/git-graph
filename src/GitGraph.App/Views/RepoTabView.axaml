@@ -17,7 +17,7 @@
       <MenuItem Header="Pop stash" Command="{Binding PopStashCommand}" IsVisible="{Binding IsStash}"
                 ToolTip.Tip="Apply the changes, then drop the stash if they applied cleanly" />
       <MenuItem Header="Create branch from stash…" Command="{Binding StashBranchCommand}" IsVisible="{Binding IsStash}" />
-      <MenuItem Header="Drop stash…" Command="{Binding DropStashCommand}" IsVisible="{Binding IsStash}" />
+      <MenuItem Classes="danger" Header="Drop stash…" Command="{Binding DropStashCommand}" IsVisible="{Binding IsStash}" />
       <MenuItem Header="Copy stash name" Command="{Binding CopyStashNameCommand}" IsVisible="{Binding IsStash}" />
       <Separator IsVisible="{Binding !IsCommit}" />
       <MenuItem Header="Compare with selected commit" Command="{Binding CompareWithSelectedCommand}"
@@ -45,7 +45,7 @@
       <MenuItem Header="Reset current branch to here" IsVisible="{Binding CanApply}">
         <MenuItem Header="Soft: keep the changes staged…" Command="{Binding ResetCommand}" CommandParameter="Soft" />
         <MenuItem Header="Mixed: keep the changes unstaged…" Command="{Binding ResetCommand}" CommandParameter="Mixed" />
-        <MenuItem Header="Hard: discard the changes…" Command="{Binding ResetCommand}" CommandParameter="Hard" />
+        <MenuItem Classes="danger" Header="Hard: discard the changes…" Command="{Binding ResetCommand}" CommandParameter="Hard" />
       </MenuItem>
       <Separator IsVisible="{Binding IsCommit}" />
       <MenuItem Header="Copy commit hash" Command="{Binding CopyHashCommand}" IsVisible="{Binding IsCommit}" />
@@ -66,8 +66,8 @@
       <MenuItem Header="Push to remote…" Command="{Binding PushTagCommand}" IsVisible="{Binding IsTag}" />
       <MenuItem Header="Copy name" Command="{Binding CopyNameCommand}" />
       <Separator IsVisible="{Binding HasDeleteItem}" />
-      <MenuItem Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
-      <MenuItem Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
+      <MenuItem Classes="danger" Header="Delete…" Command="{Binding DeleteCommand}" IsVisible="{Binding CanDelete}" />
+      <MenuItem Classes="danger" Header="Delete from remote…" Command="{Binding DeleteRemoteCommand}" IsVisible="{Binding IsRemote}" />
       <MenuItem Header="Custom commands" ItemsSource="{Binding CustomCommands}" ItemContainerTheme="{StaticResource CustomCommandItem}"
                 IsVisible="{Binding CustomCommands, Converter={x:Static vm:Converters.HasItems}}" />
     </MenuFlyout>

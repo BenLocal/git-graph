@@ -24,7 +24,7 @@
           <Separator />
           <MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" InputGesture="{Binding Keys[NewWorkspace], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
-          <MenuItem Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
+          <MenuItem Classes="danger" Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
           <Separator />
           <MenuItem Header="Custom commands…" Command="{Binding EditCustomCommandsCommand}"
                     ToolTip.Tip="Your own shell commands for the right-click menus of commits, branches and files" />

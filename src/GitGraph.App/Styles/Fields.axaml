@@ -42,4 +42,26 @@
   <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{DynamicResource SignalWashColor}" />
   <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="{DynamicResource SignalWashColor}" />
   <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="{DynamicResource HoverWashColor}" />
+
+  <!-- Checkboxes as GitHub's: an unchecked box on the field colour with a clear edge; checked ones keep the accent -->
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUnchecked" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPointerOver" Color="{DynamicResource FieldColor}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundFillUncheckedPressed" Color="{DynamicResource RaisedColor}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{DynamicResource ControlEdgeColor}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPressed" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundUnchecked" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundUncheckedPressed" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundChecked" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundCheckedPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="CheckBoxForegroundCheckedPressed" Color="{DynamicResource TextColor}" />
+
+  <!-- Tooltips as GitHub's: white text on a dark emphasis fill, small and borderless -->
+  <SolidColorBrush x:Key="ToolTipBackground" Color="{DynamicResource TooltipColor}" />
+  <SolidColorBrush x:Key="ToolTipForeground" Color="{DynamicResource OnTooltipColor}" />
+  <SolidColorBrush x:Key="ToolTipBorderBrush" Color="{DynamicResource TooltipColor}" />
+  <Thickness x:Key="ToolTipBorderThemeThickness">0</Thickness>
+  <Thickness x:Key="ToolTipBorderThemePadding">8,4,8,5</Thickness>
+  <x:Double x:Key="ToolTipContentThemeFontSize">12</x:Double>
 </ResourceDictionary>

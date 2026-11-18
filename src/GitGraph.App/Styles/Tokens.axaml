@@ -65,6 +65,13 @@
       <Color x:Key="TabLineColor">#F78166</Color>
       <Color x:Key="ButtonColor">#212830</Color>
       <Color x:Key="ButtonHoverColor">#262C36</Color>
+      <!-- Menus and other overlays, as Primer's overlay background -->
+      <Color x:Key="OverlayColor">#151B23</Color>
+      <!-- Tooltips, as Primer's emphasis background with white text -->
+      <Color x:Key="TooltipColor">#3D444D</Color>
+      <Color x:Key="OnTooltipColor">#FFFFFF</Color>
+      <!-- The edge of a small control such as an unchecked checkbox, stronger than a rule so it stays visible -->
+      <Color x:Key="ControlEdgeColor">#656C76</Color>
 
       <Color x:Key="SystemAccentColor">#1F6FEB</Color>
       <Color x:Key="SystemAccentColorDark1">#1158C7</Color>
@@ -109,6 +116,10 @@
       <Color x:Key="TabLineColor">#FD8C73</Color>
       <Color x:Key="ButtonColor">#F6F8FA</Color>
       <Color x:Key="ButtonHoverColor">#EFF2F5</Color>
+      <Color x:Key="OverlayColor">#FFFFFF</Color>
+      <Color x:Key="TooltipColor">#25292E</Color>
+      <Color x:Key="OnTooltipColor">#FFFFFF</Color>
+      <Color x:Key="ControlEdgeColor">#818B98</Color>
 
       <Color x:Key="SystemAccentColor">#0969DA</Color>
       <Color x:Key="SystemAccentColorDark1">#0550AE</Color>
@@ -152,4 +163,30 @@
   <SolidColorBrush x:Key="TabLineBrush" Color="{DynamicResource TabLineColor}" />
   <SolidColorBrush x:Key="ButtonBrush" Color="{DynamicResource ButtonColor}" />
   <SolidColorBrush x:Key="ButtonHoverBrush" Color="{DynamicResource ButtonHoverColor}" />
+  <SolidColorBrush x:Key="OverlayBrush" Color="{DynamicResource OverlayColor}" />
+
+  <!--
+    Menus (context menus, flyouts, the menu bar's drop-downs and their submenus) after Primer's ActionMenu: the
+    overlay surface with a 1 px border, rows inset from its edge that light up as rounded grey pills, full-width
+    dividers and muted shortcuts. These replace Fluent's resources of the same keys, which its templates read directly.
+  -->
+  <SolidColorBrush x:Key="MenuFlyoutPresenterBackground" Color="{DynamicResource OverlayColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutPresenterBorderBrush" Color="{DynamicResource RuleColor}" />
+  <Thickness x:Key="MenuFlyoutPresenterBorderThemeThickness">1</Thickness>
+  <Thickness x:Key="MenuFlyoutPresenterThemePadding">4</Thickness>
+  <Thickness x:Key="MenuFlyoutItemThemePadding">10,6,10,6</Thickness>
+  <Thickness x:Key="MenuFlyoutItemThemePaddingNarrow">10,6,10,6</Thickness>
+  <Thickness x:Key="MenuFlyoutSeparatorThemePadding">-4,4,-4,4</Thickness>
+  <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPointerOver" Color="{DynamicResource HoverWashColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemBackgroundPressed" Color="{DynamicResource HoverWashColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemForeground" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemForegroundPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemForegroundPressed" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemKeyboardAcceleratorTextForeground" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemKeyboardAcceleratorTextForegroundPointerOver" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutItemKeyboardAcceleratorTextForegroundPressed" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutSubItemChevron" Color="{DynamicResource MutedColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutSubItemChevronPointerOver" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutSubItemChevronPressed" Color="{DynamicResource TextColor}" />
+  <SolidColorBrush x:Key="MenuFlyoutSubItemChevronSubMenuOpened" Color="{DynamicResource TextColor}" />
 </ResourceDictionary>

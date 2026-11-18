@@ -15,7 +15,7 @@
       <Separator />
       <MenuItem Header="Stage" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanStage}" />
       <MenuItem Header="Unstage" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanUnstage}" />
-      <MenuItem Header="{Binding DiscardTip, StringFormat='{}{0}…'}" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
+      <MenuItem Classes="danger" Header="{Binding DiscardTip, StringFormat='{}{0}…'}" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
                 IsVisible="{Binding CanDiscard}" />
       <MenuItem Header="Keep current version (ours)" Command="{Binding Owner.TakeOursCommand}" CommandParameter="{Binding}"
                 IsVisible="{Binding IsConflicted}"

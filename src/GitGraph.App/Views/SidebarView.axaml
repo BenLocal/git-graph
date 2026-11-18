@@ -60,7 +60,7 @@
             <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
             <MenuItem Header="Rescan folders" Command="{Binding SelectedWorkspace.ScanCommand}" />
             <Separator />
-            <MenuItem Header="Delete workspace…" Command="{Binding DeleteWorkspaceCommand}" />
+            <MenuItem Classes="danger" Header="Delete workspace…" Command="{Binding DeleteWorkspaceCommand}" />
           </MenuFlyout>
         </Button.Flyout>
       </Button>
@@ -189,7 +189,7 @@
                             <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
                             <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
                             <Separator />
-                            <MenuItem Header="Remove worktree…" Command="{Binding RemoveCommand}" />
+                            <MenuItem Classes="danger" Header="Remove worktree…" Command="{Binding RemoveCommand}" />
                           </ContextMenu>
                         </Button.ContextMenu>
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto">
