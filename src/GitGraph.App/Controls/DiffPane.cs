@@ -1,9 +1,12 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using Avalonia.Styling;
 using AvaloniaEdit;
 using AvaloniaEdit.Document;
+using AvaloniaEdit.Folding;
 using AvaloniaEdit.Rendering;
 using GitGraph.App.Services;
 using GitGraph.Core.Diff;
@@ -13,7 +16,7 @@ namespace GitGraph.App.Controls;
 /// <summary>
 /// One side of a side-by-side diff in a read-only <see cref="TextEditor"/>: changed lines and words get the added or
 /// deleted backgrounds, a change with no lines on this side is a line between its neighbours, the current change is
-/// outlined, and the code takes its syntax colours.
+/// outlined, the code takes its syntax colours, and folded unchanged lines show as GitHub's expander rows.
 /// </summary>
 public sealed class DiffPane
 {
@@ -89,6 +92,53 @@ public sealed class DiffPane
 
     internal IBrush Brush(string key) => _editor.Brush(key);
 
+    private FoldingManager? _folds;
+
+    /// <summary>
+    /// Installs folding on the editor, with GitHub's expander rows in place of AvaloniaEdit's boxed placeholder: a
+    /// folded stretch is a row on the hunk background with its title, and clicking the row opens it.
+    /// </summary>
+    public FoldingManager InstallFolds()
+    {
+        _folds = FoldingManager.Install(_editor.TextArea);
+        // Ahead of AvaloniaEdit's generator, which stays: it connects the manager to the view, which collapses the lines.
+        var generators = TextView.ElementGenerators;
+        generators.Insert(generators.IndexOf(generators.OfType<FoldingElementGenerator>().First()), new FoldRows(this, _folds));
+        return _folds;
+    }
+
+    public void UninstallFolds()
+    {
+        if (_folds is null) return;
+        foreach (var rows in TextView.ElementGenerators.OfType<FoldRows>().ToList()) TextView.ElementGenerators.Remove(rows);
+        FoldingManager.Uninstall(_folds);
+        _folds = null;
+    }
+
+    private sealed class FoldRows(DiffPane pane, FoldingManager manager) : VisualLineElementGenerator
+    {
+        public override int GetFirstInterestedOffset(int startOffset) => manager.GetNextFoldedFoldingStart(startOffset);
+
+        public override VisualLineElement? ConstructElement(int offset)
+        {
+            if (manager.GetFoldingsAt(offset).FirstOrDefault(f => f.IsFolded) is not { } fold) return null;
+            var properties = new VisualLineElementTextRunProperties(CurrentContext.GlobalTextRunProperties);
+            properties.SetForegroundBrush(pane.Brush("HunkFgBrush"));
+            var text = FormattedTextElement.PrepareText(TextFormatter.Current, fold.Title, properties);
+            return new FoldRow(fold, text, fold.EndOffset - offset);
+        }
+    }
+
+    private sealed class FoldRow(FoldingSection fold, TextLine text, int length) : FormattedTextElement(text, length)
+    {
+        protected override void OnPointerPressed(PointerPressedEventArgs e)
+        {
+            if (!e.GetCurrentPoint(null).Properties.IsLeftButtonPressed) return;
+            fold.IsFolded = false;
+            e.Handled = true;
+        }
+    }
+
     private void ApplyTheme()
     {
         ResourceBrushes.ApplyEditorTheme(_editor);
@@ -103,6 +153,15 @@ public sealed class DiffPane
         {
             if (!textView.VisualLinesValid) return;
             var width = textView.Bounds.Width;
+            // Folded stretches: GitHub's expander rows, across the whole width.
+            if (pane._folds is { } folds)
+            {
+                var hunk = pane.Brush("HunkBgBrush");
+                foreach (var visual in textView.VisualLines)
+                    if (folds.GetFoldingsAt(visual.FirstDocumentLine.Offset).Any(f => f.IsFolded))
+                        dc.FillRectangle(hunk, new Rect(0, visual.VisualTop - textView.VerticalOffset, width, visual.Height));
+            }
+
             var lineBrush = pane.Brush(pane._old ? "DelBgBrush" : "AddBgBrush");
             var wordBrush = pane.Brush(pane._old ? "DelWordBgBrush" : "AddWordBgBrush");
             foreach (var visual in textView.VisualLines)

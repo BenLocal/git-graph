@@ -86,15 +86,15 @@ public partial class CompareView : UserControl
         }
         _vm = DataContext as FullDiffViewModel;
         _folds.Clear();
-        if (_oldFolds != null) FoldingManager.Uninstall(_oldFolds);
-        if (_newFolds != null) FoldingManager.Uninstall(_newFolds);
+        _old.UninstallFolds();
+        _new.UninstallFolds();
         _oldFolds = _newFolds = null;
         if (_vm is null) return;
 
         _old.Load(_vm.OldLines, _vm.Blocks, _vm.Syntax);
         _new.Load(_vm.NewLines, _vm.Blocks, _vm.Syntax);
-        _oldFolds = FoldingManager.Install(OldEditor.TextArea);
-        _newFolds = FoldingManager.Install(NewEditor.TextArea);
+        _oldFolds = _old.InstallFolds();
+        _newFolds = _new.InstallFolds();
         Connector.Load(_vm.Blocks);
         Overview.Load(_vm.Blocks, _vm.OldLines.Count, _vm.NewLines.Count);
         foreach (var f in _vm.Folds)
