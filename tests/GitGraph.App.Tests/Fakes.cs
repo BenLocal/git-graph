@@ -39,7 +39,8 @@ internal sealed class FakeHost : IAppHost, IDialogService
         return Task.FromResult(ConfirmAnswer);
     }
 
-    public Task<string?> PickFolderAsync(string title) => Task.FromResult<string?>(null);
+    public string? PickedFolder { get; set; }
+    public Task<string?> PickFolderAsync(string title) => Task.FromResult(PickedFolder);
     public Task CopyTextAsync(string text) => Task.CompletedTask;
     /// <summary>The full diff windows opened.</summary>
     public List<FullDiffViewModel> Diffs { get; } = [];

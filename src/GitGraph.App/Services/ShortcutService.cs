@@ -53,8 +53,7 @@ public sealed class ShortcutService
         new("FindInFiles", "Code", "Find in files", "Ctrl+Shift+F"),
         new("NextChange", "Diff window", "Next change", "F7"),
         new("PreviousChange", "Diff window", "Previous change", "Shift+F7"),
-        new("AddFolder", "Workspace", "Add folder to workspace", null),
-        new("NewWorkspace", "Workspace", "New workspace", null),
+        new("AddFolder", "App", "Add folder", null),
         new("KeyboardShortcuts", "App", "Keyboard shortcuts", "Ctrl+K Ctrl+S"),
         new("Quit", "App", "Quit", "Ctrl+Q"),
     ];

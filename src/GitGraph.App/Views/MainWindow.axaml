@@ -20,11 +20,7 @@
     <Grid ColumnDefinitions="*,Auto">
       <Menu>
         <MenuItem Header="_File">
-          <MenuItem Header="Add folder to workspace…" Command="{Binding SelectedWorkspace.AddFolderCommand}" InputGesture="{Binding Keys[AddFolder], Source={x:Static svc:ShortcutService.Instance}}" />
-          <Separator />
-          <MenuItem Header="New workspace…" Command="{Binding NewWorkspaceCommand}" InputGesture="{Binding Keys[NewWorkspace], Source={x:Static svc:ShortcutService.Instance}}" />
-          <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
-          <MenuItem Classes="danger" Header="Delete workspace" Command="{Binding DeleteWorkspaceCommand}" />
+          <MenuItem Header="Add folder…" Command="{Binding SelectedWorkspace.AddFolderCommand}" InputGesture="{Binding Keys[AddFolder], Source={x:Static svc:ShortcutService.Instance}}" />
           <Separator />
           <MenuItem Header="Custom commands…" Command="{Binding EditCustomCommandsCommand}"
                     ToolTip.Tip="Your own shell commands for the right-click menus of commits, branches and files" />

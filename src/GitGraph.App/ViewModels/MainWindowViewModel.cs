@@ -318,51 +318,6 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         catch (IOException e) { ErrorMessage = $"Could not save workspaces to {_store.FilePath}: {e.Message}"; }
     }
 
-    [RelayCommand]
-    private async Task NewWorkspace()
-    {
-        var r = await Dialogs.PromptAsync("New workspace", "A workspace groups the folders whose repositories you want side by side.",
-            [new PromptField("Name", "", "e.g. Client projects")], "Create workspace");
-        if (r is null || string.IsNullOrWhiteSpace(r[0])) return;
-        var config = new WorkspaceConfig { Name = r[0].Trim() };
-        _state.Workspaces.Add(config);
-        var vm = new WorkspaceViewModel(config, this);
-        Workspaces.Add(vm);
-        SelectedWorkspace = vm;
-        SaveState();
-    }
-
-    [RelayCommand]
-    private async Task RenameWorkspace()
-    {
-        var ws = SelectedWorkspace;
-        var r = await Dialogs.PromptAsync("Rename workspace", null, [new PromptField("Name", ws.Name)], "Rename");
-        if (r is null || string.IsNullOrWhiteSpace(r[0])) return;
-        ws.Name = r[0].Trim();
-        SaveState();
-    }
-
-    [RelayCommand]
-    private async Task DeleteWorkspace()
-    {
-        var ws = SelectedWorkspace;
-        if (Workspaces.Count == 1)
-        {
-            ErrorMessage = "You need at least one workspace. Create another one before deleting this one.";
-            return;
-        }
-        if (!await Dialogs.ConfirmAsync("Delete workspace",
-                $"Delete \"{ws.Name}\"? Its folders and repositories stay on disk; only the workspace is removed.",
-                "Delete workspace", destructive: true))
-            return;
-        var index = Workspaces.IndexOf(ws);
-        ws.Dispose();
-        Workspaces.Remove(ws);
-        _state.Workspaces.Remove(ws.Config);
-        SelectedWorkspace = Workspaces[Math.Max(0, index - 1)];
-        SaveState();
-    }
-
     public bool ThemeSystem => _state.Theme is not ("Dark" or "Light");
     public bool ThemeDark => _state.Theme == "Dark";
     public bool ThemeLight => _state.Theme == "Light";

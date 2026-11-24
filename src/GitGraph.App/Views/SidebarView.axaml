@@ -5,67 +5,7 @@
              x:Class="GitGraph.App.Views.SidebarView"
              x:DataType="vm:MainWindowViewModel"
              Background="{DynamicResource FrameBrush}">
-  <UserControl.Resources>
-    <DataTemplate x:Key="FolderRowTemplate" x:DataType="vm:FolderNodeViewModel">
-      <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Path}">
-        <Button.ContextMenu>
-          <ContextMenu>
-            <MenuItem Header="Open files" Command="{Binding OpenCommand}" />
-            <MenuItem Header="Open files in new window" Command="{Binding OpenInWindowCommand}" />
-            <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
-            <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
-            <MenuItem Header="Copy path" Command="{Binding CopyPathCommand}" />
-            <Separator IsVisible="{Binding IsFolder}" />
-            <MenuItem Header="Remove from workspace" Command="{Binding RemoveCommand}" IsVisible="{Binding IsFolder}" />
-          </ContextMenu>
-        </Button.ContextMenu>
-        <Grid ColumnDefinitions="Auto,*,Auto">
-          <Panel VerticalAlignment="Center">
-            <LucideIcon Kind="Folder" Size="14" IsVisible="{Binding IsFolder}" />
-            <LucideIcon Kind="FolderTree" Size="13" IsVisible="{Binding IsWorktree}" />
-          </Panel>
-          <TextBlock Grid.Column="1" Classes="name" Margin="8,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Text="{Binding Name}" />
-          <TextBlock Grid.Column="2" Classes="muted small" Text="{Binding Branch}" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center"
-                     MaxWidth="110" TextTrimming="CharacterEllipsis" />
-          <Button Grid.Column="2" Classes="ghost hover" Padding="3" ToolTip.Tip="Remove from workspace" Command="{Binding RemoveCommand}"
-                  IsVisible="{Binding IsFolder}">
-            <LucideIcon Kind="X" Size="12" />
-          </Button>
-        </Grid>
-      </Button>
-    </DataTemplate>
-  </UserControl.Resources>
-
   <DockPanel>
-    <!-- Workspace switcher -->
-    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto,Auto" Margin="8,10,6,6">
-      <ComboBox Classes="switcher" ItemsSource="{Binding Workspaces}" SelectedItem="{Binding SelectedWorkspace}"
-                HorizontalAlignment="Stretch" ToolTip.Tip="Switch workspace">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="vm:WorkspaceViewModel">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-              <LucideIcon Kind="Layers" Size="15" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-            </StackPanel>
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
-      <Button Grid.Column="1" Classes="ghost" Padding="5" Margin="2,0,0,0" Command="{Binding NewWorkspaceCommand}" ToolTip.Tip="New workspace">
-        <LucideIcon Kind="Plus" Size="15" />
-      </Button>
-      <Button Grid.Column="2" Classes="ghost" Padding="5" ToolTip.Tip="Workspace options">
-        <LucideIcon Kind="Ellipsis" Size="15" />
-        <Button.Flyout>
-          <MenuFlyout Placement="BottomEdgeAlignedRight">
-            <MenuItem Header="Rename workspace…" Command="{Binding RenameWorkspaceCommand}" />
-            <MenuItem Header="Rescan folders" Command="{Binding SelectedWorkspace.ScanCommand}" />
-            <Separator />
-            <MenuItem Classes="danger" Header="Delete workspace…" Command="{Binding DeleteWorkspaceCommand}" />
-          </MenuFlyout>
-        </Button.Flyout>
-      </Button>
-    </Grid>
-
     <!-- Theme -->
     <Border DockPanel.Dock="Bottom" Padding="8,6">
       <Button Classes="ghost" HorizontalAlignment="Left" Command="{Binding CycleThemeCommand}" ToolTip.Tip="Switch between night, day and the system setting">
@@ -79,60 +19,19 @@
     <ScrollViewer DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
       <StackPanel Margin="8,4,8,12" Spacing="2">
 
-        <!-- Folders -->
-        <!-- Each section folds away from its heading -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,2">
-          <Button Classes="ghost sectionhead" Command="{Binding ToggleFoldersSectionCommand}" ToolTip.Tip="Show or hide folders">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <LucideIcon Kind="ChevronDown" Size="13" Classes="chevron" Classes.collapsed="{Binding !ShowFolders}" VerticalAlignment="Center" />
-              <TextBlock Classes="section" Text="Folders" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
+        <!-- Repositories and their worktrees -->
+        <Grid ColumnDefinitions="*,Auto,Auto" Margin="4,10,0,2">
+          <TextBlock Classes="section" Text="Repositories" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding AddFolderCommand}" ToolTip.Tip="Add folder">
             <LucideIcon Kind="FolderPlus" Size="15" />
           </Button>
-        </Grid>
-        <!--
-          Workspace folders, each with the linked worktrees inside it nested underneath (like the worktrees of a
-          repository below). Worktrees elsewhere are reached from the Repositories section's context menu.
-          A single click previews a folder's files in a tab; a double-click keeps the tab.
-        -->
-        <StackPanel Spacing="2" IsVisible="{Binding ShowFolders}">
-        <ItemsControl ItemsSource="{Binding FolderNodes}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:FolderNodeViewModel">
-              <StackPanel Spacing="1">
-                <Grid ColumnDefinitions="18,*">
-                  <Button Classes="ghost" Padding="1" Width="18" Height="18" IsVisible="{Binding HasWorktrees}"
-                          Command="{Binding ToggleExpandedCommand}" ToolTip.Tip="Show or hide worktrees">
-                    <LucideIcon Kind="ChevronDown" Size="14" Classes="chevron" Classes.collapsed="{Binding !IsExpanded}" />
-                  </Button>
-                  <ContentControl Grid.Column="1" Content="{Binding}" ContentTemplate="{StaticResource FolderRowTemplate}" />
-                </Grid>
-                <Border Classes="nest" IsVisible="{Binding IsExpanded}">
-                  <ItemsControl ItemsSource="{Binding Worktrees}" ItemTemplate="{StaticResource FolderRowTemplate}" />
-                </Border>
-              </StackPanel>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <TextBlock Classes="muted small" Margin="6,2,6,0" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
-                   Text="No folders yet. Add one to find the repositories inside it." />
-        </StackPanel>
-
-        <!-- Repositories and their worktrees -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,16,0,2">
-          <Button Classes="ghost sectionhead" Command="{Binding ToggleReposSectionCommand}" ToolTip.Tip="Show or hide repositories">
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <LucideIcon Kind="ChevronDown" Size="13" Classes="chevron" Classes.collapsed="{Binding !ShowRepos}" VerticalAlignment="Center" />
-              <TextBlock Classes="section" Text="Repositories" VerticalAlignment="Center" />
-            </StackPanel>
-          </Button>
-          <Button Grid.Column="1" Classes="ghost" Padding="4" Command="{Binding ScanCommand}" ToolTip.Tip="Rescan folders">
+          <Button Grid.Column="2" Classes="ghost" Padding="4" Command="{Binding ScanCommand}" ToolTip.Tip="Rescan folders">
             <LucideIcon Kind="RotateCw" Size="14" />
           </Button>
         </Grid>
-        <StackPanel Spacing="2" IsVisible="{Binding ShowRepos}">
+        <StackPanel Spacing="2">
+        <TextBlock Classes="muted small" Margin="6,2,6,0" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
+                   Text="No folders yet. Add one to find the repositories inside it." />
         <TextBlock Classes="muted small" Margin="6,0" Text="Looking for repositories…" IsVisible="{Binding IsScanning}" />
         <TextBlock Classes="muted small" Margin="6,0" TextWrapping="Wrap" IsVisible="{Binding HasNoRepos}"
                    Text="No repositories in these folders. Repositories up to three levels deep are found." />
@@ -160,6 +59,8 @@
                         <Separator />
                         <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
                         <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
+                        <Separator />
+                        <MenuItem Classes="danger" Header="Remove from list…" Command="{Binding RemoveCommand}" />
                       </ContextMenu>
                     </Button.ContextMenu>
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">

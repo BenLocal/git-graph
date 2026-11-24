@@ -55,7 +55,6 @@ public partial class MainWindow
             ["NextTab"] = () => MoveTab(+1),
             ["PreviousTab"] = () => MoveTab(-1),
             ["AddFolder"] = () => Workspace?.AddFolderCommand.Execute(null),
-            ["NewWorkspace"] = () => Vm?.NewWorkspaceCommand.Execute(null),
             ["GoToDefinition"] = () => VisibleFolder()?.Navigate(NavKind.Definition),
             ["FindReferences"] = () => VisibleFolder()?.Navigate(NavKind.References),
             ["GoToImplementation"] = () => VisibleFolder()?.Navigate(NavKind.Implementations),

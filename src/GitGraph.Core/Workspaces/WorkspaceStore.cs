@@ -9,6 +9,8 @@ public sealed class WorkspaceConfig
     public string Name { get; set; } = "Workspace";
     /// <summary>Folders searched for repositories. A folder may itself be a repository.</summary>
     public List<string> Folders { get; set; } = [];
+    /// <summary>Repository main paths the user removed from the sidebar, so rescans of parent folders don't bring them back.</summary>
+    public List<string> HiddenRepos { get; set; } = [];
     /// <summary>Working-tree paths open as tabs, in tab order.</summary>
     public List<string> OpenTabs { get; set; } = [];
     public string? ActiveTab { get; set; }

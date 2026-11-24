@@ -144,7 +144,10 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
             var expanded = Repos.Where(r => r.IsExpanded).Select(r => r.MainPath).ToHashSet();
             Repos.Clear();
             foreach (var r in found)
+            {
+                if (Config.HiddenRepos.Any(h => PathEquals(h, r.MainPath))) continue;
                 Repos.Add(new RepoNodeViewModel(r, this) { IsExpanded = expanded.Count == 0 || expanded.Contains(r.MainPath) });
+            }
             RebuildWorktreeFolders();
             RestoreTabs();
             _ = LoadSyncAsync();
@@ -292,13 +295,48 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
         var path = await _host.Dialogs.PickFolderAsync($"Add a folder to {Name}");
         if (path is null) return;
         path = System.IO.Path.TrimEndingDirectorySeparator(path);
-        if (Folders.Any(f => PathEquals(f, path))) return;
-        Folders.Add(path);
-        FolderNodes.Add(new FolderNodeViewModel(path, this));
-        Config.Folders = Folders.ToList();
-        OnPropertyChanged(nameof(HasFolders));
+        var unhid = Config.HiddenRepos.RemoveAll(h => PathEquals(h, path) || IsUnder(h, path)) > 0;
+        var added = false;
+        if (!Folders.Any(f => PathEquals(f, path)))
+        {
+            Folders.Add(path);
+            FolderNodes.Add(new FolderNodeViewModel(path, this));
+            Config.Folders = Folders.ToList();
+            OnPropertyChanged(nameof(HasFolders));
+            added = true;
+        }
+        if (!added && !unhid) return;
         _host.SaveState();
         await ScanAsync();
+    }
+
+    public async Task RemoveRepoAsync(RepoNodeViewModel repo)
+    {
+        if (!await _host.Dialogs.ConfirmAsync("Remove repository",
+                $"Remove \"{repo.Name}\" from the list? The repository stays on disk.",
+                "Remove", destructive: true))
+            return;
+
+        foreach (var tab in Tabs.Where(t => repo.Contains(t.Path)).ToList())
+            CloseTab(tab);
+
+        var folder = Folders.FirstOrDefault(f => PathEquals(f, repo.MainPath));
+        if (folder != null)
+        {
+            Folders.Remove(folder);
+            if (FolderNodes.FirstOrDefault(f => PathEquals(f.Path, folder)) is { } node)
+                FolderNodes.Remove(node);
+            Config.Folders = Folders.ToList();
+            OnPropertyChanged(nameof(HasFolders));
+        }
+
+        if (Folders.Any(f => IsUnder(repo.MainPath, f)) && !Config.HiddenRepos.Any(h => PathEquals(h, repo.MainPath)))
+            Config.HiddenRepos.Add(repo.MainPath);
+
+        Repos.Remove(repo);
+        RebuildWorktreeFolders();
+        OnPropertyChanged(nameof(HasNoRepos));
+        _host.SaveState();
     }
 
     [RelayCommand]
@@ -412,6 +450,17 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     internal static bool PathEquals(string a, string b) =>
         string.Equals(System.IO.Path.TrimEndingDirectorySeparator(a), System.IO.Path.TrimEndingDirectorySeparator(b),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+
+    private static bool IsUnder(string path, string parent)
+    {
+        var normPath = System.IO.Path.TrimEndingDirectorySeparator(path);
+        var normParent = System.IO.Path.TrimEndingDirectorySeparator(parent);
+        if (normPath.Length <= normParent.Length) return false;
+        var sep = normPath[normParent.Length];
+        if (sep != System.IO.Path.DirectorySeparatorChar && sep != System.IO.Path.AltDirectorySeparatorChar) return false;
+        return normPath.StartsWith(normParent,
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
 
     public void Dispose()
     {
@@ -546,6 +595,9 @@ public partial class RepoNodeViewModel : ObservableObject
         }
         catch (GitException e) { _workspace.Host.ReportError(e.Message); }
     }
+
+    [RelayCommand]
+    private Task Remove() => _workspace.RemoveRepoAsync(this);
 
     internal Task RemoveWorktreeAsync(WorktreeNodeViewModel wt) => WorktreeActions.RemoveAsync(_workspace, MainPath, wt.Path, wt.Name);
 
