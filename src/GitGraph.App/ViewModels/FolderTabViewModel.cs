@@ -23,9 +23,12 @@ public sealed partial class FolderTabViewModel : TabViewModel
 
     internal bool CompactFolders => _host.CompactFolders;
     private readonly FolderViewState _state;
+    private static readonly TimeSpan ActivationCooldown = TimeSpan.FromSeconds(3);
+    private DateTime _lastActivated;
     private bool _loaded;
     private bool _restoring;
     private CancellationTokenSource? _fileCts;
+    private CancellationTokenSource? _refreshCts;
 
     public FolderTabViewModel(string path, WorkspaceViewModel workspace, IAppHost host) : base(path, workspace)
     {
@@ -124,8 +127,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
     /// </summary>
     private async Task LoadStatusAsync()
     {
-        _statusCts?.Cancel();
-        var cts = _statusCts = new CancellationTokenSource();
+        var cts = ReplaceCts(ref _statusCts, _lifetime.Token);
         var repos = new List<RepoStatus>();
         var folders = new Dictionary<string, FileStatusKind>(PathComparer);
         try
@@ -254,10 +256,16 @@ public sealed partial class FolderTabViewModel : TabViewModel
 
     private (string Path, DateTime LastWriteUtc, long Length)? _loadedFileStamp;
 
+    private void SetImage(Bitmap? next)
+    {
+        var prev = Image;
+        Image = next;
+        if (!ReferenceEquals(prev, next)) prev?.Dispose();
+    }
+
     private async Task LoadFileAsync(FileNodeViewModel node)
     {
-        _fileCts?.Cancel();
-        var cts = _fileCts = new CancellationTokenSource();
+        var cts = ReplaceCts(ref _fileCts, _lifetime.Token);
         _loadedFileStamp = null;
         FilePath = node.RelativePath;
         FileText = null;
@@ -266,7 +274,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
         _caretLine = 0;
         _caretOffset = 0;
         LineBlame = null;
-        Image = null;
+        SetImage(null);
         FileMessage = null;
         try
         {
@@ -285,8 +293,8 @@ public sealed partial class FolderTabViewModel : TabViewModel
             if (ImageExtensions.Contains(System.IO.Path.GetExtension(node.Name).ToLowerInvariant()))
             {
                 var bitmap = await Task.Run(() => new Bitmap(node.FullPath), cts.Token);
-                if (cts.IsCancellationRequested) return;
-                Image = bitmap;
+                if (cts.IsCancellationRequested) { bitmap.Dispose(); return; }
+                SetImage(bitmap);
                 _loadedFileStamp = (node.FullPath, info.LastWriteTimeUtc, info.Length);
                 FileInfo = $"{FormatSize(info.Length)}, {bitmap.PixelSize.Width} × {bitmap.PixelSize.Height}";
                 return;
@@ -372,9 +380,20 @@ public sealed partial class FolderTabViewModel : TabViewModel
 
     /// <summary>Picks up files added, removed or renamed outside the app, keeping open folders open.</summary>
     [RelayCommand]
-    private void RefreshTree()
+    private void RefreshTree() => _ = Loads.Track(RefreshTreeAsync());
+
+    private async Task RefreshTreeAsync()
     {
-        Root.Reload();
+        var cts = ReplaceCts(ref _refreshCts, _lifetime.Token);
+        var targets = Root.CollectRefreshTargets();
+        var compact = CompactFolders;
+        try
+        {
+            var snapshots = await Task.Run(() => FileNodeViewModel.ReadSnapshots(targets, compact, cts.Token), cts.Token);
+            if (cts.IsCancellationRequested) return;
+            Root.ApplySnapshots(snapshots);
+        }
+        catch (OperationCanceledException) { return; }
         _ = Loads.Track(LoadStatusAsync());
         if (SelectedNode is { IsDirectory: false } file && !IsLoadedFileUnchanged(file.FullPath))
             _ = Loads.Track(LoadFileAsync(file));
@@ -390,6 +409,8 @@ public sealed partial class FolderTabViewModel : TabViewModel
 
     public override void OnActivated()
     {
+        if (DateTime.UtcNow - _lastActivated < ActivationCooldown) return;
+        _lastActivated = DateTime.UtcNow;
         RefreshTree();
         SyncIndexes();
     }
@@ -441,10 +462,32 @@ public sealed partial class FolderTabViewModel : TabViewModel
         CopyNote.Show(note);
     }
 
+    internal static CancellationTokenSource ReplaceCts(ref CancellationTokenSource? field, CancellationToken parent = default)
+    {
+        var next = parent.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(parent) : new CancellationTokenSource();
+        var prev = Interlocked.Exchange(ref field, next);
+        if (prev != null)
+        {
+            prev.Cancel();
+            prev.Dispose();
+        }
+        return next;
+    }
+
+    internal static void DisposeCts(ref CancellationTokenSource? field)
+    {
+        if (Interlocked.Exchange(ref field, null) is not { } cts) return;
+        cts.Cancel();
+        cts.Dispose();
+    }
+
     public override void Dispose()
     {
         Terminal.CloseCommand.Execute(null);
-        _fileCts?.Cancel();
+        DisposeCts(ref _fileCts);
+        DisposeCts(ref _statusCts);
+        DisposeCts(ref _refreshCts);
+        SetImage(null);
         DisposeNavigation();
     }
 }
@@ -573,25 +616,73 @@ public sealed partial class FileNodeViewModel : ObservableObject
     /// </summary>
     public void Reload()
     {
+        var targets = CollectRefreshTargets();
+        var snapshots = ReadSnapshots(targets, _owner!.CompactFolders, CancellationToken.None);
+        ApplySnapshots(snapshots);
+    }
+
+    internal sealed record ChildSpec(string FullPath, string RelativePath, bool IsDirectory, string Name);
+
+    internal List<(string FullPath, string RelativePath)> CollectRefreshTargets()
+    {
+        var targets = new List<(string FullPath, string RelativePath)>();
+        Collect(this);
+        return targets;
+
+        void Collect(FileNodeViewModel node)
+        {
+            if (!node.IsDirectory || !node._childrenLoaded) return;
+            if (!node.IsExpanded && node != _owner!.Root) return;
+            targets.Add((node.FullPath, node.RelativePath));
+            foreach (var c in node.Children) Collect(c);
+        }
+    }
+
+    internal static Dictionary<string, List<ChildSpec>> ReadSnapshots(
+        List<(string FullPath, string RelativePath)> targets, bool compactFolders, CancellationToken ct)
+    {
+        var result = new Dictionary<string, List<ChildSpec>>(targets.Count, StringComparer.Ordinal);
+        foreach (var (fullPath, relativePath) in targets)
+        {
+            ct.ThrowIfCancellationRequested();
+            result[fullPath] = ReadChildrenSpecs(fullPath, relativePath, compactFolders);
+        }
+        return result;
+    }
+
+    internal void ApplySnapshots(Dictionary<string, List<ChildSpec>> snapshots)
+    {
         if (!IsDirectory || !_childrenLoaded) return;
         if (!IsExpanded && this != _owner!.Root)
         {
             Reset();
             return;
         }
+        if (!snapshots.TryGetValue(FullPath, out var specs)) return;
+
         var existing = Children.Where(c => !c.IsPlaceholder).ToDictionary(c => (c.Name, c.IsDirectory));
-        var target = ReadChildren().Select(f => existing.TryGetValue((f.Name, f.IsDirectory), out var keep) ? keep : f).ToList();
+        var target = specs.Select(s => existing.TryGetValue((s.Name, s.IsDirectory), out var keep)
+            ? keep
+            : new FileNodeViewModel(_owner!, s.FullPath, s.RelativePath, s.IsDirectory, s.Name)).ToList();
         var targetSet = target.ToHashSet();
 
         for (var i = Children.Count - 1; i >= 0; i--)
             if (!targetSet.Contains(Children[i])) Children.RemoveAt(i);
         for (var i = 0; i < target.Count; i++)
         {
-            var at = Children.IndexOf(target[i]);
-            if (at < 0) Children.Insert(i, target[i]);
-            else if (at != i) Children.Move(at, i);
+            var item = target[i];
+            if (i < Children.Count && ReferenceEquals(Children[i], item)) continue;
+            if (existing.ContainsKey((item.Name, item.IsDirectory)))
+            {
+                var at = Children.IndexOf(item);
+                if (at >= 0 && at != i) Children.Move(at, i);
+            }
+            else
+            {
+                Children.Insert(i, item);
+            }
         }
-        foreach (var c in target) c.Reload();
+        foreach (var c in target) c.ApplySnapshots(snapshots);
     }
 
     /// <summary>Forgets the loaded children, so the next open reads the folder again.</summary>
@@ -613,23 +704,28 @@ public sealed partial class FileNodeViewModel : ObservableObject
     }
 
     /// <summary>Folders first, then files, by name; .git is left out, as VS Code does.</summary>
-    private List<FileNodeViewModel> ReadChildren()
+    private List<FileNodeViewModel> ReadChildren() =>
+        ReadChildrenSpecs(FullPath, RelativePath, _owner!.CompactFolders)
+            .Select(s => new FileNodeViewModel(_owner!, s.FullPath, s.RelativePath, s.IsDirectory, s.Name))
+            .ToList();
+
+    private static List<ChildSpec> ReadChildrenSpecs(string fullPath, string relativePath, bool compactFolders)
     {
-        var result = new List<FileNodeViewModel>();
+        var result = new List<ChildSpec>();
         try
         {
-            var dir = new DirectoryInfo(FullPath);
+            var dir = new DirectoryInfo(fullPath);
             var comparer = StringComparer.OrdinalIgnoreCase;
             foreach (var d in dir.EnumerateDirectories().Where(d => d.Name != ".git").OrderBy(d => d.Name, comparer))
             {
                 // Compact folders: follow a chain of folders that each hold just one folder, as VS Code does.
                 var (path, label) = (d, d.Name);
-                while (_owner!.CompactFolders && OnlySubfolder(path) is { } only)
+                while (compactFolders && OnlySubfolder(path) is { } only)
                     (path, label) = (only, $"{label}/{only.Name}");
-                result.Add(new FileNodeViewModel(_owner!, path.FullName, Join(label), isDirectory: true, name: label));
+                result.Add(new ChildSpec(path.FullName, Join(relativePath, label), IsDirectory: true, label));
             }
             foreach (var f in dir.EnumerateFiles().OrderBy(f => f.Name, comparer))
-                result.Add(new FileNodeViewModel(_owner!, f.FullName, Join(f.Name), isDirectory: false));
+                result.Add(new ChildSpec(f.FullName, Join(relativePath, f.Name), IsDirectory: false, f.Name));
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { /* unreadable: show it empty */ }
         return result;
@@ -646,5 +742,5 @@ public sealed partial class FileNodeViewModel : ObservableObject
         catch (Exception e) when (e is IOException or UnauthorizedAccessException) { return null; }
     }
 
-    private string Join(string name) => RelativePath.Length == 0 ? name : $"{RelativePath}/{name}";
+    private static string Join(string relativePath, string name) => relativePath.Length == 0 ? name : $"{relativePath}/{name}";
 }

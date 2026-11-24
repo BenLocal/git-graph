@@ -11,7 +11,14 @@
         Width="1440" Height="900" MinWidth="900" MinHeight="560"
         WindowStartupLocation="CenterScreen" WindowState="Maximized"
         Background="{DynamicResource FrameBrush}">
-
+  <Window.Resources>
+    <MenuFlyout x:Key="TabMenu" x:DataType="vm:TabViewModel">
+      <MenuItem Header="Keep open" Command="{Binding Workspace.PinTabCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsPreview}" />
+      <MenuItem Header="Close" Command="{Binding Workspace.CloseTabCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Close tabs to the right" Command="{Binding Workspace.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
+    </MenuFlyout>
+  </Window.Resources>
 
   <Panel>
   <DockPanel>
@@ -196,15 +203,8 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:TabViewModel">
-              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped">
-                <Grid.ContextMenu>
-                  <ContextMenu>
-                    <MenuItem Header="Keep open" Command="{Binding Workspace.PinTabCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsPreview}" />
-                    <MenuItem Header="Close" Command="{Binding Workspace.CloseTabCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="Close tabs to the right" Command="{Binding Workspace.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
-                    <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
-                  </ContextMenu>
-                </Grid.ContextMenu>
+              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped"
+                    ContextFlyout="{StaticResource TabMenu}">
                 <Border Grid.Row="1" Classes="tabline" />
                 <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
                   <LucideIcon Kind="FolderTree" Size="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />

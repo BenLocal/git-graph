@@ -26,6 +26,9 @@ public sealed class MarkdownView : StackPanel
         .UseEmphasisExtras()
         .Build();
 
+    private readonly List<IDisposable> _bindings = [];
+    private bool _detached;
+
     public MarkdownView() => Spacing = 10;
 
     public string? Markdown
@@ -45,16 +48,34 @@ public sealed class MarkdownView : StackPanel
     {
         base.OnAttachedToVisualTree(e);
         FontScale.Changed += Rebuild;
+        if (_detached)
+        {
+            _detached = false;
+            if (!string.IsNullOrWhiteSpace(Markdown)) Rebuild();
+        }
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
         FontScale.Changed -= Rebuild;
+        ClearBindings();
+        Children.Clear();
+        _detached = true;
     }
+
+    private void ClearBindings()
+    {
+        foreach (var b in _bindings) b.Dispose();
+        _bindings.Clear();
+    }
+
+    private void BindRes(AvaloniaObject target, AvaloniaProperty prop, string key) =>
+        _bindings.Add(target.Bind(prop, this.GetResourceObservable(key)));
 
     private void Rebuild()
     {
+        ClearBindings();
         Children.Clear();
         if (string.IsNullOrWhiteSpace(Markdown)) return;
         foreach (var block in Markdig.Markdown.Parse(Markdown, Pipeline))
@@ -76,7 +97,7 @@ public sealed class MarkdownView : StackPanel
     private Border Rule()
     {
         var rule = new Border { Height = 1, Margin = new Thickness(0, 4) };
-        rule.Bind(Border.BackgroundProperty, Res("RuleBrush"));
+        BindRes(rule, Border.BackgroundProperty, "RuleBrush");
         return rule;
     }
 
@@ -150,7 +171,7 @@ public sealed class MarkdownView : StackPanel
             case CodeInline code:
                 {
                     var run = new Run(code.Content) { FontFamily = (FontFamily)this.FindResource("CodeFont")!, FontSize = FontScale.Of(12) };
-                    run.Bind(TextElement.BackgroundProperty, Res("RaisedBrush"));
+                    BindRes(run, TextElement.BackgroundProperty, "RaisedBrush");
                     into.Add(run);
                     break;
                 }
@@ -194,7 +215,7 @@ public sealed class MarkdownView : StackPanel
     {
         var start = into.Text?.Length ?? 0;
         var run = new Run(text) { TextDecorations = TextDecorations.Underline };
-        run.Bind(TextElement.ForegroundProperty, Res("LinkBrush"));
+        BindRes(run, TextElement.ForegroundProperty, "LinkBrush");
         into.Add(run);
         if (url != null) links.Add(new LinkSpan(start, start + text.Length, url));
     }
@@ -217,7 +238,7 @@ public sealed class MarkdownView : StackPanel
             var marker = list.IsOrdered ? $"{number++}." : "•";
             var row = new Grid { ColumnDefinitions = new ColumnDefinitions("22,*") };
             var bullet = new TextBlock { Text = marker, LineHeight = FontScale.Of(20), HorizontalAlignment = HorizontalAlignment.Left };
-            bullet.Bind(TextBlock.ForegroundProperty, Res("MutedBrush"));
+            BindRes(bullet, TextBlock.ForegroundProperty, "MutedBrush");
             row.Children.Add(bullet);
             var content = Stack(item, 4);
             Grid.SetColumn(content, 1);
@@ -230,9 +251,9 @@ public sealed class MarkdownView : StackPanel
     private Control Quote(QuoteBlock quote)
     {
         var content = Stack(quote);
-        content.Bind(TextElement.ForegroundProperty, Res("MutedBrush"));
+        BindRes(content, TextElement.ForegroundProperty, "MutedBrush");
         var border = new Border { BorderThickness = new Thickness(3, 0, 0, 0), Padding = new Thickness(12, 0, 0, 0), Child = content };
-        border.Bind(Border.BorderBrushProperty, Res("RuleBrush"));
+        BindRes(border, Border.BorderBrushProperty, "RuleBrush");
         return border;
     }
 
@@ -248,9 +269,7 @@ public sealed class MarkdownView : StackPanel
             TextWrapping = TextWrapping.Wrap,
         };
         var border = new Border { CornerRadius = new CornerRadius(6), Padding = new Thickness(12, 8), Child = tb };
-        border.Bind(Border.BackgroundProperty, Res("RaisedBrush"));
+        BindRes(border, Border.BackgroundProperty, "RaisedBrush");
         return border;
     }
-
-    private IObservable<object?> Res(string key) => this.GetResourceObservable(key);
 }

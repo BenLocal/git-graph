@@ -5,6 +5,29 @@
              x:Class="GitGraph.App.Views.SidebarView"
              x:DataType="vm:MainWindowViewModel"
              Background="{DynamicResource FrameBrush}">
+  <UserControl.Resources>
+    <MenuFlyout x:Key="RepoMenu" x:DataType="vm:RepoNodeViewModel">
+      <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+      <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
+      <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
+      <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+      <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
+      <Separator />
+      <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
+      <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
+      <Separator />
+      <MenuItem Classes="danger" Header="Remove from list…" Command="{Binding RemoveCommand}" />
+    </MenuFlyout>
+    <MenuFlyout x:Key="WorktreeMenu" x:DataType="vm:WorktreeNodeViewModel">
+      <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
+      <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
+      <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
+      <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+      <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
+      <Separator />
+      <MenuItem Classes="danger" Header="Remove worktree…" Command="{Binding RemoveCommand}" />
+    </MenuFlyout>
+  </UserControl.Resources>
   <DockPanel>
     <!-- Theme -->
     <Border DockPanel.Dock="Bottom" Padding="8,6">
@@ -48,21 +71,7 @@
                     </Panel>
                   </Button>
                   <Button Grid.Column="1" Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}"
-                          ToolTip.Tip="{Binding MainPath}">
-                    <Button.ContextMenu>
-                      <ContextMenu>
-                        <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
-                        <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
-                        <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
-                        <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
-                        <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
-                        <Separator />
-                        <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
-                        <MenuItem Header="Prune missing worktrees" Command="{Binding PruneWorktreesCommand}" />
-                        <Separator />
-                        <MenuItem Classes="danger" Header="Remove from list…" Command="{Binding RemoveCommand}" />
-                      </ContextMenu>
-                    </Button.ContextMenu>
+                          ToolTip.Tip="{Binding MainPath}" ContextFlyout="{StaticResource RepoMenu}">
                     <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                       <LucideIcon Kind="FolderGit2" Size="15" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />
@@ -81,18 +90,8 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:WorktreeNodeViewModel">
                       <Button Classes="nav" Classes.active="{Binding IsActive}" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tooltip}"
-                              Opacity="{Binding IsPrunable, Converter={x:Static vm:Converters.DimIfTrue}}">
-                        <Button.ContextMenu>
-                          <ContextMenu>
-                            <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
-                            <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
-                            <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
-                            <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
-                            <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
-                            <Separator />
-                            <MenuItem Classes="danger" Header="Remove worktree…" Command="{Binding RemoveCommand}" />
-                          </ContextMenu>
-                        </Button.ContextMenu>
+                              Opacity="{Binding IsPrunable, Converter={x:Static vm:Converters.DimIfTrue}}"
+                              ContextFlyout="{StaticResource WorktreeMenu}">
                         <Grid ColumnDefinitions="Auto,Auto,*,Auto">
                           <LucideIcon Kind="FolderTree" Size="13" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Classes="name" Margin="8,0,8,0" Text="{Binding Name}" VerticalAlignment="Center" />

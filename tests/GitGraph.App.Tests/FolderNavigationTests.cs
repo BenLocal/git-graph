@@ -301,4 +301,20 @@ public sealed class FolderNavigationTests : IDisposable
             try { File.Delete(outside); } catch { /* best effort */ }
         }
     }
+
+    [Fact]
+    public async Task RefreshTree_updates_files_asynchronously_without_dropping_existing_nodes()
+    {
+        _folder.EnsureLoaded();
+        await Idle();
+        var src = _folder.Root.Children.Single(c => c.Name == "src");
+        src.IsExpanded = true;
+
+        _repo.Write("src/Added.cs", "class Added {}\n");
+        _folder.RefreshTreeCommand.Execute(null);
+        await Idle();
+
+        Assert.Contains(src.Children, c => c.Name == "Added.cs");
+        Assert.Contains(src.Children, c => c.Name == "App.cs");
+    }
 }

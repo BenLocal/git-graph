@@ -68,9 +68,12 @@ public sealed partial class FolderTabViewModel
 
     private async Task SearchAsync()
     {
-        _searchCts?.Cancel();
-        if (SearchKind is not { } kind) return;
-        var cts = _searchCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        if (SearchKind is not { } kind)
+        {
+            DisposeCts(ref _searchCts);
+            return;
+        }
+        var cts = ReplaceCts(ref _searchCts, _lifetime.Token);
         var query = SearchQuery.Trim();
         try
         {

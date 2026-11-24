@@ -72,32 +72,38 @@ public sealed partial class FileHistoryViewModel : ObservableObject
     [ObservableProperty]
     private bool _hasMore;
 
-    private bool _loadingHistory;
+    private Task? _loadingTask;
 
     /// <summary>
     /// Loads the first <see cref="_maxCount"/> commits and appends the ones not listed yet. git's --skip doesn't
     /// combine with --follow (it skips before following renames), so each page re-reads from the top.
     /// </summary>
-    private async Task LoadHistoryAsync()
+    private Task LoadHistoryAsync() => _loadingTask ??= LoadHistoryCoreAsync();
+
+    private async Task LoadHistoryCoreAsync()
     {
-        if (_loadingHistory) return;
-        _loadingHistory = true;
         try
         {
+            var before = Entries.Count;
             var history = await _repo.GetFileHistoryAsync(Path, _rev, _maxCount);
             foreach (var e in history.Skip(Entries.Count)) Entries.Add(new FileHistoryRowViewModel(e, this));
-            HasMore = history.Count == _maxCount;
+            HasMore = history.Count == _maxCount && Entries.Count > before;
             HistoryMessage = history.Count == 0 ? "No commit has changed this file yet." : null;
             SelectedEntry ??= Entries.FirstOrDefault();
         }
-        catch (GitException e) { HistoryMessage = e.Message; }
-        finally { _loadingHistory = false; }
+        catch (GitException e)
+        {
+            HistoryMessage = e.Message;
+            HasMore = false;
+        }
+        finally { _loadingTask = null; }
     }
 
     /// <summary>The next page of the history, for the window's infinite scroll.</summary>
     public Task LoadMoreAsync()
     {
-        if (!HasMore || _loadingHistory) return Task.CompletedTask;
+        if (_loadingTask is { } running) return running;
+        if (!HasMore) return Task.CompletedTask;
         _maxCount += PageSize;
         return LoadHistoryAsync();
     }
@@ -181,6 +187,7 @@ public sealed partial class FileHistoryViewModel : ObservableObject
     {
         if (!line.Commit.IsCommitted) return;
         SelectedTabIndex = 0;
+        if (_loadingTask is { } initial) await initial;
         // An old commit may be further down than loaded so far: load pages until it turns up.
         while (Entries.All(e => e.Entry.Commit.Hash != line.Commit.Hash) && HasMore) await LoadMoreAsync();
         if (Entries.FirstOrDefault(e => e.Entry.Commit.Hash == line.Commit.Hash) is { } entry) SelectedEntry = entry;

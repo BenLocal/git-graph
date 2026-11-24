@@ -154,73 +154,65 @@
               </Border>
 
               <!-- Uncommitted files by group, each with stage, unstage and discard buttons -->
-              <ScrollViewer x:Name="WorkingList" Grid.Row="1" IsVisible="{Binding IsStaging}" HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0"
-                            Focusable="True" KeyDown="OnWorkingListKeyDown">
-                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,8">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:FileGroupViewModel">
-                      <StackPanel>
-                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="16,8,10,2" Height="24">
-                          <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
-                          <Border Grid.Column="1" Classes="count" Margin="7,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Files.Count}" />
-                          </Border>
-                          <StackPanel Grid.Column="3" Orientation="Horizontal">
-                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.DiscardAllCommand}" CommandParameter="{Binding}"
-                                    IsVisible="{Binding CanDiscard}" ToolTip.Tip="Discard all changes">
-                              <LucideIcon Kind="Undo2" Size="14" />
-                            </Button>
-                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.StageAllCommand}" CommandParameter="{Binding}"
-                                    IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
-                              <LucideIcon Kind="Plus" Size="14" />
-                            </Button>
-                            <Button Classes="ghost" Padding="4" Command="{Binding Owner.UnstageAllCommand}" CommandParameter="{Binding}"
-                                    IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage all changes">
-                              <LucideIcon Kind="Minus" Size="14" />
-                            </Button>
-                          </StackPanel>
-                        </Grid>
-                        <ItemsControl ItemsSource="{Binding Files}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:FileChangeViewModel">
-                              <Border Classes="filerow" Classes.selected="{Binding IsSelected}" Tapped="OnWorkingFileTapped"
-                                      DoubleTapped="OnWorkingFileDoubleTapped" ToolTip.Tip="{Binding Tooltip}" ContextFlyout="{StaticResource WorkingFileMenu}">
-                                <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="10,0,6,0">
-                                  <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
-                                             Text="{Binding Status}" VerticalAlignment="Center" />
-                                  <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
-                                    <Run Text="{Binding FileName}" />
-                                    <Run Text="{Binding Directory}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
-                                  </TextBlock>
-                                  <!-- Line counts, replaced by the buttons while the pointer is on the row -->
-                                  <StackPanel Grid.Column="2" Classes="counts" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                                    <TextBlock Classes="add mono" Text="{Binding AddText}" FontSize="{DynamicResource FontSizeSmall}" />
-                                    <TextBlock Classes="del mono" Text="{Binding DelText}" FontSize="{DynamicResource FontSizeSmall}" />
-                                  </StackPanel>
-                                  <StackPanel Grid.Column="3" Classes="rowactions" Orientation="Horizontal">
-                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
-                                            IsVisible="{Binding CanDiscard}" ToolTip.Tip="{Binding DiscardTip}">
-                                      <LucideIcon Kind="Undo2" Size="13" />
-                                    </Button>
-                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}"
-                                            IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
-                                      <LucideIcon Kind="Plus" Size="13" />
-                                    </Button>
-                                    <Button Classes="ghost" Padding="3" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}"
-                                            IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage">
-                                      <LucideIcon Kind="Minus" Size="13" />
-                                    </Button>
-                                  </StackPanel>
-                                </Grid>
-                              </Border>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+              <ListBox x:Name="WorkingList" Grid.Row="1" Classes="dense plain" ItemsSource="{Binding WorkingItems}" IsVisible="{Binding IsStaging}"
+                       ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0" Focusable="True">
+                <ListBox.DataTemplates>
+                  <DataTemplate x:DataType="vm:FileGroupViewModel">
+                    <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="16,8,10,2" Height="24">
+                      <TextBlock Classes="section" Text="{Binding Title}" VerticalAlignment="Center" />
+                      <Border Grid.Column="1" Classes="count" Margin="7,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Files.Count}" />
+                      </Border>
+                      <StackPanel Grid.Column="3" Orientation="Horizontal">
+                        <Button Classes="ghost" Padding="4" Command="{Binding Owner.DiscardAllCommand}" CommandParameter="{Binding}"
+                                IsVisible="{Binding CanDiscard}" ToolTip.Tip="Discard all changes">
+                          <LucideIcon Kind="Undo2" Size="14" />
+                        </Button>
+                        <Button Classes="ghost" Padding="4" Command="{Binding Owner.StageAllCommand}" CommandParameter="{Binding}"
+                                IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
+                          <LucideIcon Kind="Plus" Size="14" />
+                        </Button>
+                        <Button Classes="ghost" Padding="4" Command="{Binding Owner.UnstageAllCommand}" CommandParameter="{Binding}"
+                                IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage all changes">
+                          <LucideIcon Kind="Minus" Size="14" />
+                        </Button>
                       </StackPanel>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-              </ScrollViewer>
+                    </Grid>
+                  </DataTemplate>
+                  <DataTemplate x:DataType="vm:FileChangeViewModel">
+                    <Border Classes="filerow" Classes.selected="{Binding IsSelected}" Tapped="OnWorkingFileTapped"
+                            DoubleTapped="OnWorkingFileDoubleTapped" ToolTip.Tip="{Binding Tooltip}" ContextFlyout="{StaticResource WorkingFileMenu}">
+                      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="10,0,6,0">
+                        <TextBlock Classes="status" Classes.added="{Binding IsAdded}" Classes.deleted="{Binding IsDeleted}"
+                                   Text="{Binding Status}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis">
+                          <Run Text="{Binding FileName}" />
+                          <Run Text="{Binding Directory}" FontSize="{DynamicResource FontSizeSmall}" Foreground="{DynamicResource MutedBrush}" />
+                        </TextBlock>
+                        <!-- Line counts, replaced by the buttons while the pointer is on the row -->
+                        <StackPanel Grid.Column="2" Classes="counts" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                          <TextBlock Classes="add mono" Text="{Binding AddText}" FontSize="{DynamicResource FontSizeSmall}" />
+                          <TextBlock Classes="del mono" Text="{Binding DelText}" FontSize="{DynamicResource FontSizeSmall}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Classes="rowactions" Orientation="Horizontal">
+                          <Button Classes="ghost" Padding="3" Command="{Binding Owner.DiscardCommand}" CommandParameter="{Binding}"
+                                  IsVisible="{Binding CanDiscard}" ToolTip.Tip="{Binding DiscardTip}">
+                            <LucideIcon Kind="Undo2" Size="13" />
+                          </Button>
+                          <Button Classes="ghost" Padding="3" Command="{Binding Owner.StageCommand}" CommandParameter="{Binding}"
+                                  IsVisible="{Binding CanStage}" ToolTip.Tip="{Binding StageTip}">
+                            <LucideIcon Kind="Plus" Size="13" />
+                          </Button>
+                          <Button Classes="ghost" Padding="3" Command="{Binding Owner.UnstageCommand}" CommandParameter="{Binding}"
+                                  IsVisible="{Binding CanUnstage}" ToolTip.Tip="Unstage">
+                            <LucideIcon Kind="Minus" Size="13" />
+                          </Button>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.DataTemplates>
+              </ListBox>
 
               <ListBox x:Name="FileList" Grid.Row="1" Classes="dense pills" ItemsSource="{Binding Files}" SelectedItem="{Binding SelectedFile}"
                        IsVisible="{Binding !IsStaging}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">

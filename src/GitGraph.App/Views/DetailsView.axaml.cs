@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GitGraph.App.Controls;
 using GitGraph.App.ViewModels;
@@ -22,6 +23,7 @@ public partial class DetailsView : UserControl
             vm.OpenFullDiffCommand.Execute(null);
             e.Handled = true;
         };
+        WorkingList.AddHandler(KeyDownEvent, OnWorkingListKeyDown, RoutingStrategies.Tunnel);
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -74,8 +76,7 @@ public partial class DetailsView : UserControl
         }
         e.Handled = true;
         // Keep the selected row in view as the arrows move past the edge.
-        WorkingList.GetVisualDescendants().OfType<Border>()
-            .FirstOrDefault(b => b.Classes.Contains("filerow") && b.DataContext == vm.SelectedFile)?.BringIntoView();
+        if (vm.SelectedFile is { } selected) WorkingList.ScrollIntoView(selected);
     }
 
     private void OnWorkingFileDoubleTapped(object? sender, TappedEventArgs e)

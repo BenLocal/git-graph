@@ -70,6 +70,9 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     /// <summary>Uncommitted files grouped as git's staging sees them: conflicts, staged, and not staged.</summary>
     public ObservableCollection<FileGroupViewModel> Groups { get; } = [];
 
+    /// <summary>Flattened group headers and uncommitted files for the virtualized working list.</summary>
+    public ObservableCollection<object> WorkingItems { get; } = [];
+
     /// <summary>Showing uncommitted changes, which can be staged and committed (not a commit or a comparison).</summary>
     [ObservableProperty]
     private bool _isStaging;
@@ -371,6 +374,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
             _workingSignature = signature;
             Files.Clear();
             Groups.Clear();
+            WorkingItems.Clear();
             // A conflicted file shows with its conflict markers, against HEAD.
             AddGroup(FileGroup.Conflicted, "Merge conflicts", changes.Conflicted, new DiffTarget(_headRev, null));
             AddGroup(FileGroup.Staged, "Staged changes", changes.Staged, new DiffTarget(_headRev, GitRepository.Index));
@@ -396,7 +400,10 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         if (changes.Count == 0) return;
         var files = changes.Select(c => new FileChangeViewModel(c, this, group, target)).ToList();
         foreach (var f in files) Files.Add(f);
-        Groups.Add(new FileGroupViewModel(group, title, files, this));
+        var header = new FileGroupViewModel(group, title, files, this);
+        Groups.Add(header);
+        WorkingItems.Add(header);
+        foreach (var f in files) WorkingItems.Add(f);
     }
 
     partial void OnSelectedFileChanged(FileChangeViewModel? oldValue, FileChangeViewModel? newValue)
@@ -476,6 +483,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
 
     private void ResetDiff(string? message)
     {
+        _shown = null;
         DiffLines = [];
         SplitRows = [];
         HasDiff = false;

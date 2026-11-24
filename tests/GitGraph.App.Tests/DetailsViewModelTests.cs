@@ -199,4 +199,67 @@ public sealed class DetailsViewModelTests : IDisposable
         Assert.Equal("Tester, just now • first", diff.LineBlame?.Text);
         diff.Detach();
     }
+
+    [Fact]
+    public async Task WorkingItems_flattens_groups_and_files_in_display_order()
+    {
+        _repo.Write("a.txt", "staged\n");
+        _repo.Git("add", "a.txt");
+        _repo.Write("b.txt", "unstaged\n");
+
+        _vm.ShowUncommitted("HEAD");
+        await Settled();
+
+        Assert.Equal(4, _vm.WorkingItems.Count);
+        Assert.IsType<FileGroupViewModel>(_vm.WorkingItems[0]);
+        Assert.Equal("a.txt", Assert.IsType<FileChangeViewModel>(_vm.WorkingItems[1]).Change.Path);
+        Assert.IsType<FileGroupViewModel>(_vm.WorkingItems[2]);
+        Assert.Equal("b.txt", Assert.IsType<FileChangeViewModel>(_vm.WorkingItems[3]).Change.Path);
+    }
+
+    [Fact]
+    public async Task Switching_text_to_image_and_back_to_same_text_restores_text_diff()
+    {
+        // Minimal valid 1x1 PNG.
+        byte[] png = Convert.FromBase64String(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=");
+        _repo.Write("a.txt", "changed\n");
+        File.WriteAllBytes(Path.Combine(_repo.Path, "pic.png"), png);
+
+        await TerminalTestApp.Ui.Dispatch<bool>(async () =>
+        {
+            _vm.ShowUncommitted("HEAD");
+            await Settled();
+
+            var textFile = _vm.Files.Single(f => f.Change.Path == "a.txt");
+            var imageFile = _vm.Files.Single(f => f.Change.Path == "pic.png");
+
+            _vm.SelectedFile = textFile;
+            await Settled();
+            Assert.False(_vm.IsImageDiff);
+            Assert.NotEmpty(_vm.DiffLines);
+
+            _vm.SelectedFile = imageFile;
+            await Settled();
+            Assert.True(_vm.IsImageDiff);
+            Assert.Empty(_vm.DiffLines);
+
+            _vm.SelectedFile = textFile;
+            await Settled();
+            Assert.False(_vm.IsImageDiff);
+            Assert.NotEmpty(_vm.DiffLines);
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task FileHistory_ShowCommit_does_not_hang_while_initial_load_is_running()
+    {
+        var repo = new GitRepository(_repo.Path);
+        var fh = new FileHistoryViewModel(repo, "a.txt", null, _host, blame: false);
+        var row = new BlameRowViewModel(1, "one", null, new BlameCommit("1111111111111111111111111111111111111111", "Tester", "t@example.com", DateTimeOffset.UtcNow, "missing"), true, false, fh);
+        await fh.ShowCommitCommand.ExecuteAsync(row).WaitAsync(TimeSpan.FromSeconds(5));
+        await fh.Loads.WhenIdleAsync().WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Contains("isn't in this file's history", fh.HistoryMessage);
+    }
 }

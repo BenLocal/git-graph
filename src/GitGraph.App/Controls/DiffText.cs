@@ -28,9 +28,17 @@ public sealed class DiffText : SelectableTextBlock
     public static readonly StyledProperty<SyntaxSpan[]?> SyntaxProperty =
         AvaloniaProperty.Register<DiffText, SyntaxSpan[]?>(nameof(Syntax));
 
+    private readonly List<IDisposable> _bindings = [];
+    private bool _dirty;
+
     public DiffText()
     {
-        ActualThemeVariantChanged += (_, _) => { if (Syntax != null) Rebuild(); };
+        ActualThemeVariantChanged += (_, _) =>
+        {
+            if (Syntax is null) return;
+            _dirty = true;
+            InvalidateMeasure();
+        };
         // The code viewer's selection colour, and selected text keeps its syntax colours, as in VS Code.
         Bind(SelectionBrushProperty, this.GetResourceObservable("EditorSelectionBrush"));
         SelectionForegroundBrush = null;
@@ -65,15 +73,46 @@ public sealed class DiffText : SelectableTextBlock
         set => SetValue(IsAddedProperty, value);
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        if (_dirty) InvalidateMeasure();
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        ClearBindings();
+        _dirty = true;
+    }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (change.Property == LineProperty || change.Property == SegmentsProperty || change.Property == IsAddedProperty
-            || change.Property == SyntaxProperty) Rebuild();
+            || change.Property == SyntaxProperty)
+        {
+            _dirty = true;
+            InvalidateMeasure();
+        }
+    }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (_dirty) Rebuild();
+        return base.MeasureOverride(availableSize);
+    }
+
+    private void ClearBindings()
+    {
+        foreach (var b in _bindings) b.Dispose();
+        _bindings.Clear();
     }
 
     private void Rebuild()
     {
+        _dirty = false;
+        ClearBindings();
         var line = Line ?? "";
         var segments = Segments;
         var syntax = Syntax;
@@ -122,7 +161,7 @@ public sealed class DiffText : SelectableTextBlock
                 }
                 // Bound to the resource so the colour follows theme changes.
                 if (changed.Exists(c => c.Start <= start && start < c.End))
-                    run.Bind(Inline.BackgroundProperty, this.GetResourceObservable(key));
+                    _bindings.Add(run.Bind(Inline.BackgroundProperty, this.GetResourceObservable(key)));
                 inlines.Add(run);
             }
             previous = cut;

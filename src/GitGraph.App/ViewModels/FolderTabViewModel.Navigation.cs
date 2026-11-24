@@ -172,8 +172,7 @@ public sealed partial class FolderTabViewModel
     public async Task NavigateAsync(NavKind kind, int offset)
     {
         if (_shownNode is not { } node || FileText is not { } text) return;
-        _navCts?.Cancel();
-        var cts = _navCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var cts = ReplaceCts(ref _navCts, _lifetime.Token);
         try
         {
             var (root, isGit, path) = await NavRootAsync(node, cts.Token);
@@ -266,8 +265,7 @@ public sealed partial class FolderTabViewModel
     /// <summary>Shows a result's file in the preview, read once per file and coloured after it appears.</summary>
     private async Task PreviewAsync(NavItem item)
     {
-        _previewCts?.Cancel();
-        var cts = _previewCts = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+        var cts = ReplaceCts(ref _previewCts, _lifetime.Token);
         try
         {
             // The file again unless it is already shown and coloured (its colouring may have been cancelled midway).
@@ -369,8 +367,11 @@ public sealed partial class FolderTabViewModel
 
     private void DisposeNavigation()
     {
+        DisposeCts(ref _navCts);
+        DisposeCts(ref _searchCts);
+        DisposeCts(ref _previewCts);
         _lifetime.Cancel();
-        _navCts?.Cancel();
+        _lifetime.Dispose();
         foreach (var task in _indexes.Values)
             task.ContinueWith(t => { if (t.IsCompletedSuccessfully) t.Result?.Dispose(); }, TaskScheduler.Default);
         _indexes.Clear();

@@ -15,7 +15,7 @@ namespace GitGraph.App.Views;
 /// <summary>Hosts one terminal per open tab; the controls remain attached while hidden.</summary>
 public partial class TerminalPanelView : UserControl
 {
-    private sealed record Entry(TerminalControl Control, TerminalSession Session, Action Close)
+    private sealed record Entry(TerminalControl Control, TerminalSession Session, Action Close, IReadOnlyList<IDisposable> Bindings)
     {
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
@@ -75,13 +75,16 @@ public partial class TerminalPanelView : UserControl
             AllowWindowOps = false,
             Options = new XTerm.Options.TerminalOptions { MinimumContrastRatio = 4.5 },
         };
-        control[!FontFamilyProperty] = this.GetResourceObservable("CodeFont").ToBinding();
-        control[!FontSizeProperty] = this.GetResourceObservable("FontSizeCode").ToBinding();
-        control[!ForegroundProperty] = this.GetResourceObservable("TextBrush").ToBinding();
-        control[!BackgroundProperty] = this.GetResourceObservable("SurfaceBrush").ToBinding();
-        control[!TerminalControl.CursorColorProperty] = this.GetResourceObservable("TextColor").ToBinding();
-        control[!TerminalControl.SelectionBrushProperty] = this.GetResourceObservable("SignalWashBrush").ToBinding();
-        var entry = new Entry(control, new TerminalSession(), () => RemoveTerminal(vm));
+        IReadOnlyList<IDisposable> bindings =
+        [
+            control.Bind(FontFamilyProperty, this.GetResourceObservable("CodeFont")),
+            control.Bind(FontSizeProperty, this.GetResourceObservable("FontSizeCode")),
+            control.Bind(ForegroundProperty, this.GetResourceObservable("TextBrush")),
+            control.Bind(BackgroundProperty, this.GetResourceObservable("SurfaceBrush")),
+            control.Bind(TerminalControl.CursorColorProperty, this.GetResourceObservable("TextColor")),
+            control.Bind(TerminalControl.SelectionBrushProperty, this.GetResourceObservable("SignalWashBrush")),
+        ];
+        var entry = new Entry(control, new TerminalSession(), () => RemoveTerminal(vm), bindings);
         _entries.Add(vm, entry);
         vm.CloseRequested += entry.Close;
         vm.Status = "Starting…";
@@ -131,6 +134,7 @@ public partial class TerminalPanelView : UserControl
     {
         if (!_entries.Remove(vm, out var entry)) return;
         vm.CloseRequested -= entry.Close;
+        foreach (var b in entry.Bindings) b.Dispose();
         entry.Control.Dispose();
         entry.Session.Dispose();
         Sessions.Children.Remove(entry.Control);

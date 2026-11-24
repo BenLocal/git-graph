@@ -73,18 +73,16 @@ public static partial class AvatarService
         {
             if (_style == value) return;
             _style = value;
-            // Pictures of the old style can go; the new style's come from its own cache files.
-            ClearLoaded();
+            // Notify live avatars to drop old bitmaps before clearing the cache; GC finalizes evicted bitmaps safely.
             StyleChanged?.Invoke();
+            ClearLoaded();
         }
     }
 
     private static void ClearLoaded()
     {
-        var old = Loaded.Values.ToList();
         Loaded.Clear();
-        foreach (var task in old)
-            if (task.IsCompletedSuccessfully) task.Result?.Dispose();
+        while (Order.TryDequeue(out _)) { }
     }
 
     /// <summary>Pictures are fetched: not initials or identicons, which are drawn here.</summary>
@@ -133,6 +131,7 @@ public static partial class AvatarService
 
     private static readonly SemaphoreSlim Gate = new(4);
     private static readonly ConcurrentDictionary<string, Task<Bitmap?>> Loaded = new();
+    private static readonly ConcurrentQueue<string> Order = new();
     private static readonly TimeSpan MaxAge = TimeSpan.FromDays(7);
 
     private static string CacheDir => Path.Combine(
@@ -153,8 +152,15 @@ public static partial class AvatarService
     {
         if (!UseImages) return Task.FromResult<Bitmap?>(null);
         var key = email.Trim().ToLowerInvariant();
-        if (Loaded.Count >= MaxLoadedEntries && !Loaded.ContainsKey(key)) ClearLoaded();
-        return Loaded.GetOrAdd(key, k => LoadAsync(k, Style));
+        if (Loaded.TryGetValue(key, out var existing)) return existing;
+        // Evict oldest entries without disposing Bitmaps that visible Avatar controls may still be drawing.
+        while (Loaded.Count >= MaxLoadedEntries && Order.TryDequeue(out var oldest))
+            Loaded.TryRemove(oldest, out _);
+        return Loaded.GetOrAdd(key, k =>
+        {
+            Order.Enqueue(k);
+            return LoadAsync(k, Style);
+        });
     }
 
     private static async Task<Bitmap?> LoadAsync(string email, string style)
