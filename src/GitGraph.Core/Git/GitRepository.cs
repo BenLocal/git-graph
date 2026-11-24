@@ -79,11 +79,13 @@ public sealed class GitRepository(string path)
         if (filter is { Code: { Length: > 0 } code } && !string.IsNullOrWhiteSpace(code)) args.Add($"-S{code}");
         // Limiting to a path simplifies history; --parents rewrites each commit's parents to the nearest ones shown.
         if (filter is { Path: { Length: > 0 } }) args.Add("--parents");
+        var addedHead = false;
         if (branches is { Count: > 0 })
         {
             args.AddRange(branches);
             // HEAD keeps the current checkout visible even when the filter names other branches.
             args.Add("HEAD");
+            addedHead = true;
         }
         else
         {
@@ -93,21 +95,31 @@ public sealed class GitRepository(string path)
             if (!includeRemotes) args.Add("--exclude=refs/remotes/*");
             args.Add("--all");
             args.Add("HEAD");
+            addedHead = true;
         }
         args.Add("--");
         if (filter is { Path: { Length: > 0 } path }) args.Add(path);
         var r = await GitRunner.RunRawAsync(Path, args, ct);
-        // An empty repository has no HEAD; that is "no commits", not an error.
+        // An unborn HEAD (e.g. git checkout --orphan) fails with bad revision 'HEAD'; retry without HEAD
+        // so commits on other branches still appear.
+        if (r.ExitCode != 0 && addedHead && IsMissingHeadError(r.StdErr))
+        {
+            args.Remove("HEAD");
+            r = await GitRunner.RunRawAsync(Path, args, ct);
+        }
+        // An empty repository has no commits at all; that is "no commits", not an error.
         if (r.ExitCode != 0)
         {
-            if (r.StdErr.Contains("unknown revision", StringComparison.OrdinalIgnoreCase) ||
-                r.StdErr.Contains("does not have any commits", StringComparison.OrdinalIgnoreCase) ||
-                r.StdErr.Contains("bad revision 'HEAD'", StringComparison.OrdinalIgnoreCase))
-                return [];
+            if (IsMissingHeadError(r.StdErr)) return [];
             throw new GitException(r.StdErr.Trim(), r.ExitCode, string.Join(' ', args));
         }
         return GitParsers.ParseLog(r.StdOut);
     }
+
+    private static bool IsMissingHeadError(string stderr) =>
+        stderr.Contains("unknown revision", StringComparison.OrdinalIgnoreCase) ||
+        stderr.Contains("does not have any commits", StringComparison.OrdinalIgnoreCase) ||
+        stderr.Contains("bad revision 'HEAD'", StringComparison.OrdinalIgnoreCase);
 
     public async Task<List<GitRef>> GetRefsAsync(CancellationToken ct = default) =>
         GitParsers.ParseRefs(await Git(ct, "for-each-ref", $"--format={GitParsers.RefFormat}", "refs/heads", "refs/remotes", "refs/tags"));
@@ -189,26 +201,51 @@ public sealed class GitRepository(string path)
     public static DiffTarget TargetForCommit(CommitInfo c) =>
         new(c.Parents.Count > 0 ? c.Parents[0] : EmptyTree, c.Hash);
 
+    public const long MaxDiffFileBytes = 5 * 1024 * 1024;
+
     /// <summary>
     /// The file before and after the change, for diffing in-process. A side that doesn't exist
     /// (an added file's old version, a deleted file's new version) is empty.
     /// </summary>
     public async Task<(string Old, string New)> GetFileVersionsAsync(DiffTarget target, FileChange file, CancellationToken ct = default)
     {
-        var oldTask = file.Kind is ChangeKind.Added or ChangeKind.Untracked || target.From == EmptyTree
-            ? Task.FromResult("")
-            : ShowAsync(target.From, file.OldPath ?? file.Path, ct);
+        Task<string> oldTask;
+        if (file.Kind is ChangeKind.Added or ChangeKind.Untracked || target.From == EmptyTree)
+            oldTask = Task.FromResult("");
+        else if (file.Kind == ChangeKind.Conflicted)
+            oldTask = ShowOptionalAsync(target.From, file.OldPath ?? file.Path, ct);
+        else
+            oldTask = ShowAsync(target.From, file.OldPath ?? file.Path, ct);
+
         string newText;
         if (file.Kind == ChangeKind.Deleted)
             newText = "";
         else if (target.To is null)
-        {
-            var full = System.IO.Path.Combine(Path, file.Path);
-            newText = File.Exists(full) ? await File.ReadAllTextAsync(full, ct) : "";
-        }
+            newText = await ReadWorkingTreeTextAsync(System.IO.Path.Combine(Path, file.Path), ct);
         else
             newText = await ShowAsync(target.To, file.Path, ct);
         return (await oldTask, newText);
+    }
+
+    private async Task<string> ShowOptionalAsync(string rev, string path, CancellationToken ct)
+    {
+        try { return await ShowAsync(rev, path, ct); }
+        catch (GitException) { return ""; }
+    }
+
+    private static async Task<string> ReadWorkingTreeTextAsync(string full, CancellationToken ct)
+    {
+        var info = new FileInfo(full);
+        if (!info.Exists) return "";
+        await using var stream = new FileStream(full, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 8192, useAsync: true);
+        var probe = new byte[8000];
+        var read = await stream.ReadAsync(probe, ct).ConfigureAwait(false);
+        if (probe.AsSpan(0, read).Contains((byte)0)) return "\0";
+        if (info.Length > MaxDiffFileBytes)
+            throw new IOException($"File is too large to diff ({info.Length / (1024 * 1024)} MB).");
+        stream.Position = 0;
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        return await reader.ReadToEndAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>Both versions of a file as bytes, for showing images; a side that doesn't exist is null.</summary>
@@ -234,7 +271,7 @@ public sealed class GitRepository(string path)
     }
 
     private Task<string> ShowAsync(string rev, string path, CancellationToken ct) =>
-        GitRunner.RunAsync(Path, ["show", "--no-textconv", rev == Index ? ":" + path : $"{rev}:{path}"], ct);
+        GitRunner.RunBoundedTextAsync(Path, ["show", "--no-textconv", rev == Index ? ":" + path : $"{rev}:{path}"], MaxDiffFileBytes, ct);
 
     // ---- Commands ----------------------------------------------------------------------------
 

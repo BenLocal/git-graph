@@ -46,6 +46,92 @@ public static class GitRunner
         return buffer.ToArray();
     }
 
+    /// <summary>
+    /// Reads UTF-8 text from git stdout up to <paramref name="maxBytes"/>, stopping early and returning
+    /// <c>"\0"</c> if a NUL byte appears in the first 8,000 bytes (git's binary heuristic).
+    /// </summary>
+    public static async Task<string> RunBoundedTextAsync(string workDir, IReadOnlyList<string> args, long maxBytes, CancellationToken ct = default)
+    {
+        using var proc = Start(workDir, args);
+        using var output = proc.StandardOutput;
+        using var error = proc.StandardError;
+        using var buffer = new MemoryStream();
+        var stderr = error.ReadToEndAsync(ct);
+        var chunk = new byte[8192];
+        var sniffed = false;
+        var binary = false;
+        var tooLarge = false;
+        while (true)
+        {
+            var read = await output.BaseStream.ReadAsync(chunk, ct).ConfigureAwait(false);
+            if (read == 0) break;
+            if (buffer.Length + read > maxBytes)
+            {
+                tooLarge = true;
+                try { proc.Kill(true); } catch { /* already gone */ }
+                break;
+            }
+            buffer.Write(chunk, 0, read);
+            if (!sniffed && (buffer.Length >= 8000 || read < chunk.Length))
+            {
+                sniffed = true;
+                var span = buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 8000));
+                if (span.Contains((byte)0))
+                {
+                    binary = true;
+                    try { proc.Kill(true); } catch { /* already gone */ }
+                    break;
+                }
+            }
+        }
+        if (!binary && !tooLarge && !sniffed)
+        {
+            var span = buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 8000));
+            if (span.Contains((byte)0)) binary = true;
+        }
+        if (binary)
+        {
+            await WaitAsync(proc, ct).ConfigureAwait(false);
+            return "\0";
+        }
+        if (tooLarge)
+        {
+            await WaitAsync(proc, ct).ConfigureAwait(false);
+            throw new IOException($"File is too large to diff (exceeds {maxBytes / (1024 * 1024)} MB).");
+        }
+        await WaitAsync(proc, ct).ConfigureAwait(false);
+        if (proc.ExitCode != 0) throw new GitException((await stderr).Trim(), proc.ExitCode, string.Join(' ', args));
+        return Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+    }
+
+    /// <summary>
+    /// Streams stdout lines to <paramref name="onLine"/>; returning false stops early and kills the git process.
+    /// </summary>
+    public static async Task ReadLinesAsync(string workDir, IReadOnlyList<string> args, Func<string, bool> onLine,
+        CancellationToken ct = default, params int[] okExitCodes)
+    {
+        using var proc = Start(workDir, args);
+        using var output = proc.StandardOutput;
+        using var error = proc.StandardError;
+        var stderr = error.ReadToEndAsync(ct);
+        var stoppedEarly = false;
+        while (await output.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
+        {
+            if (!onLine(line))
+            {
+                stoppedEarly = true;
+                try { proc.Kill(true); } catch { /* already gone */ }
+                break;
+            }
+        }
+        await WaitAsync(proc, ct).ConfigureAwait(false);
+        if (!stoppedEarly && proc.ExitCode != 0 && Array.IndexOf(okExitCodes, proc.ExitCode) < 0)
+        {
+            var err = (await stderr).Trim();
+            throw new GitException(err, proc.ExitCode, string.Join(' ', args));
+        }
+    }
+
     /// <summary>Writes <paramref name="input"/> to stdin while <paramref name="read"/> consumes stdout, for <c>--batch</c> commands.</summary>
     public static async Task<T> RunPipedAsync<T>(string workDir, IReadOnlyList<string> args, string input,
         Func<Stream, CancellationToken, Task<T>> read, CancellationToken ct = default)

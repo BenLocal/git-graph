@@ -20,6 +20,8 @@ public static class WorkspaceSearch
     /// <summary>The most files a folder outside git lists; a walk of a huge tree would otherwise never end.</summary>
     public const int MaxWalkedFiles = 100_000;
 
+    private const long MaxLineStartsFileBytes = 5 * 1024 * 1024;
+
     /// <summary>Where a search of <paramref name="folder"/> runs.</summary>
     public static async Task<List<SearchRoot>> RootsAsync(string folder, CancellationToken ct = default)
     {
@@ -112,16 +114,14 @@ public static class WorkspaceSearch
         // A repository's grep doesn't go into the repositories inside it, which are searched on their own.
         args.Add(root.IsGit ? "--untracked" : "--no-index");
         args.AddRange(["-e", query]);
-        // Exit code 1 means no match.
-        var output = await GitRunner.RunAsync(root.Dir, args, ct, 1).ConfigureAwait(false);
-
         // "<path>\0<line>\0<column>\0<text>" per line; the column is 1-based and counts bytes.
+        // Exit code 1 means no match.
         var hits = new List<(string Path, int Line, int Column, string Text)>();
-        foreach (var record in output.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        await GitRunner.ReadLinesAsync(root.Dir, args, record =>
         {
-            if (hits.Count == max) break;
+            if (record.Length == 0) return true;
             var parts = record.Split('\0', 4);
-            if (parts.Length < 4 || !int.TryParse(parts[1], out var line) || !int.TryParse(parts[2], out var column)) continue;
+            if (parts.Length < 4 || !int.TryParse(parts[1], out var line) || !int.TryParse(parts[2], out var column)) return true;
             var text = parts[3].TrimEnd('\r');
             // git counts a byte order mark as part of the first line; the viewer drops it.
             if (line == 1 && text.StartsWith('﻿'))
@@ -132,7 +132,8 @@ public static class WorkspaceSearch
             var bytes = Encoding.UTF8.GetBytes(text);
             var charColumn = Encoding.UTF8.GetCharCount(bytes, 0, Math.Clamp(column - 1, 0, bytes.Length));
             hits.Add((parts[0], line - 1, charColumn, text));
-        }
+            return hits.Count < max;
+        }, ct, 1).ConfigureAwait(false);
 
         // Offsets into each file, which the viewer and the preview place the caret by.
         var result = new List<NavLocation>(hits.Count);
@@ -155,6 +156,8 @@ public static class WorkspaceSearch
         var starts = new List<int> { 0 };
         try
         {
+            var info = new FileInfo(file);
+            if (!info.Exists || info.Length > MaxLineStartsFileBytes) return starts;
             var text = File.ReadAllText(file);
             for (var i = 0; i < text.Length; i++)
                 if (text[i] == '\n') starts.Add(i + 1);

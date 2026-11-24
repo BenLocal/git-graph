@@ -146,4 +146,13 @@ public sealed class WorkspaceSearchTests : IDisposable
         var plain = Path.Combine(_repo, "build");
         Assert.Equal(["out.txt"], (await WorkspaceSearch.SearchTextAsync(plain, "ignored", 100)).Select(l => l.Path));
     }
+
+    [Fact]
+    public async Task Text_search_stops_streaming_at_max_results_across_many_matches()
+    {
+        var lines = string.Join('\n', Enumerable.Range(0, 200).Select(i => $"match line {i}"));
+        Write("many.txt", lines);
+        var hits = await WorkspaceSearch.SearchTextAsync(_repo, "match line", 5);
+        Assert.Equal(5, hits.Count);
+    }
 }

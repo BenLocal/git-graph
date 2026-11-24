@@ -818,4 +818,53 @@ public sealed class GitRepositoryTests : IDisposable
 
         Assert.Empty(await new GitRepository(empty).GetCommitsAsync(10, null, true));
     }
+
+    [Fact]
+    public async Task Unborn_orphan_head_still_shows_commits_on_other_branches()
+    {
+        Git("checkout", "-q", "--orphan", "wip");
+        var commits = await new GitRepository(_repo).GetCommitsAsync(50, null, true);
+        Assert.NotEmpty(commits);
+        Assert.Contains(commits, c => c.Subject == "merge feature");
+    }
+
+    [Fact]
+    public async Task Conflicted_text_files_are_not_marked_binary_and_return_conflict_markers()
+    {
+        Git("checkout", "-q", "-b", "ours");
+        Commit("conflict.txt", "ours\n", "ours");
+        Git("checkout", "-q", "main");
+        Git("checkout", "-q", "-b", "theirs");
+        Commit("conflict.txt", "theirs\n", "theirs");
+        Git("checkout", "-q", "ours");
+        await GitRunner.RunRawAsync(_repo, ["merge", "theirs"]);
+
+        var repo = new GitRepository(_repo);
+        var working = await repo.GetWorkingChangesAsync();
+        var conflict = Assert.Single(working.Conflicted, c => c.Path == "conflict.txt");
+        Assert.False(conflict.IsBinary);
+        var (_, newText) = await repo.GetFileVersionsAsync(new DiffTarget("HEAD", null), conflict);
+        Assert.Contains("<<<<<<<", newText);
+        Assert.Contains(">>>>>>>", newText);
+    }
+
+    [Fact]
+    public async Task Untracked_binary_and_oversized_files_are_handled_without_unbounded_reads()
+    {
+        var bin = new byte[10_000];
+        bin[100] = 0;
+        for (var i = 0; i < 100; i++) bin[i] = (byte)'a';
+        File.WriteAllBytes(Path.Combine(_repo, "blob.bin"), bin);
+        var repo = new GitRepository(_repo);
+        var (_, binText) = await repo.GetFileVersionsAsync(
+            new DiffTarget("HEAD", null),
+            new FileChange(ChangeKind.Untracked, "blob.bin", null, null, null));
+        Assert.Equal("\0", binText);
+
+        var big = Path.Combine(_repo, "huge.txt");
+        File.WriteAllText(big, new string('x', (int)GitRepository.MaxDiffFileBytes + 1024));
+        await Assert.ThrowsAsync<IOException>(() => repo.GetFileVersionsAsync(
+            new DiffTarget("HEAD", null),
+            new FileChange(ChangeKind.Untracked, "huge.txt", null, null, null)));
+    }
 }

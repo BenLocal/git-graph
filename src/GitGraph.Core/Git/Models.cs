@@ -46,7 +46,7 @@ public enum ChangeKind { Added, Modified, Deleted, Renamed, Copied, TypeChanged,
 
 public sealed record FileChange(ChangeKind Kind, string Path, string? OldPath, int? Additions, int? Deletions)
 {
-    public bool IsBinary => Additions is null && Deletions is null && Kind != ChangeKind.Untracked;
+    public bool IsBinary => Additions is null && Deletions is null && Kind is not (ChangeKind.Untracked or ChangeKind.Conflicted);
 
     public string StatusLetter => Kind switch
     {
