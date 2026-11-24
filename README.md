@@ -1,111 +1,49 @@
 # Git Graph
 
-A desktop git history viewer built with Avalonia and modelled on the
-[Git Graph](https://github.com/mhutchie/vscode-git-graph) extension for VS Code.
+A desktop git history viewer built with Avalonia and modelled on the [Git Graph](https://github.com/mhutchie/vscode-git-graph) extension for VS Code.
 
-![The commit graph with branch and tag labels, the sidebar with workspaces, folders and worktrees, and a commit's details below](docs/screenshots/graph.png)
+![The commit graph with branch and tag labels, the repositories and worktrees sidebar, and commit details below](docs/screenshots/graph.png)
 
-- **Commit graph**: every branch, remote branch and tag on a colored lane, with uncommitted changes as a dashed row on top.
-- **History**: filter by branch, show or hide remotes, find commits by message, author, hash or branch name, and scroll down to load older commits. The filter button adds fields to show only commits by an author, from a recent period, touching a file or folder, or adding or removing some code (find which commit introduced or deleted a line, as `git log -S` does); the graph keeps its lines through a path filter. The find box takes the same filters as text, as in Sublime Merge: `author:ana path:src/ code:"var x" since:month tiles`, then Enter, fills in the fields and finds what is left.
-- **Diffs**: files changed by a commit, the working tree, or between any two commits (Ctrl+click the second one). Diffs are computed with [DiffPlex](https://github.com/mmanela/diffplex), with changed words highlighted inside modified lines. View them unified or side by side, or double-click a file (or right-click it) to compare the whole file in a full window, as in Meld or Beyond Compare: each side shows its file as it is, bands across the middle join each change to its counterpart, F7 / Shift+F7 move to the next or previous change, a map beside the scroll bar shows every change (click to go there), the caret's line shows above its counterpart at the bottom and, as GitLens does, ends with a faint note of who last changed it, when and in which commit, text selects across lines and copies, and unchanged stretches fold. Any diff line can be selected and copied. Code is coloured by language, as in VS Code. Under View, diffs can ignore whitespace and stop wrapping long lines (they then scroll sideways); the button above a diff opens the file in VS Code. A changed image shows its before and after side by side, with their sizes.
-- **Review comments**: comment on any line of a commit's diff, as on a GitHub pull request: hover a line in the details panel and click the comment button by its number, or right-click a line in the full diff window. Comments show under their lines (edit or delete your own), the full diff window marks their lines, and its Comments button lists the file's comments beside the code (click one to go there), and the commit list shows how many each commit has. They are kept in git notes (`refs/notes/gitgraph-comments`), so they travel with the repository: Fetch brings in everyone's, and Push, Publish and Sync push yours, merging comments made at the same time in different clones.
-- **Stage and commit**: select the uncommitted changes row to see them grouped as staged changes, changes and merge conflicts. Stage, unstage or discard a file from the buttons on its row (or all of a group from its heading; Ctrl+click and Shift+click select several, and the arrow keys, Space to stage or unstage and Delete to discard work from the keyboard), or a single change from the Stage, Unstage and Discard buttons on each hunk of its diff. To move only some lines of a change, as in Fork or `git add -p`, click their line numbers in the unified diff to pick them: the hunk's buttons then stage, unstage or discard just the picked lines. Write the message on the Commit tab and commit with the button or Ctrl+Enter; tick Amend last commit to replace the last commit (its message comes back to edit). With nothing staged, Commit offers to stage everything first.
-- **Stash**: stash the uncommitted changes (with or without untracked files) from their row's context menu or the Repository menu. Each stash shows in the graph above the commit it was made on, with a `stash@{n}` label; select it to see what it saved, untracked files included, and right-click it to apply, pop or drop it, or to create a branch from it. Repository → Pop latest stash brings back the newest one.
-- **File history and blame**: right-click a changed file (or a file in a folder tab), or use the clock button above a diff, to open the file's history: every commit that changed it, through renames, with that commit's diff. The Blame tab shows each line with the commit, author and date that last changed it; click a commit there to see it in the history.
-- **Branch and tag labels**: each ref is a label filled with its lane colour, with a branch, tag or cloud icon; a local branch and its remote copies on the same commit share one label (`main │ origin`), and the checked-out branch is bold. The target button next to the branch jumps to HEAD. Right-click a label to check out, merge, rename or delete a branch, set its upstream, delete a remote branch from its remote, or push a tag.
-- **Contributors**: the chart button shows who contributed to the current branch, like GitHub's Insights → Contributors: commits per week, then each person's commits, share, lines added and removed and weekly activity, over a chosen period and sorted by commits, additions or deletions (merge commits excluded, .mailmap respected).
-- **Graph actions**: right-click a commit or branch to merge it into the current branch, cherry-pick it, rebase the current branch onto it, revert it, or reset the current branch to it (soft, mixed or hard). Shift+click a second commit to select every commit in between: right-click one of them to cherry-pick them all onto the current branch (oldest first) or revert them all (newest first); merges are left to their own. Interactive rebase from here opens the commits after it in a list, as in Fork: pick, reword (edit the message in place), squash or fix up into the commit below, or drop each one, and drag them (or Alt+↑/↓) into a new order; uncommitted changes are stashed and brought back, and a branch with pushed commits is flagged as needing a force push. When a merge, cherry-pick, revert or rebase stops on conflicts, a bar above the graph offers to continue or abort it, and the conflicted files show under the uncommitted changes, where you can keep either side, open the file in VS Code, or stage it once resolved. Copy a commit's hash, or a changed file's path, from the context menus or the copy buttons.
-- **Commit messages**: the body renders as Markdown, and links open in the browser. Author avatars come from GitHub for GitHub noreply addresses and from Gravatar otherwise, cached for a week. People without a picture get a robot, or under View → Author avatars another generated picture: one of Gravatar's own (patterns, pixel characters, monsters, faces), a RoboHash set (monsters, robot heads, kittens, humans) or a DiceBear style; those two get a hash of the address, never the address. Identicons (like GitHub's default avatars) and initials are drawn in the app and send nothing. Avatar requests use the proxy from the environment, or GNOME's system proxy when the app is started from the desktop.
-- **Undo and reflog**: Repository → Undo last action takes back the last commit, amend, checkout, merge, rebase, pull or reset, after saying exactly what will happen: an undone commit's changes stay staged, and uncommitted changes are kept (git stops rather than overwrite them). Undo again to redo. Repository → Reflog lists every recent move of HEAD; right-click an entry to put a commit a reset or rebase left behind on a new branch, check it out or reset to it. Both can have shortcuts (File → Keyboard shortcuts).
-- **Fold staged changes into an earlier commit**: right-click a commit → Fold staged changes into this commit adds what is staged to it, as if it had been there all along (a fixup commit and an autosquash rebase, as lazygit's amend to commit); unstaged changes are kept, and it says which commits get new hashes and whether a force push will be needed.
-- **Highlight a branch**: right-click a branch or tag label → Highlight its commits fades every loaded commit that doesn't lead to it, like GitKraken's Solo, to follow one line through a busy graph; Esc or Clear stops it.
-- **Custom commands**: File → Custom commands adds your own shell commands to the right-click menus of commits, branches and files, and to the Repository menu, as in Fork. ${sha}, ${short}, ${subject}, ${branch}, ${file}, ${path} and ${repo} are filled in, quoted for the shell (and also set as GITGRAPH_SHA and so on); a command can ask before it runs, and what it prints is shown afterwards.
-- **Pull and push**: like VS Code's status bar, the toolbar and sidebar show commits to pull (↓) and push (↑) against each branch's upstream. Click it to sync (pull, then push) or to publish a branch that has no upstream; Pull and Push are also in the Repository menu, along with force push (with lease) and whether Pull merges, rebases or follows git config. Every repository in the open workspace is fetched quietly every 3 minutes (pick another interval or turn it off under View → Fetch automatically); new commits to pull show in a note and stay marked in the sidebar until you open the repository, and a repository whose fetch failed gets a warning icon with the reason in its tooltip.
-- **Keyboard shortcuts**: defaults follow VS Code where it has the same command (Ctrl+B sidebar, Ctrl+J panel, Ctrl+W close tab, Ctrl+PageDown/PageUp and Alt+1…9 for tabs, Ctrl+K chords). Menus and button tooltips show them; File → Keyboard shortcuts (Ctrl+K Ctrl+S) lists every command and lets you record, reset or remove shortcuts, warning about clashes.
-- **File states**: folder trees colour files and folders by their git state, as VS Code's explorer does: modified (M), added (A), untracked (U), renamed (R), conflicted (!), ignored dimmed, and a dot on folders with changes inside. Under Folders, linked worktrees are nested under the workspace folder that contains them (foldable, remembered). Right-click any repository or worktree under Repositories to browse its files or open it in VS Code, wherever it lives; the folder button in an open repository's toolbar browses its files too.
-- **Folders**: click a workspace folder in the sidebar to browse its files in a tab: a tree on the left, the selected file on the right (read-only in AvaloniaEdit, with VS Code's syntax highlighting and Ctrl+F search, or images). Right-click a folder, repository or worktree in the sidebar → Open files in new window (Browse files in new window for a repository) shows the same in a window of its own, beside the tabs. In a repository, the caret's line ends with a faint note of who last changed it, as in the full diff window. Folders that only contain one folder show as one row, like `src/main/java/com/example` (View → Compact folders, as in VS Code). Each folder remembers which subfolders were open, which file was selected and how wide its tree was dragged. Right-click a folder, in the sidebar or the tree, to open it in VS Code or copy its path.
-- **Worktrees**: each repository lists its linked worktrees in the sidebar. Add one from any commit or branch, open it in its own tab, or remove it. Commits checked out in another worktree are marked in the graph.
-- **Code navigation**: in a folder tab's viewer, F12 or Ctrl/Cmd+click goes to a definition (holding Ctrl/Cmd underlines the name under the pointer), Shift+F12 lists references, Ctrl+F12 lists implementations (subclasses, implementing types, `impl Trait for`, and an interface method's implementations), and Alt+Left / Alt+Right go back and forward; the right-click menu has the same. As in VS Code, Ctrl+P goes to a file by fuzzy name, Ctrl+T goes to a class, function or other definition anywhere in the folder by name (from the index), and Ctrl+Shift+F finds text in all its files (`git grep`, ignoring case unless the text has a capital); the search button above the tree has all three. They search the folder's own repository and every repository inside it, so a workspace folder of several repositories works too. A list of results previews the picked one beside it; Enter or a double-click goes there. The uses of the name at the caret are washed. C#, Go, Rust, Java, C, C++, Python, JavaScript, TypeScript and Zig are parsed with [tree-sitter](https://tree-sitter.github.io) inside the app (no language servers; `.h` headers count as C++), locals are resolved by scope, and everything else by name, so a list can include an unrelated symbol of the same name. Each repository's definitions are indexed in the background into a SQLite file under the app's local data folder; until that is done, lookups search with `git grep`. Files in other languages match whole words.
-- **Workspaces**: named sets of folders. The sidebar's Folders and Repositories sections fold away from their headings, as in VS Code, and stay as left per workspace. Repositories inside them, up to three levels deep, are found automatically. Each workspace keeps its own open tabs.
-- **Font size**: View → Font size makes all text larger or smaller, rows included (Ctrl+= and Ctrl+-, Ctrl+0 to reset, as VS Code's zoom), and is remembered.
-- **Layout**: as in VS Code, a menu bar (File, View, Repository) with sidebar (Ctrl+B) and commit details panel (Ctrl+J) toggles on its right; the panel can also be maximized over the graph. As in VS Code, a single click in the sidebar opens a preview tab (in italics) that the next one replaces; double-click it, or the tab, to keep it open.
+## Highlights
+
+- **Commit graph & history**: Colored branch/tag lanes, merged local/remote labels, branch highlighting, infinite scroll, and rich filtering (`author:`, `path:`, `code:`, `since:`, `git log -S`).
+- **Diffs & review comments**: Unified, side-by-side, and full-window diffs with word highlights, folded unchanged lines, image previews, file history/blame, and git-notes review comments (`refs/notes/gitgraph-comments`).
+- **Staging & git operations**: File, hunk, and line-level staging, commit/amend, stashes, cherry-pick, revert, merge, interactive rebase, fold staged changes, undo/reflog, and background auto-fetch.
+- **Repositories & worktrees**: Discover repositories from folders, manage linked worktrees, and track ahead/behind status from the sidebar.
+- **File browser & code navigation**: Read-only code viewer with git state colors, syntax highlighting, and in-app tree-sitter go-to-definition, references, implementations, and fuzzy/symbol/`git grep` search.
+- **Embedded terminal & customization**: Built-in shell per tab, VS Code-style keyboard shortcuts (`Ctrl+K Ctrl+S`), custom shell commands, and configurable avatars and themes.
+
+See the [full feature guide](docs/features.md) for details on every capability.
 
 ## Screenshots
 
-**Diffs, in the day theme.** The working tree's changes, unified, with changed words marked inside modified lines.
+**Diffs (Day theme).** Working tree changes in unified view with word-level highlights.
 
 ![Uncommitted changes in the day theme, with the file list and a unified diff](docs/screenshots/diff-light.png)
 
-**A file's diff in a full window.** Both files side by side, with each change joined across the middle and unchanged stretches folded away until opened.
+**Full diff window.** Side-by-side comparison with folded unchanged stretches and inline blame notes.
 
 ![A side-by-side diff with folded unchanged lines](docs/screenshots/full-diff.png)
 
-**Contributors.** Activity by day and week for the current branch, then each person's commits and lines changed.
+**Contributors.** Language breakdown, daily activity heatmap, weekly commits, and per-author stats.
 
 ![The contributors view with a daily heatmap, weekly bars and contributor cards](docs/screenshots/contributors.png)
 
-**Folders.** A workspace folder's files coloured by their git state, with the selected file highlighted in a read-only editor.
+**File browser.** Git state indicators alongside a read-only editor with syntax highlighting.
 
 ![A folder tab: a file tree with git states and a TypeScript file with syntax highlighting](docs/screenshots/folder.png)
 
-The screenshots come from the demo repositories: `make screenshots` renders them again.
+Screenshots are generated from the demo repositories via `make screenshots`.
 
-## Run
+## Quick Start
+
+Download a build for Linux, Windows, or macOS from [GitHub Releases](../../releases), or run from source (requires the .NET 10 SDK and `git` on `PATH`):
 
 ```sh
 dotnet run --project src/GitGraph.App
 ```
 
-Needs the .NET 10 SDK and `git` on `PATH`. State is saved to `~/.config/GitGraph/state.json`
-(`%APPDATA%\GitGraph\state.json` on Windows). Set `GITGRAPH_STATE` to use a different file, and `GITGRAPH_REDUCED_MOTION=1` to turn off animations. On Linux the app runs on X11 (XWayland on a Wayland desktop); `GITGRAPH_BACKEND=wayland` tries Avalonia's experimental native Wayland backend instead.
+## Documentation
 
-## Layout
-
-| Project | What it holds |
-| --- | --- |
-| `src/GitGraph.Core` | git CLI wrapper and output parsers, graph lane layout, unified diff parsing, workspace persistence and repository discovery |
-| `src/GitGraph.App` | Avalonia UI (MVVM with CommunityToolkit.Mvvm) |
-| `tests/GitGraph.Core.Tests` | unit tests, plus integration tests against throwaway repositories |
-
-```sh
-dotnet test
-```
-
-## Releases
-
-Every push runs CI (`.github/workflows/ci.yml`): formatting and analyzers (`dotnet format --verify-no-changes`, also `make lint`), a Release build and the tests.
-
-To release, tag a version and push the tag:
-
-```sh
-make tag VERSION=0.1.0      # lint and test, then create the annotated tag v0.1.0
-git push origin v0.1.0
-```
-
-The Release workflow (`.github/workflows/release.yml`) builds that version for each platform and publishes a GitHub release with notes generated from the commits. A version with a suffix, like `v0.2.0-beta.1`, becomes a pre-release.
-
-| Platform | Files |
-| --- | --- |
-| Linux x64 | `GitGraph-<version>-linux-x64.tar.gz`, `gitgraph_<version>_amd64.deb` |
-| Windows x64 | `GitGraph-<version>-win-x64.zip`, `GitGraph-<version>-win-x64-setup.exe` (Inno Setup; per-user or all users) |
-| macOS (Apple Silicon) | `GitGraph-<version>-osx-arm64.dmg` |
-
-The macOS app is only ad-hoc signed, not notarized, so the first launch needs right-click → Open. Help → About shows the version and the commit a build came from (local builds say `0.0.0-dev`), and its Check for updates button compares it with the latest release on GitHub. `make deb` builds the .deb locally.
-
-## Make targets
-
-`make` lists every target. The targets are defined in `mk/*.mk` and helper scripts live in `scripts/`.
-
-| Target | What it does |
-| --- | --- |
-| `make build` / `make test` / `make run` | Build, test or run (`CONFIG=Release` for a release build) |
-| `make publish` | Self-contained build for this machine in `artifacts/publish/<rid>` (`RID=linux-x64` and so on to pick another) |
-| `make install` | Install or update the app in `~/.local` (`PREFIX=...` to change): files in `opt/gitgraph`, a `gitgraph` command in `bin`, an app-menu entry and a desktop shortcut on Linux (`SHORTCUT=0` skips the shortcut) |
-| `make uninstall` | Remove what `make install` added |
-| `make demo-run` | Create demo repositories in `.demo/` and open the app on them |
-| `make snapshot SELECT=3 COMPARE=6` | Render the demo window to `.demo/snapshot.png` |
-| `make icons` | Re-render the PNG and ICO app icons from the drawing in `scripts/render_icon.py` (needs Pillow) |
-| `make screenshots` | Render the README screenshots from the demo repositories into `docs/screenshots` |
-| `make reindex` | Rebuild the generated indexes in `AGENTS.md` and `docs/` |
-
-Fonts: the interface uses the system sans GitHub uses (Segoe UI on Windows, Noto Sans on Linux), falling back to IBM Plex Sans. Code uses Ubuntu Sans Mono, Noto Sans CJK SC and DejaVu Sans Mono when installed (the same chain as the author's Ghostty terminal), falling back to IBM Plex Mono. Both Plex fonts are bundled under the SIL Open Font License (`src/GitGraph.App/Assets/Fonts/OFL.txt`). Icons are [Lucide](https://lucide.dev) (ISC license), through the Lucide.Avalonia package. Code navigation uses tree-sitter and its C#, Go, Rust, Java, C, C++, Python, JavaScript and TypeScript grammars (MIT), through the TreeSitter.DotNet package (MIT), plus [tree-sitter-zig](https://github.com/tree-sitter-grammars/tree-sitter-zig) (MIT, `native/tree-sitter-zig/LICENSE`), and SQLite (public domain) through Microsoft.Data.Sqlite (MIT). Zig syntax colours use the TextMate grammar from [vscode-zig](https://github.com/ziglang/vscode-zig) (MIT, `src/GitGraph.App/Syntaxes/zig.LICENSE.txt`).
+- [Feature Guide](docs/features.md) — detailed walkthrough of all features and shortcuts.
+- [Development & Releases](docs/development.md) — project layout, configuration, Make targets, CI/release workflow, and third-party licenses.
