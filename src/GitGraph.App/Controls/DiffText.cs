@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Styling;
 using GitGraph.App.Services;
 using GitGraph.Core.Diff;
@@ -105,7 +107,6 @@ public sealed class DiffText : SelectableTextBlock
         var key = IsAdded ? "AddWordBgBrush" : "DelWordBgBrush";
         var inlines = new InlineCollection();
         var text = segments != null && syntax is null ? string.Concat(segments.Select(s => s.Text)) : line;
-        var brushes = new Dictionary<Color, IBrush>();
         int? previous = null;
         foreach (var cut in cuts)
         {
@@ -115,8 +116,7 @@ public sealed class DiffText : SelectableTextBlock
                 if (syntax != null && Array.FindLast(syntax, x => x.Start <= start && start < x.Start + x.Length) is { Length: > 0 } span)
                 {
                     var color = light ? span.Light : span.Dark;
-                    if (!brushes.TryGetValue(color, out var brush)) brushes[color] = brush = new SolidColorBrush(color);
-                    run.Foreground = brush;
+                    run.Foreground = Brushes.GetOrAdd(color.ToUInt32(), static (_, c) => new ImmutableSolidColorBrush(c), color);
                     run.FontStyle = span.Style;
                     run.FontWeight = span.Weight;
                 }
@@ -129,4 +129,6 @@ public sealed class DiffText : SelectableTextBlock
         }
         Inlines = inlines;
     }
+
+    private static readonly ConcurrentDictionary<uint, IBrush> Brushes = new();
 }

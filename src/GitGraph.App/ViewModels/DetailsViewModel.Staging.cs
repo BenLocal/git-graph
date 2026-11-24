@@ -29,8 +29,8 @@ public partial class DetailsViewModel
         {
             file.IsSelected = !file.IsSelected;
             _anchor = file;
-            // The diff shows the file just added, or stays on another selected one.
-            SelectedFile = file.IsSelected ? file : Files.FirstOrDefault(f => f.IsSelected) ?? SelectedFile;
+            // The diff shows the file just added, or stays on another selected one (null if none remain).
+            SelectedFile = file.IsSelected ? file : Files.FirstOrDefault(f => f.IsSelected);
             return;
         }
         foreach (var f in Files) f.IsSelected = f == file;

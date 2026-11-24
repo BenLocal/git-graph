@@ -371,9 +371,17 @@ public partial class WorkspaceViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>Commits to pull for each sidebar row, by path, to spot what a fetch brought in.</summary>
-    private Dictionary<string, int> BehindCounts() =>
-        Repos.SelectMany(r => new[] { (r.MainPath, r.Sync) }.Concat(r.Worktrees.Select(w => (w.Path, w.Sync))))
-            .ToDictionary(x => x.Item1, x => x.Item2?.Behind ?? 0);
+    private Dictionary<string, int> BehindCounts()
+    {
+        var counts = new Dictionary<string, int>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        foreach (var r in Repos)
+        {
+            counts[r.MainPath] = r.Sync?.Behind ?? 0;
+            foreach (var w in r.Worktrees)
+                counts[w.Path] = w.Sync?.Behind ?? 0;
+        }
+        return counts;
+    }
 
     /// <summary>Reads every repository's pull/push counts without touching the network.</summary>
     private async Task LoadSyncAsync()

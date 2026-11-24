@@ -60,6 +60,7 @@ public sealed class ShortcutService
 
     /// <summary>User changes by command id; an empty string means the shortcut was removed.</summary>
     private readonly Dictionary<string, string> _overrides = [];
+    private readonly Dictionary<string, IReadOnlyList<KeyGesture>> _partsCache = [];
 
     private ShortcutService()
     {
@@ -119,8 +120,15 @@ public sealed class ShortcutService
     public IEnumerable<ShortcutCommand> Conflicts(string id) =>
         Gesture(id) is { } g ? Commands.Where(c => c.Id != id && Gesture(c.Id) == g) : [];
 
-    public IReadOnlyList<KeyGesture> Parts(string id) =>
-        Gesture(id) is { } g && TryParse(g, out var parts) ? parts : [];
+    public IReadOnlyList<KeyGesture> Parts(string id)
+    {
+        var gesture = Gesture(id);
+        if (gesture is null) return [];
+        if (_partsCache.TryGetValue(gesture, out var cached)) return cached;
+        var parsed = TryParse(gesture, out var parts) ? parts : [];
+        _partsCache[gesture] = parsed;
+        return parsed;
+    }
 
     public static bool TryParse(string gesture, out IReadOnlyList<KeyGesture> parts)
     {

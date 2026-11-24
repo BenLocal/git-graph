@@ -14,13 +14,15 @@ namespace GitGraph.App.Views;
 /// </summary>
 public sealed class KeyCaptureDialog : Window
 {
+    private readonly string _commandId;
     private readonly List<string> _parts = [];
     private DateTime _lastKey;
     private readonly TextBlock _keys;
     private readonly TextBlock _conflict;
 
-    public KeyCaptureDialog(string commandTitle)
+    public KeyCaptureDialog(string commandId, string commandTitle)
     {
+        _commandId = commandId;
         Title = "Record shortcut";
         Width = 440;
         SizeToContent = SizeToContent.Height;
@@ -67,7 +69,8 @@ public sealed class KeyCaptureDialog : Window
             Close(null);
             return;
         }
-        if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None && _parts.Count > 0)
+        if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None
+            && (_parts.Count >= 2 || (_parts.Count == 1 && DateTime.UtcNow - _lastKey >= TimeSpan.FromSeconds(1.5))))
         {
             Close(string.Join(" ", _parts));
             return;
@@ -86,7 +89,7 @@ public sealed class KeyCaptureDialog : Window
         var gesture = string.Join(" ", _parts);
         _keys.Text = ShortcutService.Format(gesture);
         var svc = ShortcutService.Instance;
-        var other = svc.Commands.FirstOrDefault(c => svc.Gesture(c.Id) == gesture);
+        var other = svc.Commands.FirstOrDefault(c => c.Id != _commandId && svc.Gesture(c.Id) == gesture);
         _conflict.Text = other is null ? "" : $"Already used by {other.Title}. Saving gives both commands the same shortcut.";
     }
 }

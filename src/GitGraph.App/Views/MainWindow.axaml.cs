@@ -33,7 +33,7 @@ public partial class MainWindow : Window, IDialogService
     // Double-clicking a preview tab keeps it open.
     private void OnTabDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if ((sender as Control)?.DataContext is RepoTabViewModel tab) tab.Workspace.PinTabCommand.Execute(tab);
+        if ((sender as Control)?.DataContext is TabViewModel tab) tab.Workspace.PinTabCommand.Execute(tab);
     }
 
     /// <summary>The tab strip has no visible scrollbar, so a vertical wheel scrolls it sideways.</summary>

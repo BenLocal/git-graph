@@ -51,6 +51,7 @@ public partial class DetailsView : UserControl
 
     private void OnWorkingFileTapped(object? sender, TappedEventArgs e)
     {
+        if ((e.Source as Control)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true) return;
         if (DataContext is not DetailsViewModel vm || (sender as Control)?.DataContext is not FileChangeViewModel file) return;
         var mods = e.KeyModifiers;
         vm.SelectWorkingFile(file, toggle: mods.HasFlag(KeyModifiers.Control) || mods.HasFlag(KeyModifiers.Meta), range: mods.HasFlag(KeyModifiers.Shift));

@@ -49,9 +49,9 @@ public partial class MainWindow
             ["Sync"] = () => Tab?.SyncNowCommand.Execute(null),
             ["UndoLastAction"] = () => Tab?.UndoLastActionCommand.Execute(null),
             ["ShowReflog"] = () => Tab?.ShowReflogCommand.Execute(null),
-            ["CloseTab"] = () => { if (Tab is { } t) Workspace!.CloseTabCommand.Execute(t); },
+            ["CloseTab"] = () => { if (Workspace?.SelectedTab is { } t) Workspace.CloseTabCommand.Execute(t); },
             ["CloseAllTabs"] = () => Workspace?.CloseAllTabsCommand.Execute(null),
-            ["KeepTabOpen"] = () => { if (Tab is { } t) Workspace!.PinTabCommand.Execute(t); },
+            ["KeepTabOpen"] = () => { if (Workspace?.SelectedTab is { } t) Workspace.PinTabCommand.Execute(t); },
             ["NextTab"] = () => MoveTab(+1),
             ["PreviousTab"] = () => MoveTab(-1),
             ["AddFolder"] = () => Workspace?.AddFolderCommand.Execute(null),
@@ -134,7 +134,7 @@ public partial class MainWindow
             e.Handled = true;
             return;
         }
-        var chords = svc.Commands.Where(c => svc.Parts(c.Id) is { Count: 2 } p && p[0].Matches(e)).ToList();
+        var chords = svc.Commands.Where(c => _actions?.ContainsKey(c.Id) == true && svc.Parts(c.Id) is { Count: 2 } p && p[0].Matches(e)).ToList();
         if (chords.Count == 0) return;
         _chordCandidates = chords;
         e.Handled = true;

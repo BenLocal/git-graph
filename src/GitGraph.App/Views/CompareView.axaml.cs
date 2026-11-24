@@ -24,6 +24,8 @@ public partial class CompareView : UserControl
     private FullDiffViewModel? _vm;
     // The side the user is scrolling; the other side's own scroll events are ignored until it has followed.
     private TextEditor? _scrolling;
+    private int _scrollToken;
+    private ScrollViewer? _oldScroll, _newScroll;
 
     public CompareView()
     {
@@ -93,6 +95,9 @@ public partial class CompareView : UserControl
 
         _old.Load(_vm.OldLines, _vm.Blocks, _vm.Syntax);
         _new.Load(_vm.NewLines, _vm.Blocks, _vm.Syntax);
+        OldEditor.VerticalScrollBarVisibility = _vm.NewLines.Count == 0 && _vm.OldLines.Count > 0
+            ? Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+            : Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden;
         _oldFolds = _old.InstallFolds();
         _newFolds = _new.InstallFolds();
         Connector.Load(_vm.Blocks);
@@ -172,6 +177,7 @@ public partial class CompareView : UserControl
         UpdateOverviewViewport();
         if (_scrolling != null && _scrolling != source) return;
         _scrolling = source;
+        var token = ++_scrollToken;
         var from = source.TextArea.TextView;
         var to = other.TextArea.TextView;
         var fromOld = source == OldEditor;
@@ -180,7 +186,7 @@ public partial class CompareView : UserControl
         var target = mapped - to.Bounds.Height / 2;
         if (Math.Abs(target - to.VerticalOffset) > 0.5 || Math.Abs(from.HorizontalOffset - to.HorizontalOffset) > 0.5)
             ScrollTo(other, Math.Max(0, target), from.HorizontalOffset);
-        Dispatcher.UIThread.Post(() => _scrolling = null, DispatcherPriority.Background);
+        Dispatcher.UIThread.Post(() => { if (_scrollToken == token) _scrolling = null; }, DispatcherPriority.Background);
     }
 
     /// <summary>
@@ -249,26 +255,32 @@ public partial class CompareView : UserControl
     private void OnOverviewNavigate(double fraction)
     {
         if (_vm is null) return;
-        var line = (int)(fraction * _vm.NewLines.Count);
+        var useOld = _vm.NewLines.Count == 0 && _vm.OldLines.Count > 0;
+        var (editor, pane, count) = useOld ? (OldEditor, _old, _vm.OldLines.Count) : (NewEditor, _new, _vm.NewLines.Count);
+        var line = (int)(fraction * count);
         _scrolling = null;
-        ScrollTo(NewEditor, Math.Max(0, _new.Top(line) - NewEditor.TextArea.TextView.Bounds.Height / 2));
+        ScrollTo(editor, Math.Max(0, pane.Top(line) - editor.TextArea.TextView.Bounds.Height / 2));
     }
 
     /// <summary>
     /// Scrolls an editor through its scroll viewer: AvaloniaEdit 12's <c>ScrollToVerticalOffset</c> and
     /// <c>ScrollToHorizontalOffset</c> do nothing.
     /// </summary>
-    private static void ScrollTo(TextEditor editor, double y, double? x = null)
+    private void ScrollTo(TextEditor editor, double y, double? x = null)
     {
-        if (editor.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault() is { } viewer)
-            viewer.Offset = new Vector(x ?? viewer.Offset.X, y);
+        var viewer = editor == OldEditor
+            ? _oldScroll ??= editor.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault()
+            : _newScroll ??= editor.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+        if (viewer != null) viewer.Offset = new Vector(x ?? viewer.Offset.X, y);
     }
 
     private void UpdateOverviewViewport()
     {
-        var view = NewEditor.TextArea.TextView;
-        if (_vm is null || view.Document is null || view.DocumentHeight <= 0) return;
-        var total = Math.Max(1, _vm.NewLines.Count);
+        if (_vm is null) return;
+        var useOld = _vm.NewLines.Count == 0 && _vm.OldLines.Count > 0;
+        var view = (useOld ? OldEditor : NewEditor).TextArea.TextView;
+        if (view.Document is null || view.DocumentHeight <= 0) return;
+        var total = Math.Max(1, useOld ? _vm.OldLines.Count : _vm.NewLines.Count);
         double LineAt(double y) =>
             view.GetDocumentLineByVisualTop(Math.Clamp(y, 0, Math.Max(0, view.DocumentHeight - 1))).LineNumber - 1;
         Overview.SetViewport(LineAt(view.VerticalOffset) / total, (LineAt(view.VerticalOffset + view.Bounds.Height) + 1) / total);

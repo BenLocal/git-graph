@@ -17,7 +17,7 @@ public partial class ReflogWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape) Close();
+        if (!e.Handled && e.Key == Key.Escape) Close();
     }
 
     private void OnClose(object? sender, RoutedEventArgs e) => Close();

@@ -168,11 +168,18 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     public void Clear()
     {
         _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
         _diffCts?.Cancel();
+        _diffCts?.Dispose();
+        _diffCts = null;
         _key = null;
         _target = null;
+        _shown = null;
+        _imageSignature = null;
         _workingSignature = null;
         _listSignature = null;
+        SelectedFile = null;
         HasContent = false;
         IsStaging = false;
         Files.Clear();

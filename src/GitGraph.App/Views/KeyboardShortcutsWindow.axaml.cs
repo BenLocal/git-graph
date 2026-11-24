@@ -9,6 +9,7 @@ namespace GitGraph.App.Views;
 public partial class KeyboardShortcutsWindow : Window
 {
     private readonly ShortcutsEditorViewModel _vm = new();
+    private bool _recording;
 
     public KeyboardShortcutsWindow()
     {
@@ -28,8 +29,14 @@ public partial class KeyboardShortcutsWindow : Window
 
     private async Task RecordAsync(ShortcutRowViewModel row)
     {
-        var gesture = await new KeyCaptureDialog(row.Title).ShowDialog<string?>(this);
-        if (gesture != null) _vm.Set(row, gesture);
+        if (_recording) return;
+        _recording = true;
+        try
+        {
+            var gesture = await new KeyCaptureDialog(row.Command.Id, row.Title).ShowDialog<string?>(this);
+            if (gesture != null) _vm.Set(row, gesture);
+        }
+        finally { _recording = false; }
     }
 
     private static ShortcutRowViewModel? RowFrom(object? source) =>
@@ -39,6 +46,6 @@ public partial class KeyboardShortcutsWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key == Key.Escape) Close();
+        if (!e.Handled && e.Key == Key.Escape) Close();
     }
 }

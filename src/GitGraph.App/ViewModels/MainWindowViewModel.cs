@@ -182,7 +182,12 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         var m = int.Parse(minutes, System.Globalization.CultureInfo.InvariantCulture);
         _state.AutoFetch = m > 0;
         if (m > 0) _state.AutoFetchMinutes = m;
-        if (_autoFetch != null) _autoFetch.Interval = AutoFetchInterval;
+        if (_autoFetch != null)
+        {
+            _autoFetch.Interval = AutoFetchInterval;
+            if (_state.AutoFetch) _autoFetch.Start();
+            else _autoFetch.Stop();
+        }
         OnPropertyChanged(nameof(FetchEvery));
         SaveState();
     }
@@ -193,10 +198,14 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
         _autoFetch = new DispatcherTimer { Interval = TimeSpan.FromSeconds(20) };
         _autoFetch.Tick += async (_, _) =>
         {
-            _autoFetch.Interval = AutoFetchInterval;
-            if (_state.AutoFetch) await SelectedWorkspace.AutoFetchAsync();
+            try
+            {
+                _autoFetch.Interval = AutoFetchInterval;
+                if (_state.AutoFetch) await SelectedWorkspace.AutoFetchAsync();
+            }
+            catch (Exception e) { ReportError($"Auto-fetch failed: {e.Message}"); }
         };
-        _autoFetch.Start();
+        if (_state.AutoFetch) _autoFetch.Start();
     }
 
     /// <summary>"Font size: 110%" in the View menu.</summary>
