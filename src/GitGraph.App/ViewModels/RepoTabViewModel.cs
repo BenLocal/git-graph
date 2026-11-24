@@ -110,6 +110,9 @@ public partial class RepoTabViewModel : TabViewModel
     [RelayCommand]
     private void ToggleStats() => ShowStats = !ShowStats;
 
+    [RelayCommand]
+    private void CloseStats() => ShowStats = false;
+
     /// <summary>Opens this working tree's files in a folder tab, as Browse files does in the sidebar.</summary>
     [RelayCommand]
     private void BrowseFiles() => _workspace.OpenFolderTab(Path, pin: true);

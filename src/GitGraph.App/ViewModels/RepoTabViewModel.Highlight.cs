@@ -32,10 +32,15 @@ public partial class RepoTabViewModel
         ApplyHighlight();
     }
 
-    /// <summary>Escape leaves both comparing and highlighting.</summary>
+    /// <summary>Escape leaves statistics, comparing or highlighting.</summary>
     [RelayCommand]
     private void ClearMarks()
     {
+        if (ShowStats)
+        {
+            ShowStats = false;
+            return;
+        }
         ClearCompare();
         ClearHighlight();
     }

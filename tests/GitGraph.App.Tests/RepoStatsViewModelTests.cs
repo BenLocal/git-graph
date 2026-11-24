@@ -141,4 +141,21 @@ public sealed class RepoStatsViewModelTests
         await vm.EnsureLoadedAsync(null);
         Assert.Empty(vm.Languages);
     }
+
+    [Fact]
+    public void CloseStats_and_escape_leave_the_statistics_view()
+    {
+        using var temp = new TempRepo();
+        var host = new FakeHost();
+        using var ws = new WorkspaceViewModel(new WorkspaceConfig { Name = "Default", Folders = [temp.Path] }, host);
+        using var tab = new RepoTabViewModel(temp.Path, ws, host);
+
+        tab.ShowStats = true;
+        tab.CloseStatsCommand.Execute(null);
+        Assert.False(tab.ShowStats);
+
+        tab.ShowStats = true;
+        tab.ClearMarksCommand.Execute(null);
+        Assert.False(tab.ShowStats);
+    }
 }

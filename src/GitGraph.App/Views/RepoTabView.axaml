@@ -161,7 +161,7 @@
           <Button Classes="ghost" Command="{Binding BrowseFilesCommand}" ToolTip.Tip="Browse files in a folder tab">
             <LucideIcon Kind="FolderOpen" />
           </Button>
-          <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats, Mode=OneWay}" Command="{Binding ToggleStatsCommand}"
+          <ToggleButton Classes="ghost" IsChecked="{Binding ShowStats}"
                         ToolTip.Tip="{Binding Tips[ToggleContributors], Source={x:Static svc:ShortcutService.Instance}}">
             <LucideIcon Kind="ChartColumn" />
           </ToggleButton>
@@ -335,6 +335,7 @@
 
     <!-- Contributors, in place of the graph and details while switched on -->
     <v:StatsView Grid.Row="1" Grid.RowSpan="4" DataContext="{Binding Stats}" ZIndex="1"
+                 BackCommand="{Binding $parent[UserControl].((vm:RepoTabViewModel)DataContext).CloseStatsCommand}"
                  IsVisible="{Binding $parent[UserControl].((vm:RepoTabViewModel)DataContext).ShowStats, FallbackValue=False}" />
   </Grid>
 </UserControl>
