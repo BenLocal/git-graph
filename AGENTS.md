@@ -8,7 +8,8 @@
 - Language: talk to the user in Simplified Chinese unless they ask for English, short progress notes between tool calls included. **Everything written into the repository is English**: code, comments, UI text, commit messages, README, AGENTS.md, `docs/agents-dot-md/*` and `docs/memory/*`, including new entries added later (see `docs/agents-dot-md/translation.md`).
 - Changes: make the smallest precise change; no unrelated refactoring.
 - Safety: no destructive git or file operations without explicit permission.
-- Verification: after changing code, build and run the relevant tests.
+- Verification: after changing code, build and run the relevant tests (see `docs/agents-dot-md/testing.md` for test layers, data and environment); report evidence according to "Prove it works before reporting done" in `docs/agents-dot-md/coding-guidelines.md`.
+- Resuming work: when the user says "continue" and the current session has no prior context, run `/agents-dot-md recall` first to rebuild status from recent sessions and git state instead of asking the user to repeat themselves.
 - Self-check: after changing code, go through `docs/agents-dot-md/code-checklist.md` item by item. The work is done only when every item holds.
 
 ## Coding behavior (Karpathy's guardrails)
@@ -26,12 +27,19 @@
 > Before changing structure, adding a project or taking on an external dependency, read `docs/agents-dot-md/architecture.md` (component boundaries, layers, key flows, design decisions).
 > Before writing code, read and follow `docs/agents-dot-md/tech-stack.md` (stack, conventions, build and verification commands). If they conflict with this file, this file wins.
 
+## Decisions, glossary, business rules and flows
+- Domain terms follow `GLOSSARY.md` at the repository root (conventions in `docs/agents-dot-md/glossary.md`); point out naming mismatches immediately and name new code after it.
+- Before overturning or bypassing an existing design trade-off, check the ADRs indexed in `docs/agents-dot-md/adr.md`; record a new ADR after making a hard-to-reverse technical decision.
+- Before changing product logic or treating surprising behavior as a bug, check `docs/agents-dot-md/business-rules.md`; record intentional product rules that are not obvious from code.
+- Before changing multi-step behavior, state transitions, or taking over a recurring workflow, check `docs/agents-dot-md/flows.md`, and keep recorded flows in sync when behavior changes.
+
 ## Skills
 Project skills live at `skills/<name>/SKILL.md` anywhere in the repository (including `skills/` folders inside subprojects). The YAML frontmatter needs at least `name` and `description`; scripts and assets sit next to it. They ship with the repository and apply to every clone. Global skills (`~/.claude/skills/*`) are not committed and are not indexed here.
 
-- After adding, renaming or deleting a skill, or changing a `SKILL.md` description, run `python3 ~/.claude/skills/agents-dot-md/scripts/reindex.py .` from the repository root (`python` on Windows). It rebuilds the Skill and Module indexes below and `docs/agents-dot-md/00-index.md`.
-- **Do not edit** between `<!-- SKILLS:START -->…<!-- SKILLS:END -->` or `<!-- MODULES:START -->…<!-- MODULES:END -->`. The script overwrites it.
+- After adding, renaming or deleting a skill, or changing a `SKILL.md` description, run `scripts/reindex.py <repo-root>` from the `agents-dot-md` skill (`python` on Windows). It rebuilds the Skill, Module and Memory indexes below and `docs/agents-dot-md/00-index.md`.
+- **Do not edit** between `<!-- SKILLS:START -->…<!-- SKILLS:END -->`, `<!-- MODULES:START -->…<!-- MODULES:END -->` or `<!-- MEMORY:START -->…<!-- MEMORY:END -->`. The script overwrites them.
 - Write the `description` as "when to use it / trigger words"; its first sentence becomes the index summary. Keep triggers precise and don't overlap existing skills.
+- If a skill turns out to be broken mid-task (outdated steps, failing commands, missing referenced files), fix it separately instead of silently working around it, and commit the fix separately from the current task.
 
 ## Memory
 This repository's memory is `docs/memory/*.md`: **plain Markdown with no external memory service and no LLM key**. Maintain it with the file tools and search it with `grep` or by reading files.
@@ -39,9 +47,18 @@ This repository's memory is `docs/memory/*.md`: **plain Markdown with no externa
 - **When**: after an investigation, root-cause analysis or pitfall fix, write down the non-obvious conclusion that saves the next session from working it out again.
 - **Where**: group by topic in one file (for example `docs/memory/build-and-deploy.md`, `docs/memory/known-pitfalls.md`, `docs/memory/external-integrations.md`), not one file per entry. The first two lines must be `# Title` and `> One-line summary`, or the file won't be indexed.
 - **Split with memory services**: when a memory service such as mem0 is available, conclusions about this repository go here so they reach the team and other machines through git. Cross-project personal preferences and local machine facts (proxy, where credentials live, local tool versions) go to the memory service, or nowhere if there is none; never into the repository. Each fact is written in one place only.
-- **Format**: one line per entry, starting with an absolute date, stating symptom → cause → conclusion or fix. Add evidence where possible (`file:line`, command, exact error text). Mark unverified guesses "unverified".
+- **Format**: one line per entry, starting with an absolute date, stating symptom → cause → conclusion or fix. Add evidence where possible (`file:line`, command, exact error text). State certainty level explicitly: write directly when verified by running or primary source; mark conclusions inferred from multiple indirect clues as "corroborated" and list the clues; mark guesses/deductions as "unverified" with reasoning; when something was checked and not found, state where you looked.
 - **Don't record**: code structure, git history, anything already in this file or a module; credentials and secrets only go in uncommitted local files (such as `dev-env.local.md`) and **never** in `docs/memory/` or any committed file.
-- After adding or removing a topic file, run `python3 ~/.claude/skills/agents-dot-md/scripts/reindex.py .` from the repository root to rebuild the Memory index below.
+- **Redaction**: never include real credentials, usernames, hostnames, IPs, domains, ports, emails, phone numbers, or personal data in `docs/memory/`. Replace accounts/names with roles, secrets with storage locations (e.g., `dev-env.local.md`), hosts/IPs with placeholders, and local paths with `~/…` or repo-relative paths; scrub logs and command snippets before pasting.
+- After adding or removing a topic file, run `scripts/reindex.py <repo-root>` from the `agents-dot-md` skill to rebuild the Memory index below.
+
+## Rule reflection (reflect)
+- When the user corrects the same class of mistake more than twice in a session, or asks to reflect on recent conversations, propose running `/agents-dot-md reflect` (steps in `references/reflect.md` of the `agents-dot-md` skill) to fold lessons into `AGENTS.md`, the checklist, or `docs/memory/`, and run it only after the user agrees.
+- Redact sensitive info before applying; `reflect.py apply` blocks suspected secrets.
+- The table below maps behavioral rules in this file to their enforcement mechanisms (code-style rules live in the checklist items and are not repeated here). Prose-only rules list `None`; when a mistake recurs despite a rule, upgrade it to architecture, types, lint, or tests and record the real failure in `Verified`. Remove a row once the mistake can no longer happen.
+
+| Rule | Enforcement | Verified |
+|---|---|---|
 
 ## 📇 Project skill index (all SKILL.md files, generated)
 <!-- SKILLS:START -->
@@ -50,11 +67,16 @@ This repository's memory is `docs/memory/*.md`: **plain Markdown with no externa
 
 ## 📂 Module index (docs/agents-dot-md/, generated)
 <!-- MODULES:START -->
+- [Architecture Decision Records (ADR)](docs/agents-dot-md/adr.md) — Records of technical and architectural trade-offs (stored in `docs/adr/`); check before overturning or bypassing an existing design, and add one after making a hard-to-reverse trade-off.
 - [Architecture](docs/agents-dot-md/architecture.md) — Component boundaries, key flows, data and design decisions; read this before changing structure, adding a project or taking on an external dependency.
+- [Business Rules](docs/agents-dot-md/business-rules.md) — Intentional product rules and domain semantics (stored in `docs/business-rules/`); check before changing product behavior or treating surprising logic as a bug.
 - [Code checklist (mandatory self-check)](docs/agents-dot-md/code-checklist.md) — Hard rules to check item by item after writing or changing code; add new items to this file.
 - [Coding guidelines (Karpathy's guardrails, expanded)](docs/agents-dot-md/coding-guidelines.md) — Actionable rules for writing, changing and reviewing code; AGENTS.md keeps only the four headline rules.
 - [Development environment, pushing and releases](docs/agents-dot-md/environment.md) — Where the .NET SDK lives, how to push to the BenLocal account, and the release status.
+- [Flows](docs/agents-dot-md/flows.md) — End-to-end feature flows (roles, steps, state transitions) and recurring team workflows (stored in `docs/flows/`); check before changing multi-step logic, state transitions, or taking over a recurring workflow.
+- [Glossary Conventions](docs/agents-dot-md/glossary.md) — Domain terms and their exact names in code (stored in `GLOSSARY.md` at the repository root); check when encountering ambiguous terms or naming new concepts.
 - [Tech stack and conventions](docs/agents-dot-md/tech-stack.md) — Stack, build and verification commands, and how to check the UI visually; read before writing code and extend the existing patterns.
+- [Testing Conventions](docs/agents-dot-md/testing.md) — Where tests live, how test data and environments are set up, what to regress when changing an area, and which scenarios require manual verification.
 - [Language conventions](docs/agents-dot-md/translation.md) — Talk to the user in Simplified Chinese; write everything in the repository in English.
 <!-- MODULES:END -->
 
