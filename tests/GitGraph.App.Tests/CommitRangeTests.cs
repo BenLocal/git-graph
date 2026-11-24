@@ -95,6 +95,18 @@ public sealed class CommitRangeTests
             await tab.RevertRangeAsync();
             Assert.Empty(host.Errors);
             Assert.Equal("Revert \"add p\"\nRevert \"add q\"", (await Git(temp, "log", "-2", "--format=%s")).Trim());
+
+            tab.SelectedRow = Row("add q");
+            tab.SelectRange(Row("add p"));
+            Assert.NotEmpty(tab.Range);
+            tab.ClearMarksCommand.Execute(null);
+            Assert.Empty(tab.Range);
+
+            tab.SelectedRow = Row("add q");
+            tab.SelectRange(Row("add p"));
+            tab.SetCompare(Row("merge topic"));
+            Assert.Empty(tab.Range);
+            Assert.Equal(Row("merge topic"), tab.CompareRow);
             return true;
         }, CancellationToken.None).WaitAsync(TimeSpan.FromSeconds(60));
     }

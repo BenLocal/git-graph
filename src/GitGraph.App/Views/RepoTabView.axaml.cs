@@ -47,6 +47,7 @@ public partial class RepoTabView : UserControl
 
     private Vector _lastOffset;
     private bool _restoringScroll;
+    private int _scrollVersion;
     private const int LoadAheadRows = 30;
 
     /// <summary>Infinite scroll: the next page loads before the end of the list comes into view.</summary>
@@ -68,10 +69,11 @@ public partial class RepoTabView : UserControl
     {
         if (CommitList.Scroll is not ScrollViewer sv || _lastOffset.Y <= 0) return;
         var keep = _lastOffset;
+        var version = ++_scrollVersion;
         _restoringScroll = true;
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            sv.Offset = keep;
+            if (_scrollVersion == version) sv.Offset = keep;
             _restoringScroll = false;
         }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
@@ -128,6 +130,8 @@ public partial class RepoTabView : UserControl
     /// <summary>Brings a row to the middle of the list, for Go to HEAD.</summary>
     private void CenterRow(CommitRowViewModel row)
     {
+        _scrollVersion++;
+        _restoringScroll = false;
         CommitList.ScrollIntoView(row);
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
@@ -142,7 +146,16 @@ public partial class RepoTabView : UserControl
 
     private void OnTabChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(RepoTabViewModel.Rows)) KeepScrollPosition();
+        if (e.PropertyName is nameof(RepoTabViewModel.SelectedBranch) or nameof(RepoTabViewModel.ShowRemotes) or nameof(RepoTabViewModel.IsFiltered))
+        {
+            _lastOffset = default;
+            _scrollVersion++;
+            _restoringScroll = false;
+        }
+        else if (e.PropertyName == nameof(RepoTabViewModel.Rows))
+        {
+            KeepScrollPosition();
+        }
     }
 
     private void OnDetailsChanged(object? sender, PropertyChangedEventArgs e)

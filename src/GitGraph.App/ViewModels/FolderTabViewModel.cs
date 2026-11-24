@@ -252,10 +252,13 @@ public sealed partial class FolderTabViewModel : TabViewModel
         if (!value.IsDirectory) _ = Loads.Track(LoadFileAsync(value));
     }
 
+    private (string Path, DateTime LastWriteUtc, long Length)? _loadedFileStamp;
+
     private async Task LoadFileAsync(FileNodeViewModel node)
     {
         _fileCts?.Cancel();
         var cts = _fileCts = new CancellationTokenSource();
+        _loadedFileStamp = null;
         FilePath = node.RelativePath;
         FileText = null;
         FileSyntax = null;
@@ -284,6 +287,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
                 var bitmap = await Task.Run(() => new Bitmap(node.FullPath), cts.Token);
                 if (cts.IsCancellationRequested) return;
                 Image = bitmap;
+                _loadedFileStamp = (node.FullPath, info.LastWriteTimeUtc, info.Length);
                 FileInfo = $"{FormatSize(info.Length)}, {bitmap.PixelSize.Width} × {bitmap.PixelSize.Height}";
                 return;
             }
@@ -304,6 +308,7 @@ public sealed partial class FolderTabViewModel : TabViewModel
                 return;
             }
             FileText = text;
+            _loadedFileStamp = (node.FullPath, info.LastWriteTimeUtc, info.Length);
             _ = Loads.Track(OnFileShownAsync(node));
             var blame = BlameAsync(node, cts.Token);
             var lines = text.Split('\n').Select((line, i) => (i + 1, line.TrimEnd('\r')));
@@ -371,7 +376,16 @@ public sealed partial class FolderTabViewModel : TabViewModel
     {
         Root.Reload();
         _ = Loads.Track(LoadStatusAsync());
-        if (SelectedNode is { IsDirectory: false } file) _ = Loads.Track(LoadFileAsync(file));
+        if (SelectedNode is { IsDirectory: false } file && !IsLoadedFileUnchanged(file.FullPath))
+            _ = Loads.Track(LoadFileAsync(file));
+    }
+
+    private bool IsLoadedFileUnchanged(string fullPath)
+    {
+        if (_loadedFileStamp is not var (path, mtime, length)) return false;
+        if (!PathComparer.Equals(path, fullPath) || (FileText is null && Image is null)) return false;
+        var info = new FileInfo(fullPath);
+        return info.Exists && info.LastWriteTimeUtc == mtime && info.Length == length;
     }
 
     public override void OnActivated()
@@ -560,11 +574,17 @@ public sealed partial class FileNodeViewModel : ObservableObject
     public void Reload()
     {
         if (!IsDirectory || !_childrenLoaded) return;
+        if (!IsExpanded && this != _owner!.Root)
+        {
+            Reset();
+            return;
+        }
         var existing = Children.Where(c => !c.IsPlaceholder).ToDictionary(c => (c.Name, c.IsDirectory));
         var target = ReadChildren().Select(f => existing.TryGetValue((f.Name, f.IsDirectory), out var keep) ? keep : f).ToList();
+        var targetSet = target.ToHashSet();
 
         for (var i = Children.Count - 1; i >= 0; i--)
-            if (!target.Contains(Children[i])) Children.RemoveAt(i);
+            if (!targetSet.Contains(Children[i])) Children.RemoveAt(i);
         for (var i = 0; i < target.Count; i++)
         {
             var at = Children.IndexOf(target[i]);

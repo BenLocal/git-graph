@@ -32,7 +32,7 @@ public partial class RepoTabViewModel
         ApplyHighlight();
     }
 
-    /// <summary>Escape leaves statistics, comparing or highlighting.</summary>
+    /// <summary>Escape leaves statistics, range selection, comparing or highlighting.</summary>
     [RelayCommand]
     private void ClearMarks()
     {
@@ -41,6 +41,7 @@ public partial class RepoTabViewModel
             ShowStats = false;
             return;
         }
+        ClearRange();
         ClearCompare();
         ClearHighlight();
     }

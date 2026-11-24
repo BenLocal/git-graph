@@ -272,7 +272,29 @@ public partial class RepoTabViewModel : TabViewModel
         _ = RefreshAsync();
     }
 
-    partial void OnFindTextChanged(string value) => ApplyFind(jump: false);
+    private DispatcherTimer? _findDebounce;
+    private bool _disposed;
+
+    partial void OnFindTextChanged(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            _findDebounce?.Stop();
+            ApplyFind(jump: false);
+            return;
+        }
+        if (_findDebounce is null)
+        {
+            _findDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
+            _findDebounce.Tick += (_, _) =>
+            {
+                _findDebounce.Stop();
+                if (!_disposed) ApplyFind(jump: false);
+            };
+        }
+        _findDebounce.Stop();
+        _findDebounce.Start();
+    }
 
     // ---- Loading -----------------------------------------------------------------------------
 
@@ -566,6 +588,7 @@ public partial class RepoTabViewModel : TabViewModel
             SelectedRow = row;
             return;
         }
+        ClearRange();
         if (CompareRow != null) CompareRow.IsCompareTarget = false;
         CompareRow = row;
         row.IsCompareTarget = true;
@@ -664,6 +687,7 @@ public partial class RepoTabViewModel : TabViewModel
             return;
         Dispatcher.UIThread.Post(() =>
         {
+            if (_disposed) return;
             _debounce.Stop();
             _debounce.Start();
         });
@@ -680,10 +704,15 @@ public partial class RepoTabViewModel : TabViewModel
 
     public override void Dispose()
     {
+        _disposed = true;
         Stats.Dispose();
         Terminal.CloseCommand.Execute(null);
         _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = null;
         _debounce.Stop();
+        _filterDebounce?.Stop();
+        _findDebounce?.Stop();
         foreach (var w in _watchers) w.Dispose();
         _watchers.Clear();
         Details.Clear();

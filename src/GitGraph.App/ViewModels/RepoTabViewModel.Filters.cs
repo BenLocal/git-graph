@@ -39,12 +39,13 @@ public partial class RepoTabViewModel
 
     private CommitFilter? CurrentFilter()
     {
+        var today = new DateTimeOffset(DateTime.Now.Date, DateTimeOffset.Now.Offset);
         DateTimeOffset? since = SinceFilter switch
         {
-            "Last week" => DateTimeOffset.Now.AddDays(-7),
-            "Last month" => DateTimeOffset.Now.AddMonths(-1),
-            "Last 3 months" => DateTimeOffset.Now.AddMonths(-3),
-            "Last year" => DateTimeOffset.Now.AddYears(-1),
+            "Last week" => today.AddDays(-7),
+            "Last month" => today.AddMonths(-1),
+            "Last 3 months" => today.AddMonths(-3),
+            "Last year" => today.AddYears(-1),
             _ => null,
         };
         var filter = new CommitFilter(AuthorFilter.Trim(), since, PathFilter.Trim().Replace('\\', '/'), CodeFilter);

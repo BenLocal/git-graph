@@ -271,4 +271,34 @@ public sealed class FolderNavigationTests : IDisposable
         _folder.CloseNavCommand.Execute(null);
         Assert.False(_folder.IsSearching);
     }
+
+    [Fact]
+    public async Task OnActivated_skips_reloading_an_unchanged_file_and_go_back_from_external_file_reloads_origin()
+    {
+        var text = await Show("src/App.cs");
+        _folder.SetCaret(2, 10);
+        var beforeText = _folder.FileText;
+
+        _folder.OnActivated();
+        await Idle();
+        Assert.Same(beforeText, _folder.FileText);
+
+        var outside = Path.Combine(Path.GetTempPath(), $"gitgraph-ext-{Guid.NewGuid():N}.cs");
+        File.WriteAllText(outside, "class External {}\n");
+        try
+        {
+            _folder.OpenCommand.Execute(new NavItem(outside, 0, 0, Path.GetFileName(outside), "", null));
+            await Idle();
+            Assert.Equal("class External {}\n", _folder.FileText);
+
+            _folder.GoBackCommand.Execute(null);
+            await Idle();
+            Assert.Equal(text, _folder.FileText);
+            Assert.Equal("src/App.cs", _folder.FilePath);
+        }
+        finally
+        {
+            try { File.Delete(outside); } catch { /* best effort */ }
+        }
+    }
 }

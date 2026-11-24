@@ -1,22 +1,42 @@
 using System.Collections.ObjectModel;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GitGraph.Core.Workspaces;
 
 namespace GitGraph.App.ViewModels;
 
-/// <summary>File → Custom commands: the user's own commands for the context menus; every change is saved at once.</summary>
+/// <summary>File → Custom commands: the user's own commands for the context menus; edits are saved after a short pause.</summary>
 public sealed partial class CustomCommandsViewModel : ObservableObject
 {
     private readonly List<CustomCommand> _commands;
     private readonly Action _save;
+    private DispatcherTimer? _saveDebounce;
 
     public CustomCommandsViewModel(List<CustomCommand> commands, Action save)
     {
         _commands = commands;
         _save = save;
-        foreach (var c in commands) Items.Add(new CustomCommandEditViewModel(c, save));
+        foreach (var c in commands) Items.Add(new CustomCommandEditViewModel(c, SaveSoon));
         _selected = Items.FirstOrDefault();
+    }
+
+    private void SaveSoon()
+    {
+        if (_saveDebounce is null)
+        {
+            _saveDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _saveDebounce.Tick += (_, _) => FlushSave();
+        }
+        _saveDebounce.Stop();
+        _saveDebounce.Start();
+    }
+
+    public void FlushSave()
+    {
+        if (_saveDebounce is not { IsEnabled: true }) return;
+        _saveDebounce.Stop();
+        _save();
     }
 
     public static IReadOnlyList<string> Scopes { get; } = ["Commit", "Branch", "File", "Repository"];
@@ -35,9 +55,10 @@ public sealed partial class CustomCommandsViewModel : ObservableObject
     {
         var command = new CustomCommand { Name = "New command", Scope = "Commit", Command = "echo ${short} ${subject}" };
         _commands.Add(command);
-        var item = new CustomCommandEditViewModel(command, _save);
+        var item = new CustomCommandEditViewModel(command, SaveSoon);
         Items.Add(item);
         Selected = item;
+        _saveDebounce?.Stop();
         _save();
     }
 
@@ -49,6 +70,7 @@ public sealed partial class CustomCommandsViewModel : ObservableObject
         _commands.Remove(item.Command);
         Items.Remove(item);
         Selected = Items.Count == 0 ? null : Items[Math.Min(index, Items.Count - 1)];
+        _saveDebounce?.Stop();
         _save();
     }
 }

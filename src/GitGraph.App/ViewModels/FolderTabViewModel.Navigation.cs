@@ -359,7 +359,10 @@ public sealed partial class FolderTabViewModel
         Reveal = new RevealRequest(relative, offset, length);
         if (_shownNode != null && PathComparer.Equals(_shownNode.FullPath, fullPath) && FileText != null) return;
         if (!relative.StartsWith("..", StringComparison.Ordinal) && Find(relative, expand: true) is { IsDirectory: false } node)
-            SelectedNode = node;
+        {
+            if (ReferenceEquals(SelectedNode, node)) _ = Loads.Track(LoadFileAsync(node));
+            else SelectedNode = node;
+        }
         else
             _ = Loads.Track(LoadFileAsync(new FileNodeViewModel(this, fullPath, relative, isDirectory: false)));
     }

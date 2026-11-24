@@ -74,9 +74,17 @@ public static partial class AvatarService
             if (_style == value) return;
             _style = value;
             // Pictures of the old style can go; the new style's come from its own cache files.
-            Loaded.Clear();
+            ClearLoaded();
             StyleChanged?.Invoke();
         }
+    }
+
+    private static void ClearLoaded()
+    {
+        var old = Loaded.Values.ToList();
+        Loaded.Clear();
+        foreach (var task in old)
+            if (task.IsCompletedSuccessfully) task.Result?.Dispose();
     }
 
     /// <summary>Pictures are fetched: not initials or identicons, which are drawn here.</summary>
@@ -139,10 +147,13 @@ public static partial class AvatarService
     /// <summary>Waits for every avatar asked for so far (for the snapshot hook).</summary>
     public static Task WhenLoadedAsync() => Task.WhenAll(Loaded.Values);
 
+    private const int MaxLoadedEntries = 300;
+
     public static Task<Bitmap?> GetAsync(string email)
     {
         if (!UseImages) return Task.FromResult<Bitmap?>(null);
         var key = email.Trim().ToLowerInvariant();
+        if (Loaded.Count >= MaxLoadedEntries && !Loaded.ContainsKey(key)) ClearLoaded();
         return Loaded.GetOrAdd(key, k => LoadAsync(k, Style));
     }
 
@@ -152,8 +163,9 @@ public static partial class AvatarService
         var file = Path.Combine(CacheDir, $"{Md5(email)}-{Size}-{style.Replace('/', '-')}.png");
         try
         {
-            if (File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < MaxAge)
-                return new Bitmap(file);
+            var cached = await Task.Run(() =>
+                File.Exists(file) && DateTime.UtcNow - File.GetLastWriteTimeUtc(file) < MaxAge ? new Bitmap(file) : null);
+            if (cached != null) return cached;
 
             await Gate.WaitAsync();
             try
@@ -161,16 +173,18 @@ public static partial class AvatarService
                 var bytes = await FetchAsync(email, style);
                 Directory.CreateDirectory(CacheDir);
                 await File.WriteAllBytesAsync(file, bytes);
-                using var stream = new MemoryStream(bytes);
-                return new Bitmap(stream);
+                return await Task.Run(() =>
+                {
+                    using var stream = new MemoryStream(bytes);
+                    return new Bitmap(stream);
+                });
             }
             finally { Gate.Release(); }
         }
         catch (Exception e) when (e is HttpRequestException or TaskCanceledException or IOException or ArgumentException)
         {
-            // Offline or blocked: fall back to an expired copy if there is one, else initials.
-            Loaded.TryRemove(email, out _);
-            try { return File.Exists(file) ? new Bitmap(file) : null; }
+            // Offline or blocked: fall back to an expired copy if there is one, else initials (don't retry every scroll).
+            try { return await Task.Run(() => File.Exists(file) ? new Bitmap(file) : null); }
             catch (Exception) { return null; }
         }
     }
