@@ -113,7 +113,7 @@ public static class WorkspaceSearch
         args.Add(root.IsGit ? "--untracked" : "--no-index");
         args.AddRange(["-e", query]);
         // Exit code 1 means no match.
-        var output = await GitRunner.RunAsync(root.Dir, args, ct, 1);
+        var output = await GitRunner.RunAsync(root.Dir, args, ct, 1).ConfigureAwait(false);
 
         // "<path>\0<line>\0<column>\0<text>" per line; the column is 1-based and counts bytes.
         var hits = new List<(string Path, int Line, int Column, string Text)>();

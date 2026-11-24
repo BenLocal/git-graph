@@ -107,7 +107,9 @@ public static class IndexSync
             foreach (var d in dirs)
             {
                 var name = Path.GetFileName(d);
-                if (!name.StartsWith('.') && !SkippedFolders.Contains(name)) pending.Push(d);
+                if (!name.StartsWith('.') && !SkippedFolders.Contains(name)
+                    && (File.GetAttributes(d) & FileAttributes.ReparsePoint) == 0)
+                    pending.Push(d);
             }
             foreach (var f in files)
             {

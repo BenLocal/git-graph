@@ -157,7 +157,7 @@ public sealed class CodeNavigator(string root, bool isGit, SymbolIndex? index) :
 
         var found = Uses(path, src, id.Name).ToList();
         var files = index != null
-            ? index.FilesMentioning(Root, id.Name).Where(f => f != path).Select(f => (f, Parse(f)))
+            ? index.FilesMentioning(Root, id.Name).Where(f => f != path).Take(MaxFallbackFiles).Select(f => (f, Parse(f)))
             : ParseOthers(path, id.Name, ct).Select(x => (x.Path, (ParsedSource?)x.Source));
         foreach (var (file, other) in files)
         {

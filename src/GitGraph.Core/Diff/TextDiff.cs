@@ -40,15 +40,21 @@ public sealed class FileDiff
 /// </summary>
 public static class TextDiff
 {
+    private const int MaxWordDiffLines = 30_000;
+    private const int MaxWordDiffLineLength = 10_000;
+
     /// <param name="ignoreWhitespace">Lines that differ only in whitespace count as unchanged.</param>
     public static FileDiff Build(string oldText, string newText, int context = 3, int tabSize = 4, bool ignoreWhitespace = false)
     {
         if (oldText.Contains('\0') || newText.Contains('\0'))
             return new FileDiff { Lines = [], SplitRows = [], IsBinary = true };
 
+        // Skip expensive word-level diffing on huge or minified files so DiffPlex doesn't peg the CPU.
+        var useLineOnly = ExceedsWordDiffBudget(oldText) || ExceedsWordDiffBudget(newText);
         // ignoreWhiteSpace defaults to true in DiffPlex; unless asked, a whitespace-only change must still show.
         var model = SideBySideDiffBuilder.Diff(Differ.Instance, TrimFinalNewline(oldText), TrimFinalNewline(newText),
-            ignoreWhiteSpace: ignoreWhitespace, ignoreCase: false, LineChunker.Instance, WordChunker.Instance);
+            ignoreWhiteSpace: ignoreWhitespace, ignoreCase: false,
+            LineChunker.Instance, useLineOnly ? LineChunker.Instance : WordChunker.Instance);
         var tab = new string(' ', tabSize);
 
         // DiffPlex pads both sides to the same length, so row i of each side lines up.
@@ -200,6 +206,25 @@ public static class TextDiff
     }
 
     /// <summary>The newline that ends the last line would otherwise show up as an extra empty line.</summary>
+    private static bool ExceedsWordDiffBudget(string text)
+    {
+        var lines = 1;
+        var lineLen = 0;
+        foreach (var c in text)
+        {
+            if (c == '\n')
+            {
+                if (++lines > MaxWordDiffLines) return true;
+                lineLen = 0;
+            }
+            else if (++lineLen > MaxWordDiffLineLength)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static string TrimFinalNewline(string text) =>
         text.EndsWith("\r\n", StringComparison.Ordinal) ? text[..^2] : text.EndsWith('\n') ? text[..^1] : text;
 
