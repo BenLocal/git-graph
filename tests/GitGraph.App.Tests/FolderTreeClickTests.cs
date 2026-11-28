@@ -123,4 +123,20 @@ public sealed class FolderTreeClickTests : IDisposable
         Assert.Equal("Edit open-with.toml…", names[^1]);
         menu.Hide();
     });
+
+    [Fact]
+    public Task The_toolbar_button_lists_the_open_with_apps_for_the_folder() => RunAsync((window, folder) =>
+    {
+        var button = window.GetVisualDescendants().OfType<Button>()
+            .Single(b => ToolTip.GetTip(b) as string == "Open the folder in another app");
+        var menu = (MenuFlyout)button.Flyout!;
+
+        menu.ShowAt(button);
+        Dispatcher.UIThread.RunJobs();
+
+        var names = menu.Items.OfType<CustomCommandItem>().Select(i => i.Name).ToList();
+        Assert.Contains("VS Code", names);
+        Assert.Equal("Edit open-with.toml…", names[^1]);
+        menu.Hide();
+    });
 }

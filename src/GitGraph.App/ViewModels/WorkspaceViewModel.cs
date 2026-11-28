@@ -763,12 +763,6 @@ public sealed partial class FolderNodeViewModel(string path, WorkspaceViewModel 
     private void OpenInWindow() => Workspace.OpenFolderWindow(Path);
 
     [RelayCommand]
-    private void OpenInVsCode()
-    {
-        if (ExternalTools.OpenInVsCode(Path) is { } error) Workspace.Host.ReportError(error);
-    }
-
-    [RelayCommand]
     private void OpenInTerminal() => Workspace.OpenTerminal(Path, folder: true);
 
     [RelayCommand]

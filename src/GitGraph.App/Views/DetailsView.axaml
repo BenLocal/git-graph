@@ -260,9 +260,11 @@
                     <LucideIcon Kind="Copy" Size="13" />
                   </Button>
                   <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2">
-                    <Button Classes="ghost" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" IsVisible="{Binding CanOpenSelected}"
-                            ToolTip.Tip="Open the file in VS Code">
+                    <Button Classes="ghost" IsVisible="{Binding CanOpenSelected}" ToolTip.Tip="Open the file in another app">
                       <LucideIcon Kind="SquareArrowOutUpRight" Size="14" />
+                      <Button.Flyout>
+                        <MenuFlyout ItemContainerTheme="{StaticResource CustomCommandItem}" Opening="OnOpenWithOpening" />
+                      </Button.Flyout>
                     </Button>
                     <Button Classes="ghost" Command="{Binding FileHistoryCommand}" CommandParameter="{x:Null}" IsVisible="{Binding HasDiff}"
                             ToolTip.Tip="File history and blame">

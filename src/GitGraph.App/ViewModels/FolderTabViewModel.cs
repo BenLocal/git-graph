@@ -415,13 +415,6 @@ public sealed partial class FolderTabViewModel : TabViewModel
         SyncIndexes();
     }
 
-    [RelayCommand]
-    private void OpenInVsCode(FileNodeViewModel? node)
-    {
-        var target = node?.FullPath ?? Path;
-        if (ExternalTools.OpenInVsCode(target) is { } error) _host.ReportError(error);
-    }
-
     internal IReadOnlyList<CustomCommandItem> OpenWith(string path) => OpenWithMenu.For(_host, path);
 
     [RelayCommand]

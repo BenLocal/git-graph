@@ -88,8 +88,11 @@
                           Command="{Binding ToggleTerminalCommand}" ToolTip.Tip="Toggle terminal">
               <LucideIcon Kind="Terminal" />
             </ToggleButton>
-            <Button Classes="ghost" Padding="5" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{x:Null}" ToolTip.Tip="Open the folder in VS Code">
+            <Button Classes="ghost" Padding="5" ToolTip.Tip="Open the folder in another app">
               <LucideIcon Kind="SquareCode" Size="15" />
+              <Button.Flyout>
+                <MenuFlyout ItemContainerTheme="{StaticResource CustomCommandItem}" Opening="OnFolderOpenWithOpening" />
+              </Button.Flyout>
             </Button>
             <Button Classes="ghost" Padding="5" Command="{Binding RefreshTreeCommand}" ToolTip.Tip="Refresh">
               <LucideIcon Kind="RotateCw" Size="14" />
@@ -162,11 +165,15 @@
                   <TextBlock Classes="small" Text="Copy contents" VerticalAlignment="Center" />
                 </StackPanel>
               </Button>
-              <Button Classes="ghost text" Command="{Binding OpenInVsCodeCommand}" CommandParameter="{Binding SelectedNode}" ToolTip.Tip="Open this file in VS Code">
+              <Button Classes="ghost text" ToolTip.Tip="Open this file in another app">
                 <StackPanel Orientation="Horizontal" Spacing="6">
                   <LucideIcon Kind="SquareCode" Size="14" VerticalAlignment="Center" />
-                  <TextBlock Classes="small" Text="Open in VS Code" VerticalAlignment="Center" />
+                  <TextBlock Classes="small" Text="Open in" VerticalAlignment="Center" />
+                  <LucideIcon Kind="ChevronDown" Size="12" VerticalAlignment="Center" />
                 </StackPanel>
+                <Button.Flyout>
+                  <MenuFlyout ItemContainerTheme="{StaticResource CustomCommandItem}" Opening="OnFileOpenWithOpening" />
+                </Button.Flyout>
               </Button>
             </StackPanel>
           </Grid>

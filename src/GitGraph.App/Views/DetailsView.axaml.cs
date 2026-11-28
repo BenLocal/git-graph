@@ -46,6 +46,12 @@ public partial class DetailsView : UserControl
         MessagePage.GetVisualDescendants().OfType<SelectableTextBlock>()
             .Select(t => t.SelectedText).FirstOrDefault(t => !string.IsNullOrEmpty(t));
 
+    /// <summary>The "Open in" button reads open-with.toml as it opens, so an edit shows without a restart.</summary>
+    private void OnOpenWithOpening(object? sender, EventArgs e)
+    {
+        if (sender is MenuFlyout menu) menu.ItemsSource = _vm?.SelectedFile?.OpenWith ?? [];
+    }
+
     private void OnCopySelection(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (SelectedMessageText() is { } text && _vm != null) _ = _vm.CopyTextAsync(text);

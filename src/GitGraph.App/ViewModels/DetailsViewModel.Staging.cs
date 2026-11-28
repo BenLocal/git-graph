@@ -314,12 +314,6 @@ public partial class DetailsViewModel
     [RelayCommand]
     private Task TakeTheirs(FileChangeViewModel file) => ChangeRepoAsync(() => _repo.TakeSideAsync([file.Change.Path], ours: false));
 
-    [RelayCommand]
-    private void OpenInVsCode(FileChangeViewModel? file)
-    {
-        if ((file ?? SelectedFile) is { } f && ExternalTools.OpenInVsCode(FullPath(f.Change.Path)) is { } error) _host.ReportError(error);
-    }
-
     internal IReadOnlyList<CustomCommandItem> OpenWith(FileChangeViewModel file) => OpenWithMenu.For(_host, FullPath(file.Change.Path));
 
     /// <summary>

@@ -81,6 +81,17 @@ public partial class FolderTabView : UserControl
         Dispatcher.UIThread.Post(() => SearchBox.Focus(), DispatcherPriority.Background);
     }
 
+    // The "Open in" buttons read open-with.toml as they open, so an edit shows without a restart.
+    private void OnFolderOpenWithOpening(object? sender, EventArgs e)
+    {
+        if (sender is MenuFlyout menu && _vm is { } vm) menu.ItemsSource = vm.OpenWith(vm.Path);
+    }
+
+    private void OnFileOpenWithOpening(object? sender, EventArgs e)
+    {
+        if (sender is MenuFlyout menu) menu.ItemsSource = _vm?.SelectedNode?.OpenWith ?? [];
+    }
+
     private void OnSearchMenu(object? sender, RoutedEventArgs e)
     {
         if (sender is MenuItem { Tag: SearchKind kind }) StartSearch(kind);
