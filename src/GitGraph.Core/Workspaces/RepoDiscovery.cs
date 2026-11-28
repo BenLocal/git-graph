@@ -55,9 +55,18 @@ public static class RepoDiscovery
         }
 
         var byCommon = new Dictionary<string, string>(StringComparer.Ordinal);
-        var tasks = paths.Select(async p => (Path: p, Common: await new GitRepository(p).GetCommonDirAsync(ct)));
-        foreach (var (p, common) in await Task.WhenAll(tasks))
-            if (common != null) byCommon.TryAdd(common, p);
+        // git prints paths with symlinks resolved (/var/... becomes /private/var/... on macOS). The workspace compares
+        // repository paths with the folders the user added, so map each top level git reports back to its scanned spelling.
+        var scanned = new Dictionary<string, string>(StringComparer.Ordinal);
+        var tasks = paths.Select(async p => (Path: p, Result: await GitRunner.RunRawAsync(
+            p, ["rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"], ct)));
+        foreach (var (p, r) in await Task.WhenAll(tasks))
+        {
+            var lines = r.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (r.ExitCode != 0 || lines.Length < 2) continue;
+            byCommon.TryAdd(Path.TrimEndingDirectorySeparator(lines[0]), p);
+            scanned.TryAdd(Path.TrimEndingDirectorySeparator(lines[1]), p);
+        }
 
         var repos = new List<DiscoveredRepo>();
         foreach (var (common, anyPath) in byCommon)
@@ -65,6 +74,7 @@ public static class RepoDiscovery
             List<WorktreeInfo> wts;
             try { wts = await new GitRepository(anyPath).GetWorktreesAsync(ct); }
             catch (GitException) { wts = []; }
+            wts = wts.Select(w => scanned.TryGetValue(Path.TrimEndingDirectorySeparator(w.Path), out var p) ? w with { Path = p } : w).ToList();
             var main = wts.FirstOrDefault(w => w.IsMain && !w.IsBare)?.Path ?? anyPath;
             repos.Add(new DiscoveredRepo(Path.GetFileName(main), common, main, wts));
         }

@@ -810,6 +810,19 @@ public sealed class GitRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task A_repo_found_through_a_symlink_keeps_the_scanned_spelling()
+    {
+        // git resolves symlinks in the paths it prints (/var becomes /private/var on macOS); the workspace compares
+        // these paths with the folders the user added, so they must stay spelled the way they were scanned.
+        var link = Path.Combine(_root, "app-link");
+        Directory.CreateSymbolicLink(link, _repo);
+
+        var found = Assert.Single(await RepoDiscovery.DiscoverAsync([link]));
+        Assert.Equal(link, found.MainPath);
+        Assert.Equal(link, Assert.Single(found.Worktrees).Path);
+    }
+
+    [Fact]
     public async Task Empty_repository_has_no_commits()
     {
         var empty = Path.Combine(_root, "empty");
