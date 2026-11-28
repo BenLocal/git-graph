@@ -1,13 +1,19 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        x:Class="GitGraph.App.Views.ReflogWindow"
-        x:DataType="vm:ReflogViewModel"
-        Title="{Binding Title, StringFormat='{}{0} – Reflog – Git Graph'}"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="1000" Height="680" MinWidth="560" MinHeight="320"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceBrush}">
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               x:Class="GitGraph.App.Views.ReflogWindow"
+               x:DataType="vm:ReflogViewModel"
+               Title="{Binding Title, StringFormat='{}{0} – Reflog – Git Graph'}"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="1000" Height="680" MinWidth="560" MinHeight="320"
+               IsTitleBarVisible="True" TitleFontSize="13"
+               ShowBottomBorder="True" SaveWindowState="False" EnableTrafficLightPositioning="True" TrafficLightOffset="6,6"
+               WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource SurfaceBrush}">
+  <shadui:Window.LogoContent>
+    <Image Source="/Assets/Icons/gitgraph-128.png" Width="16" Height="16" Margin="4,0,2,0" />
+  </shadui:Window.LogoContent>
   <Window.Resources>
     <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
     <MenuFlyout x:Key="EntryMenu" x:DataType="vm:ReflogRowViewModel">
@@ -63,4 +69,4 @@
       </ListBox.ItemTemplate>
     </ListBox>
   </Grid>
-</Window>
+</shadui:Window>

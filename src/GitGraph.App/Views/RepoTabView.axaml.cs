@@ -180,7 +180,7 @@ public partial class RepoTabView : UserControl
         Graph.IsVisible = !maximized;
         Headings.IsVisible = !maximized;
         DetailsSplitter.IsVisible = visible && !maximized;
-        if (visible && !DetailsPane.IsVisible) Motion.FadeIn(DetailsPane);
+        if (visible && !DetailsPane.IsVisible) Motion.SlideIn(DetailsPane, offsetX: 0f, offsetY: 10f);
         DetailsPane.IsVisible = visible;
         LimitDetailsHeight();
     }

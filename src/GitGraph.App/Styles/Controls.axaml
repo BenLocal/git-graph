@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
         xmlns:ctl="using:GitGraph.App.Controls">
 
   <Styles.Resources>
@@ -23,6 +24,10 @@
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="TextBlock">
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
 
   <!-- Icons: Lucide (lucide.dev), 16 px by default, a slightly lighter stroke than Lucide's 2 to suit the thin UI -->
@@ -127,14 +132,6 @@
     </Setter>
   </Style>
 
-  <!-- Contributor cards and the overall chart -->
-  <Style Selector="Border.statcard">
-    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Padding" Value="16,14" />
-  </Style>
   <Style Selector="ProgressBar.share">
     <Setter Property="MinHeight" Value="6" />
     <Setter Property="Height" Value="6" />
@@ -171,34 +168,109 @@
     <Setter Property="Padding" Value="10,4" />
   </Style>
 
-  <!-- Buttons -->
-  <Style Selector="Button.ghost /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.ghost /template/ ContentPresenter#PART_ContentPresenter, Button.nav /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.12" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <Style Selector="Button.ghost, ToggleButton.ghost">
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="BorderThickness" Value="0" />
+  <!-- Buttons: PART_Bg does not bind TemplateBinding Background/BorderBrush so ShadUI's default Button states never bleed through -->
+  <Style Selector="Button.ghost">
     <Setter Property="Padding" Value="6" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="0:0:0.12" />
+            </Transitions>
+          </Border.Transitions>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
   </Style>
-  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button.ghost /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.ghost:pointerover /template/ Border#PART_Bg">
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+  </Style>
+  <Style Selector="Button.ghost:pressed /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="Button.ghost:focus-visible /template/ Border#PART_Bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource SignalBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.ghost:disabled /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
-  <Style Selector="Button.ghost:pressed /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button.ghost:focus /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost">
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="0:0:0.12" />
+            </Transitions>
+          </Border.Transitions>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ToggleButton.ghost /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:pressed /template/ Border#PART_Bg">
     <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:checked /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:focus-visible /template/ Border#PART_Bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource SignalBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:disabled /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="ToggleButton.ghost:focus /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="Button.ghost:pointerover LucideIcon">
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-  </Style>
-  <Style Selector="ToggleButton.ghost:checked /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="ToggleButton.ghost:checked LucideIcon">
@@ -212,9 +284,6 @@
     <Setter Property="Opacity" Value="0.35" />
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
   </Style>
-  <Style Selector="ToggleButton.ghost:disabled /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
-  </Style>
   <Style Selector="Button.text">
     <Setter Property="Padding" Value="10,5" />
   </Style>
@@ -227,17 +296,16 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="14,7" />
   </Style>
-  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+  <!-- ShadUI's Button template fades in its own Border#HoverBackground (near white in Light) on hover, so colour that layer -->
+  <Style Selector="Button.primary:pointerover /template/ Border#HoverBackground">
     <Setter Property="Background" Value="{DynamicResource PrimaryHoverBrush}" />
-    <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector="Button.primary.danger">
     <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
     <Setter Property="Foreground" Value="White" />
   </Style>
-  <Style Selector="Button.primary.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button.primary.danger:pointerover /template/ Border#HoverBackground">
     <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
-    <Setter Property="Foreground" Value="White" />
     <Setter Property="Opacity" Value="0.9" />
   </Style>
   <Style Selector="Button.secondary">
@@ -247,23 +315,44 @@
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="14,6" />
   </Style>
-  <Style Selector="Button.secondary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button.secondary:pointerover /template/ Border#HoverBackground">
     <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+
+  <Style Selector="Button.Outline">
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Button.Ghost">
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="Button.Secondary">
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
 
   <!-- Inputs -->
   <!-- Field colours and sizes live in Fields.axaml; shape and type here. -->
-  <Style Selector="TextBox, ComboBox">
+  <Style Selector="TextBox">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="shadui:ControlAssist.MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,4,10,4" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-  </Style>
-  <Style Selector="TextBox">
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style Selector="ComboBox">
+  <Style Selector="TextBox[AcceptsReturn=False]">
     <Setter Property="Height" Value="30" />
+    <Setter Property="shadui:ControlAssist.Height" Value="30" />
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="shadui:ControlAssist.MinHeight" Value="30" />
+    <Setter Property="shadui:ControlAssist.Height" Value="30" />
+    <Setter Property="Padding" Value="10,0,8,0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <!-- An open dropdown keeps the signal border, like a focused text box. -->
@@ -271,54 +360,182 @@
     <Setter Property="BorderBrush" Value="{DynamicResource SignalBrush}" />
   </Style>
   <Style Selector="TextBox.find">
-    <Setter Property="Padding" Value="30,5,8,5" />
+    <Setter Property="Padding" Value="30,4,8,4" />
   </Style>
 
-  <!-- Sidebar navigation rows -->
+  <!-- Sidebar navigation rows: flat pill with left accent indicator when active -->
   <Style Selector="Button.nav">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="5" />
-    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,5,8,5" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <Border.Transitions>
+            <Transitions>
+              <BrushTransition Property="Background" Duration="0:0:0.12" />
+            </Transitions>
+          </Border.Transitions>
+          <Panel>
+            <Border Name="PART_Indicator"
+                    Width="2.5" Height="14" CornerRadius="2"
+                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                    Margin="2,0,0,0"
+                    Background="{DynamicResource SignalBrush}"
+                    Opacity="0" />
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Margin="{TemplateBinding Padding}"
+                              Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalAlignment="Center" />
+          </Panel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
   </Style>
-  <Style Selector="Button.nav:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Button.nav:pointerover">
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
-  <Style Selector="Button.nav.active /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+  <Style Selector="Button.nav.active">
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="Button.nav.active:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+  </Style>
+  <Style Selector="Button.nav.active /template/ Border#PART_Indicator">
+    <Setter Property="Opacity" Value="1" />
   </Style>
   <Style Selector="Button.nav.active TextBlock.name">
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
 
-  <!-- Menu bar -->
-  <Style Selector="Border.menubar">
-    <Setter Property="Background" Value="{DynamicResource FrameBrush}" />
-    <Setter Property="Height" Value="32" />
+  <!-- Flat borderless file explorer tree -->
+  <Style Selector="TreeView.files">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="6,4" />
+  </Style>
+  <Style Selector="TreeView.files TreeViewItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel>
+          <Border Name="PART_LayoutRoot"
+                  Background="Transparent"
+                  BorderThickness="0"
+                  CornerRadius="6"
+                  MinHeight="{TemplateBinding MinHeight}"
+                  Padding="4,0,6,0"
+                  Cursor="Hand">
+            <Grid ColumnDefinitions="18,*">
+              <ToggleButton Name="PART_ExpandCollapseChevron"
+                            Grid.Column="0"
+                            IsChecked="{TemplateBinding IsExpanded, Mode=TwoWay}"
+                            IsVisible="{TemplateBinding ItemCount, Converter={x:Static ObjectConverters.NotEqual}, ConverterParameter=0}"
+                            Focusable="False"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="0"
+                            Width="16" Height="16"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center">
+                <ToggleButton.Template>
+                  <ControlTemplate>
+                    <Border Background="Transparent" Width="16" Height="16">
+                      <Path Name="PART_ChevronPath"
+                            Data="M 6,4 L 10,8 L 6,12"
+                            Stroke="{DynamicResource MutedBrush}"
+                            StrokeThickness="1.5"
+                            StrokeLineCap="Round"
+                            StrokeJoin="Round"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" />
+                    </Border>
+                  </ControlTemplate>
+                </ToggleButton.Template>
+              </ToggleButton>
+              <ContentPresenter Name="PART_HeaderPresenter"
+                                Grid.Column="1"
+                                Content="{TemplateBinding Header}"
+                                ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch" />
+            </Grid>
+          </Border>
+          <ItemsPresenter Name="PART_ItemsPresenter"
+                          IsVisible="{TemplateBinding IsExpanded}"
+                          ItemsPanel="{TemplateBinding ItemsPanel}"
+                          Margin="14,0,0,0" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TreeView.files TreeViewItem /template/ ToggleButton#PART_ExpandCollapseChevron:checked /template/ Path#PART_ChevronPath">
+    <Setter Property="RenderTransform" Value="rotate(90deg)" />
+  </Style>
+  <Style Selector="TreeView.files TreeViewItem /template/ Border#PART_LayoutRoot:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+  </Style>
+  <Style Selector="TreeView.files TreeViewItem:selected /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
+  </Style>
+  <Style Selector="TreeView.files TreeViewItem:selected /template/ Border#PART_LayoutRoot:pointerover">
+    <Setter Property="Background" Value="{DynamicResource SignalWashBrush}" />
   </Style>
 
-  <!-- The sheet that holds the open repository, lit above the frame -->
+  <!-- The sheet that holds the open repository, flush edge-to-edge like Winc's editor canvas -->
   <Style Selector="Border.sheet">
     <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="Margin" Value="8,0,8,8" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Margin" Value="0" />
     <Setter Property="ClipToBounds" Value="True" />
   </Style>
-  <Style Selector="Border.menubar Menu > MenuItem">
-    <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="Padding" Value="10,0" />
-    <Setter Property="Height" Value="31" />
+  <!-- Menu rows: body size, normal font weight, rounded hover pills inside the overlay's padding -->
+  <Style Selector="AccessText">
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
-  <!-- Menu rows: body size, rounded hover pills inside the overlay's padding (colours are in Tokens.axaml) -->
+  <Style Selector="ContextMenu">
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="MenuFlyoutPresenter">
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Background" Value="{DynamicResource OverlayBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="4" />
+  </Style>
   <Style Selector="MenuItem">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="MenuItem /template/ AccessText">
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <Style Selector="MenuItem /template/ ContentPresenter">
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <Style Selector="Separator">
     <Setter Property="Background" Value="{DynamicResource RuleBrush}" />
@@ -336,15 +553,22 @@
   <Style Selector="MenuItem.danger:selected /template/ Border#PART_LayoutRoot">
     <Setter Property="Background" Value="{DynamicResource DelBgBrush}" />
   </Style>
-  <!-- Tooltips: rounded like the app's buttons; the colours are in Fields.axaml -->
+  <!-- Tooltips: high-contrast overlay surface -->
   <Style Selector="ToolTip">
+    <Setter Property="Background" Value="{DynamicResource OverlayBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="8,5" />
+    <Setter Property="FontWeight" Value="Normal" />
   </Style>
   <!-- Checkboxes: GitHub's 16 px box instead of Fluent's 20 px, at body size, the label 8 px from the box.
        Fluent's template sets the box and glyph sizes itself, which outranks a plain style; the always-true
        [IsVisible=True] condition makes these setters triggers, which outrank the template. -->
   <Style Selector="CheckBox">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="Padding" Value="6,0,0,0" />
   </Style>
   <Style Selector="CheckBox[IsVisible=True] /template/ Border#NormalRectangle">
@@ -376,19 +600,46 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
-  <!-- Repository tabs: GitHub's underline navigation on the frame; the selected one is bold over a coral line. -->
+  <!-- Repository tabs: Winc-style pill tabs (26 px tall, 8 px radius, 4 px gap, solid fill when active). -->
   <Style Selector="ListBox.tabs">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Padding" Value="0" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Margin" Value="0,0,2,0" />
     <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <Border Name="PART_Divider" DockPanel.Dock="Left" Width="1" Height="14" VerticalAlignment="Center"
+                  Margin="0,0,2,0" Background="{DynamicResource TabDividerBrush}" />
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Content="{TemplateBinding Content}"
+                            Padding="{TemplateBinding Padding}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.tabs ListBoxItem:nth-child(1) /template/ Border#PART_Divider, ListBox.tabs ListBoxItem:selected /template/ Border#PART_Divider, ListBox.tabs ListBoxItem:pointerover /template/ Border#PART_Divider">
+    <Setter Property="Opacity" Value="0" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.12" />
@@ -399,22 +650,10 @@
     <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
   </Style>
-  <!-- The line under the selected tab grows out from its centre. -->
-  <Style Selector="ListBox.tabs ListBoxItem Border.tabline">
-    <Setter Property="Background" Value="{DynamicResource TabLineBrush}" />
-    <Setter Property="Margin" Value="8,0" />
-    <Setter Property="CornerRadius" Value="2" />
-    <Setter Property="RenderTransform" Value="scaleX(0)" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-      </Transitions>
-    </Setter>
-  </Style>
-  <Style Selector="ListBox.tabs ListBoxItem:selected Border.tabline">
-    <Setter Property="RenderTransform" Value="scaleX(1)" />
+  <Style Selector="ListBox.tabs ListBoxItem:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem TextBlock.name">
     <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
@@ -427,10 +666,11 @@
     <Setter Property="Margin" Value="0,0,-3,0" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem:selected TextBlock.name">
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="ListBox.tabs ListBoxItem Button.close">
+    <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Opacity" Value="0" />
     <Setter Property="Transitions">
       <Transitions>
@@ -442,34 +682,68 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
-  <!-- Details pane tabs: quiet labels, the selected one gets the coral underline like the repository tabs. -->
+  <!-- Details and history pane tabs: Winc-style pill tabs over a 1 px bottom rule. -->
   <Style Selector="TabControl.pane">
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
-    <Style.Resources>
-      <x:Double x:Key="TabItemHeaderPipeThickness">2</x:Double>
-      <SolidColorBrush x:Key="TabItemHeaderSelectedPipeFill" Color="{DynamicResource TabLineColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundUnselected" Color="{DynamicResource MutedColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPointerOver" Color="{DynamicResource TextColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundUnselectedPressed" Color="{DynamicResource TextColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundSelected" Color="{DynamicResource TextColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPointerOver" Color="{DynamicResource TextColor}" />
-      <SolidColorBrush x:Key="TabItemHeaderForegroundSelectedPressed" Color="{DynamicResource TextColor}" />
-    </Style.Resources>
-  </Style>
-  <Style Selector="TabControl.pane /template/ ItemsPresenter#PART_ItemsPresenter">
-    <Setter Property="Margin" Value="8,0,0,0" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <Border DockPanel.Dock="Top" Height="36" Padding="10,5"
+                  BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1"
+                  Background="Transparent">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </Border>
+          <ContentPresenter Name="PART_SelectedContentHost"
+                            Content="{TemplateBinding SelectedContent}"
+                            ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
   </Style>
   <Style Selector="TabControl.pane TabItem">
     <Setter Property="FontSize" Value="{DynamicResource FontSizeBody}" />
-    <Setter Property="Height" Value="34" />
-    <Setter Property="MinHeight" Value="34" />
-    <Setter Property="Padding" Value="12,0" />
-    <Setter Property="Margin" Value="0" />
-    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Margin" Value="0,0,4,0" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Pill"
+                Background="{TemplateBinding Background}"
+                CornerRadius="8"
+                Height="26"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Header}"
+                            ContentTemplate="{TemplateBinding HeaderTemplate}"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TabControl.pane TabItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource HoverWashBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <Style Selector="TabControl.pane TabItem:selected">
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="TabControl.pane TabItem:selected:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TabFillBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
   </Style>
   <!-- File count next to the Changes tab label. -->
   <Style Selector="Border.count">
@@ -491,7 +765,7 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Padding" Value="10,6" />
-    <Setter Property="BoxShadow" Value="0 4 14 0 #33000000" />
+    <Setter Property="BoxShadow" Value="0 4 12 0 #26000000" />
     <Setter Property="Opacity" Value="0" />
     <Setter Property="RenderTransform" Value="translateY(6px)" />
     <Setter Property="Transitions">
@@ -512,24 +786,35 @@
     <Setter Property="BorderBrush" Value="{DynamicResource RuleBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
-    <Setter Property="BoxShadow" Value="0 4 14 0 #33000000" />
+    <Setter Property="BoxShadow" Value="0 4 12 0 #26000000" />
   </Style>
 
   <!-- Dense lists: commit graph, file changes, diff -->
   <Style Selector="ListBox.dense">
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
     <Setter Property="Padding" Value="0" />
   </Style>
   <Style Selector="ListBox.dense ListBoxItem">
     <Setter Property="Padding" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-  </Style>
-  <Style Selector="ListBox.dense ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.1" />
-      </Transitions>
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PART_ContentPresenter"
+                          Background="{TemplateBinding Background}"
+                          BorderBrush="{TemplateBinding BorderBrush}"
+                          BorderThickness="{TemplateBinding BorderThickness}"
+                          CornerRadius="{TemplateBinding CornerRadius}"
+                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                          Content="{TemplateBinding Content}"
+                          Padding="{TemplateBinding Padding}"
+                          VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                          HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" />
+      </ControlTemplate>
     </Setter>
   </Style>
   <!-- Rounded, inset selection for the commit and file lists. -->
@@ -830,6 +1115,17 @@
   <Style Selector="Border.cell.empty">
     <Setter Property="Background" Value="{DynamicResource RaisedBrush}" />
     <Setter Property="Opacity" Value="0.5" />
+  </Style>
+  <!-- Lines selected for copying (DiffLineCopy) take the editor's selection colour; after the add and delete washes so
+       they win. A side-by-side row highlights only the side being copied. -->
+  <Style Selector="ListBox.copylines ListBoxItem:selected StackPanel > Grid.diffline">
+    <Setter Property="Background" Value="{DynamicResource EditorSelectionBrush}" />
+  </Style>
+  <Style Selector="ListBox.copyleft ListBoxItem:selected Border.cell.left">
+    <Setter Property="Background" Value="{DynamicResource EditorSelectionBrush}" />
+  </Style>
+  <Style Selector="ListBox.copyright ListBoxItem:selected Border.cell.right">
+    <Setter Property="Background" Value="{DynamicResource EditorSelectionBrush}" />
   </Style>
 
   <Style Selector="GridSplitter">

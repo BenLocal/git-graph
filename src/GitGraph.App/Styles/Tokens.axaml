@@ -23,110 +23,116 @@
   <x:Double x:Key="RowHeight">26</x:Double>
 
   <ResourceDictionary.ThemeDictionaries>
-    <!-- Primer dark -->
+    <!-- Claude Code warm charcoal dark -->
     <ResourceDictionary x:Key="Dark">
-      <Color x:Key="FrameColor">#010409</Color>
-      <Color x:Key="CanvasColor">#0D1117</Color>
-      <Color x:Key="SurfaceColor">#151B23</Color>
-      <Color x:Key="RaisedColor">#212830</Color>
-      <Color x:Key="RuleColor">#3D444D</Color>
-      <Color x:Key="TextColor">#F0F6FC</Color>
-      <Color x:Key="MutedColor">#9198A1</Color>
-      <Color x:Key="SignalColor">#4493F8</Color>
-      <Color x:Key="SignalWashColor">#26388BFD</Color>
-      <!-- Selected text in the code viewer, as in VS Code: the text keeps its own colours on it -->
-      <Color x:Key="EditorSelectionColor">#264F78</Color>
-      <Color x:Key="HoverWashColor">#33656C76</Color>
-      <Color x:Key="OnLaneColor">#0D1117</Color>
-      <Color x:Key="AddBgColor">#262EA043</Color>
-      <Color x:Key="AddWordBgColor">#662EA043</Color>
-      <Color x:Key="AddFgColor">#3FB950</Color>
-      <Color x:Key="DelBgColor">#1AF85149</Color>
-      <Color x:Key="DelWordBgColor">#66F85149</Color>
-      <Color x:Key="DelFgColor">#F85149</Color>
-      <Color x:Key="HunkBgColor">#1A388BFD</Color>
-      <Color x:Key="HunkFgColor">#9198A1</Color>
-      <Color x:Key="LinkColor">#4493F8</Color>
-      <Color x:Key="ScrollThumbColor">#30FFFFFF</Color>
-      <Color x:Key="BadgeFillColor">#14FFFFFF</Color>
-      <Color x:Key="FieldColor">#0D1117</Color>
-      <!-- Primer's attention, success, danger and severe colours, as GitHub marks changed files -->
-      <Color x:Key="GitModifiedColor">#D29922</Color>
-      <Color x:Key="GitAddedColor">#3FB950</Color>
-      <Color x:Key="GitUntrackedColor">#3FB950</Color>
-      <Color x:Key="GitDeletedColor">#F85149</Color>
-      <Color x:Key="GitConflictColor">#DB6D28</Color>
-      <Color x:Key="ScrollThumbHoverColor">#55FFFFFF</Color>
-      <Color x:Key="ScrollThumbActiveColor">#80FFFFFF</Color>
-      <Color x:Key="DangerColor">#DA3633</Color>
-      <!-- The main action (GitHub's green button) and the selected tab's underline -->
-      <Color x:Key="PrimaryColor">#238636</Color>
-      <Color x:Key="PrimaryHoverColor">#29903B</Color>
-      <Color x:Key="TabLineColor">#F78166</Color>
-      <Color x:Key="ButtonColor">#212830</Color>
-      <Color x:Key="ButtonHoverColor">#262C36</Color>
-      <!-- Menus and other overlays, as Primer's overlay background -->
-      <Color x:Key="OverlayColor">#151B23</Color>
-      <!-- Tooltips, as Primer's emphasis background with white text -->
-      <Color x:Key="TooltipColor">#3D444D</Color>
-      <Color x:Key="OnTooltipColor">#FFFFFF</Color>
+      <Color x:Key="FrameColor">#141413</Color>
+      <Color x:Key="CanvasColor">#1E1D1B</Color>
+      <Color x:Key="SurfaceColor">#1A1917</Color>
+      <Color x:Key="RaisedColor">#282623</Color>
+      <Color x:Key="RuleColor">#2E2C28</Color>
+      <Color x:Key="TextColor">#ECEAE4</Color>
+      <Color x:Key="MutedColor">#9C988F</Color>
+      <Color x:Key="SignalColor">#D97757</Color>
+      <Color x:Key="SignalWashColor">#28D97757</Color>
+      <!-- Selected text in the code viewer -->
+      <Color x:Key="EditorSelectionColor">#3D2E27</Color>
+      <Color x:Key="HoverWashColor">#18ECEAE4</Color>
+      <Color x:Key="OnLaneColor">#141413</Color>
+      <Color x:Key="AddBgColor">#243A6B4A</Color>
+      <Color x:Key="AddWordBgColor">#594EA868</Color>
+      <Color x:Key="AddFgColor">#4EA868</Color>
+      <Color x:Key="DelBgColor">#247A3632</Color>
+      <Color x:Key="DelWordBgColor">#59E06C65</Color>
+      <Color x:Key="DelFgColor">#E06C65</Color>
+      <Color x:Key="HunkBgColor">#1ED97757</Color>
+      <Color x:Key="HunkFgColor">#9C988F</Color>
+      <Color x:Key="LinkColor">#E0876A</Color>
+      <Color x:Key="ScrollThumbColor">#2CECEAE4</Color>
+      <Color x:Key="BadgeFillColor">#14ECEAE4</Color>
+      <Color x:Key="FieldColor">#171614</Color>
+      <!-- Warm earth-toned git status colors -->
+      <Color x:Key="GitModifiedColor">#D99B38</Color>
+      <Color x:Key="GitAddedColor">#4EA868</Color>
+      <Color x:Key="GitUntrackedColor">#4EA868</Color>
+      <Color x:Key="GitDeletedColor">#E06C65</Color>
+      <Color x:Key="GitConflictColor">#D97757</Color>
+      <Color x:Key="ScrollThumbHoverColor">#4CECEAE4</Color>
+      <Color x:Key="ScrollThumbActiveColor">#73ECEAE4</Color>
+      <Color x:Key="DangerColor">#C94A4A</Color>
+      <!-- Primary terracotta action and Winc-style active tab fill -->
+      <Color x:Key="PrimaryColor">#D97757</Color>
+      <Color x:Key="PrimaryForegroundColor">#FFFFFF</Color>
+      <Color x:Key="PrimaryHoverColor">#E28567</Color>
+      <Color x:Key="TabLineColor">#D97757</Color>
+      <Color x:Key="TabFillColor">#2A2723</Color>
+      <Color x:Key="TabDividerColor">#1AECEAE4</Color>
+      <Color x:Key="ButtonColor">#24221F</Color>
+      <Color x:Key="ButtonHoverColor">#2E2C28</Color>
+      <!-- Menus and other overlays -->
+      <Color x:Key="OverlayColor">#1F1E1B</Color>
+      <!-- Tooltips -->
+      <Color x:Key="TooltipColor">#2E2C28</Color>
+      <Color x:Key="OnTooltipColor">#ECEAE4</Color>
       <!-- The edge of a small control such as an unchecked checkbox, stronger than a rule so it stays visible -->
-      <Color x:Key="ControlEdgeColor">#656C76</Color>
-      <!-- Folder icons in a folder tab's tree, blue as in GitHub's file tree, so folders stand out from files -->
-      <Color x:Key="FolderIconColor">#54AEFF</Color>
+      <Color x:Key="ControlEdgeColor">#45423C</Color>
+      <!-- Folder icons in a folder tab's tree -->
+      <Color x:Key="FolderIconColor">#D99B56</Color>
 
-      <Color x:Key="SystemAccentColor">#1F6FEB</Color>
-      <Color x:Key="SystemAccentColorDark1">#1158C7</Color>
-      <Color x:Key="SystemAccentColorLight1">#4493F8</Color>
+      <Color x:Key="SystemAccentColor">#D97757</Color>
+      <Color x:Key="SystemAccentColorDark1">#C06243</Color>
+      <Color x:Key="SystemAccentColorLight1">#E58D70</Color>
     </ResourceDictionary>
-    <!-- Primer light -->
+    <!-- Claude Code warm paper light -->
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="FrameColor">#F6F8FA</Color>
-      <Color x:Key="CanvasColor">#FFFFFF</Color>
-      <Color x:Key="SurfaceColor">#F6F8FA</Color>
-      <Color x:Key="RaisedColor">#EFF2F5</Color>
-      <Color x:Key="RuleColor">#D1D9E0</Color>
-      <Color x:Key="TextColor">#1F2328</Color>
-      <Color x:Key="MutedColor">#59636E</Color>
-      <Color x:Key="SignalColor">#0969DA</Color>
-      <Color x:Key="SignalWashColor">#1F0969DA</Color>
-      <Color x:Key="EditorSelectionColor">#ADD6FF</Color>
-      <Color x:Key="HoverWashColor">#1F818B98</Color>
-      <Color x:Key="OnLaneColor">#11161F</Color>
-      <Color x:Key="AddBgColor">#DAFBE1</Color>
-      <Color x:Key="AddWordBgColor">#ACEEBB</Color>
-      <Color x:Key="AddFgColor">#1A7F37</Color>
-      <Color x:Key="DelBgColor">#FFEBE9</Color>
-      <Color x:Key="DelWordBgColor">#FFCECB</Color>
-      <Color x:Key="DelFgColor">#D1242F</Color>
-      <Color x:Key="HunkBgColor">#DDF4FF</Color>
-      <Color x:Key="HunkFgColor">#59636E</Color>
-      <Color x:Key="LinkColor">#0969DA</Color>
-      <Color x:Key="ScrollThumbColor">#2A1C2330</Color>
-      <Color x:Key="BadgeFillColor">#0A1C2330</Color>
-      <Color x:Key="FieldColor">#FFFFFF</Color>
+      <Color x:Key="FrameColor">#F0EDE6</Color>
+      <Color x:Key="CanvasColor">#FAF9F5</Color>
+      <Color x:Key="SurfaceColor">#F5F3EE</Color>
+      <Color x:Key="RaisedColor">#ECE8DF</Color>
+      <Color x:Key="RuleColor">#E2DDD3</Color>
+      <Color x:Key="TextColor">#1A1917</Color>
+      <Color x:Key="MutedColor">#6E6A61</Color>
+      <Color x:Key="SignalColor">#C96442</Color>
+      <Color x:Key="SignalWashColor">#1FC96442</Color>
+      <Color x:Key="EditorSelectionColor">#F3D5C9</Color>
+      <Color x:Key="HoverWashColor">#121A1917</Color>
+      <Color x:Key="OnLaneColor">#141413</Color>
+      <Color x:Key="AddBgColor">#DCF3E2</Color>
+      <Color x:Key="AddWordBgColor">#B0E5BF</Color>
+      <Color x:Key="AddFgColor">#1E7A40</Color>
+      <Color x:Key="DelBgColor">#FCE8E6</Color>
+      <Color x:Key="DelWordBgColor">#F7C7C2</Color>
+      <Color x:Key="DelFgColor">#C43B33</Color>
+      <Color x:Key="HunkBgColor">#14C96442</Color>
+      <Color x:Key="HunkFgColor">#6E6A61</Color>
+      <Color x:Key="LinkColor">#C96442</Color>
+      <Color x:Key="ScrollThumbColor">#261A1917</Color>
+      <Color x:Key="BadgeFillColor">#0D1A1917</Color>
+      <Color x:Key="FieldColor">#FAF9F5</Color>
       <Color x:Key="GitModifiedColor">#9A6700</Color>
-      <Color x:Key="GitAddedColor">#1A7F37</Color>
-      <Color x:Key="GitUntrackedColor">#1A7F37</Color>
-      <Color x:Key="GitDeletedColor">#D1242F</Color>
-      <Color x:Key="GitConflictColor">#BC4C00</Color>
-      <Color x:Key="ScrollThumbHoverColor">#501C2330</Color>
-      <Color x:Key="ScrollThumbActiveColor">#781C2330</Color>
-      <Color x:Key="DangerColor">#CF222E</Color>
-      <Color x:Key="PrimaryColor">#1F883D</Color>
-      <Color x:Key="PrimaryHoverColor">#1C8139</Color>
-      <Color x:Key="TabLineColor">#FD8C73</Color>
-      <Color x:Key="ButtonColor">#F6F8FA</Color>
-      <Color x:Key="ButtonHoverColor">#EFF2F5</Color>
-      <Color x:Key="OverlayColor">#FFFFFF</Color>
-      <Color x:Key="TooltipColor">#25292E</Color>
-      <Color x:Key="OnTooltipColor">#FFFFFF</Color>
-      <Color x:Key="ControlEdgeColor">#818B98</Color>
-      <Color x:Key="FolderIconColor">#54AEFF</Color>
+      <Color x:Key="GitAddedColor">#1E7A40</Color>
+      <Color x:Key="GitUntrackedColor">#1E7A40</Color>
+      <Color x:Key="GitDeletedColor">#C43B33</Color>
+      <Color x:Key="GitConflictColor">#C96442</Color>
+      <Color x:Key="ScrollThumbHoverColor">#451A1917</Color>
+      <Color x:Key="ScrollThumbActiveColor">#661A1917</Color>
+      <Color x:Key="DangerColor">#C43B33</Color>
+      <Color x:Key="PrimaryColor">#C96442</Color>
+      <Color x:Key="PrimaryForegroundColor">#FFFFFF</Color>
+      <Color x:Key="PrimaryHoverColor">#B85636</Color>
+      <Color x:Key="TabLineColor">#C96442</Color>
+      <Color x:Key="TabFillColor">#EAE5DB</Color>
+      <Color x:Key="TabDividerColor">#1A1A1917</Color>
+      <Color x:Key="ButtonColor">#FAF9F5</Color>
+      <Color x:Key="ButtonHoverColor">#EFECE4</Color>
+      <Color x:Key="OverlayColor">#FAF9F5</Color>
+      <Color x:Key="TooltipColor">#1A1917</Color>
+      <Color x:Key="OnTooltipColor">#FAF9F5</Color>
+      <Color x:Key="ControlEdgeColor">#CFC9BC</Color>
+      <Color x:Key="FolderIconColor">#C96442</Color>
 
-      <Color x:Key="SystemAccentColor">#0969DA</Color>
-      <Color x:Key="SystemAccentColorDark1">#0550AE</Color>
-      <Color x:Key="SystemAccentColorLight1">#218BFF</Color>
+      <Color x:Key="SystemAccentColor">#C96442</Color>
+      <Color x:Key="SystemAccentColorDark1">#AD5031</Color>
+      <Color x:Key="SystemAccentColorLight1">#D97757</Color>
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -164,6 +170,8 @@
   <SolidColorBrush x:Key="PrimaryBrush" Color="{DynamicResource PrimaryColor}" />
   <SolidColorBrush x:Key="PrimaryHoverBrush" Color="{DynamicResource PrimaryHoverColor}" />
   <SolidColorBrush x:Key="TabLineBrush" Color="{DynamicResource TabLineColor}" />
+  <SolidColorBrush x:Key="TabFillBrush" Color="{DynamicResource TabFillColor}" />
+  <SolidColorBrush x:Key="TabDividerBrush" Color="{DynamicResource TabDividerColor}" />
   <SolidColorBrush x:Key="ButtonBrush" Color="{DynamicResource ButtonColor}" />
   <SolidColorBrush x:Key="ButtonHoverBrush" Color="{DynamicResource ButtonHoverColor}" />
   <SolidColorBrush x:Key="OverlayBrush" Color="{DynamicResource OverlayColor}" />

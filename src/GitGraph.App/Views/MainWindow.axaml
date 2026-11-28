@@ -1,32 +1,118 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        xmlns:v="using:GitGraph.App.Views"
-        xmlns:ctl="using:GitGraph.App.Controls"
-        xmlns:svc="using:GitGraph.App.Services"
-        x:Class="GitGraph.App.Views.MainWindow"
-        x:DataType="vm:MainWindowViewModel"
-        Title="Git Graph"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="1440" Height="900" MinWidth="900" MinHeight="560"
-        WindowStartupLocation="CenterScreen" WindowState="Maximized"
-        Background="{DynamicResource FrameBrush}">
-  <Window.Resources>
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               xmlns:v="using:GitGraph.App.Views"
+               xmlns:ctl="using:GitGraph.App.Controls"
+               xmlns:svc="using:GitGraph.App.Services"
+               x:Class="GitGraph.App.Views.MainWindow"
+               x:DataType="vm:MainWindowViewModel"
+               Title="Git Graph"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="1440" Height="900" MinWidth="900" MinHeight="560"
+               WindowStartupLocation="CenterScreen" WindowState="Maximized"
+               IsTitleBarVisible="False"
+               IsMenuVisible="False"
+               ShowBottomBorder="False"
+               SaveWindowState="False"
+               EnableTrafficLightPositioning="True"
+               TrafficLightOffset="8,8"
+               Background="{DynamicResource FrameBrush}">
+  <NativeMenu.Menu>
+    <NativeMenu>
+      <NativeMenuItem Header="File">
+        <NativeMenu>
+          <NativeMenuItem Header="Add folder…" Command="{Binding SelectedWorkspace.AddFolderCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Custom commands…" Command="{Binding EditCustomCommandsCommand}" />
+          <NativeMenuItem Header="Keyboard shortcuts…" Click="OnNativeShortcut" CommandParameter="KeyboardShortcuts" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Quit" Click="OnNativeExit" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="View">
+        <NativeMenu>
+          <NativeMenuItem Header="Sidebar" ToggleType="CheckBox" IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}" />
+          <NativeMenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}" Command="{Binding TogglePanelCommand}" />
+          <NativeMenuItem Header="Maximize or restore panel" Command="{Binding ToggleMaximizePanelCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Larger font" Command="{Binding FontLargerCommand}" />
+          <NativeMenuItem Header="Smaller font" Command="{Binding FontSmallerCommand}" />
+          <NativeMenuItem Header="Reset font to 100%" Command="{Binding FontResetCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Ignore whitespace in diffs" ToggleType="CheckBox" IsChecked="{Binding IgnoreWhitespace, Mode=OneWay}" Command="{Binding ToggleIgnoreWhitespaceCommand}" />
+          <NativeMenuItem Header="Wrap long lines in diffs" ToggleType="CheckBox" IsChecked="{Binding WrapDiffLines, Mode=OneWay}" Command="{Binding ToggleWrapDiffLinesCommand}" />
+          <NativeMenuItem Header="Compact folders" ToggleType="CheckBox" IsChecked="{Binding CompactFolders, Mode=OneWay}" Command="{Binding ToggleCompactFoldersCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Theme">
+        <NativeMenu>
+          <NativeMenuItem Header="Follow system" ToggleType="Radio" IsChecked="{Binding ThemeSystem, Mode=OneWay}" Command="{Binding SetThemeCommand}" CommandParameter="System" />
+          <NativeMenuItem Header="Night" ToggleType="Radio" IsChecked="{Binding ThemeDark, Mode=OneWay}" Command="{Binding SetThemeCommand}" CommandParameter="Dark" />
+          <NativeMenuItem Header="Day" ToggleType="Radio" IsChecked="{Binding ThemeLight, Mode=OneWay}" Command="{Binding SetThemeCommand}" CommandParameter="Light" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Switch theme" Command="{Binding CycleThemeCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Repository">
+        <NativeMenu>
+          <NativeMenuItem Header="Find commits" Click="OnNativeShortcut" CommandParameter="Find" />
+          <NativeMenuItem Header="Next match" Click="OnNativeShortcut" CommandParameter="FindNext" />
+          <NativeMenuItem Header="Previous match" Click="OnNativeShortcut" CommandParameter="FindPrevious" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Go to HEAD" Command="{Binding SelectedWorkspace.SelectedRepoTab.GoToHeadCommand}" />
+          <NativeMenuItem Header="Contributors" ToggleType="CheckBox" IsChecked="{Binding SelectedWorkspace.SelectedRepoTab.ShowStats, Mode=OneWay, FallbackValue=False}" Command="{Binding SelectedWorkspace.SelectedRepoTab.ToggleStatsCommand}" />
+          <NativeMenuItem Header="Refresh" Command="{Binding SelectedWorkspace.SelectedRepoTab.RefreshCommand}" />
+          <NativeMenuItem Header="Fetch from all remotes" Command="{Binding SelectedWorkspace.SelectedRepoTab.FetchCommand}" />
+          <NativeMenuItem Header="Pull" Command="{Binding SelectedWorkspace.SelectedRepoTab.PullCommand}" />
+          <NativeMenuItem Header="Push" Command="{Binding SelectedWorkspace.SelectedRepoTab.PushCommand}" />
+          <NativeMenuItem Header="Sync (pull, then push)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.SyncNowCommand}" />
+          <NativeMenuItem Header="Stash changes…" Command="{Binding SelectedWorkspace.SelectedRepoTab.StashChangesCommand}" />
+          <NativeMenuItem Header="Pop latest stash" Command="{Binding SelectedWorkspace.SelectedRepoTab.PopLatestStashCommand}" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Undo last action…" Command="{Binding SelectedWorkspace.SelectedRepoTab.UndoLastActionCommand}" />
+          <NativeMenuItem Header="Reflog…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ShowReflogCommand}" />
+          <NativeMenuItem Header="Force push (with lease)…" Command="{Binding SelectedWorkspace.SelectedRepoTab.ForcePushCommand}" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Tabs">
+        <NativeMenu>
+          <NativeMenuItem Header="Next tab" Click="OnNativeShortcut" CommandParameter="NextTab" />
+          <NativeMenuItem Header="Previous tab" Click="OnNativeShortcut" CommandParameter="PreviousTab" />
+          <NativeMenuItem Header="Keep preview tab open" Click="OnNativeShortcut" CommandParameter="KeepTabOpen" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="Close tab" Click="OnNativeShortcut" CommandParameter="CloseTab" />
+          <NativeMenuItem Header="Close all tabs" Click="OnNativeShortcut" CommandParameter="CloseAllTabs" />
+        </NativeMenu>
+      </NativeMenuItem>
+      <NativeMenuItem Header="Help">
+        <NativeMenu>
+          <NativeMenuItem Header="Keyboard shortcuts…" Click="OnNativeShortcut" CommandParameter="KeyboardShortcuts" />
+          <NativeMenuItemSeparator />
+          <NativeMenuItem Header="About Git Graph" Click="OnNativeAbout" />
+        </NativeMenu>
+      </NativeMenuItem>
+    </NativeMenu>
+  </NativeMenu.Menu>
+
+  <shadui:Window.Resources>
     <MenuFlyout x:Key="TabMenu" x:DataType="vm:TabViewModel">
       <MenuItem Header="Keep open" Command="{Binding Workspace.PinTabCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsPreview}" />
       <MenuItem Header="Close" Command="{Binding Workspace.CloseTabCommand}" CommandParameter="{Binding}" />
       <MenuItem Header="Close tabs to the right" Command="{Binding Workspace.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
       <MenuItem Header="Close all" Command="{Binding Workspace.CloseAllTabsCommand}" />
     </MenuFlyout>
-  </Window.Resources>
+  </shadui:Window.Resources>
 
   <Panel>
   <DockPanel>
-  <!-- Menu bar, with the layout toggles on the right as in VS Code's title bar. -->
-  <Border DockPanel.Dock="Top" Classes="menubar">
+  <Border x:Name="TopBar" DockPanel.Dock="Top" Height="38"
+          Background="{DynamicResource FrameBrush}"
+          BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1"
+          PointerPressed="OnTopBarPointerPressed">
     <Grid ColumnDefinitions="*,Auto">
-      <Menu>
-        <MenuItem Header="_File">
+      <Menu x:Name="TopMenu" VerticalAlignment="Center">
+        <MenuItem Header="File">
           <MenuItem Header="Add folder…" Command="{Binding SelectedWorkspace.AddFolderCommand}" InputGesture="{Binding Keys[AddFolder], Source={x:Static svc:ShortcutService.Instance}}" />
           <Separator />
           <MenuItem Header="Custom commands…" Command="{Binding EditCustomCommandsCommand}"
@@ -36,7 +122,7 @@
           <Separator />
           <MenuItem Header="Quit" Click="OnExit" InputGesture="{Binding Keys[Quit], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
-        <MenuItem Header="_View">
+        <MenuItem Header="View">
           <MenuItem Header="Sidebar" ToggleType="CheckBox" IsChecked="{Binding ShowSidebar, Mode=OneWay}"
                     Command="{Binding ToggleSidebarCommand}" InputGesture="{Binding Keys[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Commit details panel" ToggleType="CheckBox" IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}"
@@ -92,7 +178,7 @@
                       IsChecked="{Binding FetchEvery, Mode=OneWay, Converter={x:Static vm:Converters.IsValue}, ConverterParameter=30}" />
           </MenuItem>
         </MenuItem>
-        <MenuItem Header="T_heme">
+        <MenuItem Header="Theme">
           <MenuItem Header="Follow system" ToggleType="Radio" GroupName="theme" IsChecked="{Binding ThemeSystem, Mode=OneWay}"
                     Command="{Binding SetThemeCommand}" CommandParameter="System"
                     ToolTip.Tip="Night or day, whichever the system is set to" />
@@ -103,7 +189,7 @@
           <Separator />
           <MenuItem Header="Switch theme" Command="{Binding CycleThemeCommand}" InputGesture="{Binding Keys[CycleTheme], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
-        <MenuItem Header="_Repository">
+        <MenuItem Header="Repository">
           <MenuItem Header="Find commits" Tag="Find" Click="OnMenuCommand" InputGesture="{Binding Keys[Find], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Next match" Tag="FindNext" Click="OnMenuCommand" InputGesture="{Binding Keys[FindNext], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Previous match" Tag="FindPrevious" Click="OnMenuCommand" InputGesture="{Binding Keys[FindPrevious], Source={x:Static svc:ShortcutService.Instance}}" />
@@ -146,7 +232,7 @@
           <MenuItem Header="Show remote branches" ToggleType="CheckBox"
                     IsChecked="{Binding SelectedWorkspace.SelectedRepoTab.ShowRemotes, FallbackValue=False}" />
         </MenuItem>
-        <MenuItem Header="_Tabs">
+        <MenuItem Header="Tabs">
           <MenuItem Header="Next tab" Tag="NextTab" Click="OnMenuCommand" InputGesture="{Binding Keys[NextTab], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Previous tab" Tag="PreviousTab" Click="OnMenuCommand" InputGesture="{Binding Keys[PreviousTab], Source={x:Static svc:ShortcutService.Instance}}" />
           <MenuItem Header="Keep preview tab open" Tag="KeepTabOpen" Click="OnMenuCommand"
@@ -156,14 +242,14 @@
           <MenuItem Header="Close all tabs" Tag="CloseAllTabs" Click="OnMenuCommand"
                     ToolTip.Tip="{Binding Tips[CloseAllTabs], Source={x:Static svc:ShortcutService.Instance}}" />
         </MenuItem>
-        <MenuItem Header="_Help">
+        <MenuItem Header="Help">
           <MenuItem Header="Keyboard shortcuts…" Tag="KeyboardShortcuts" Click="OnMenuCommand" />
           <Separator />
           <MenuItem Header="About Git Graph" Click="OnAbout" />
         </MenuItem>
       </Menu>
 
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,8,0" VerticalAlignment="Center">
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" Margin="0,0,10,0" VerticalAlignment="Center">
         <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}"
                       ToolTip.Tip="{Binding Tips[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}">
           <LucideIcon Kind="PanelLeft" Size="15" />
@@ -179,23 +265,43 @@
 
   <Grid ColumnDefinitions="Auto,Auto,*">
     <!-- The sidebar; when it's hidden and nothing is open, the empty page offers to bring it back. -->
-    <Panel Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding ShowSidebar}">
-      <v:SidebarView Width="256" />
+    <Panel x:Name="SidebarHost" Grid.Column="0" Grid.ColumnSpan="2" IsVisible="{Binding ShowSidebar}">
+      <DockPanel Width="256">
+        <!-- On macOS, native traffic lights occupy the left 78 px of the sidebar header row -->
+        <Border x:Name="MacSidebarHeader" DockPanel.Dock="Top" Height="38" IsVisible="False"
+                Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,1,0"
+                PointerPressed="OnTopBarPointerPressed">
+          <Grid ColumnDefinitions="78,*,Auto">
+            <ToggleButton Grid.Column="2" Classes="ghost bar" Margin="0,0,8,0"
+                          IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}"
+                          ToolTip.Tip="{Binding Tips[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}">
+              <LucideIcon Kind="PanelLeft" Size="15" />
+            </ToggleButton>
+          </Grid>
+        </Border>
+        <v:SidebarView Width="256" />
+      </DockPanel>
     </Panel>
 
-    <Grid Grid.Column="2" RowDefinitions="Auto,*" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
-      <!-- Open repositories in this workspace: tabs on the frame, the selected one merging into the sheet below. -->
-      <Panel Grid.Row="0" MinHeight="8">
+    <Grid Grid.Column="2" RowDefinitions="Auto,*" Background="{DynamicResource CanvasBrush}" DataContext="{Binding SelectedWorkspace}" x:DataType="vm:WorkspaceViewModel">
+      <!-- Open repositories in this workspace: Winc-style pill tabs with overflow dropdown. -->
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="10,6,10,4" MinHeight="26"
+            Background="Transparent" PointerPressed="OnTopBarPointerPressed">
+        <!-- On macOS when sidebar is collapsed, keep room for traffic lights and offer the sidebar toggle -->
+        <StackPanel x:Name="MacCollapsedControls" Grid.Column="0" Orientation="Horizontal" Spacing="4"
+                    Margin="72,0,8,0" VerticalAlignment="Center" IsVisible="False"
+                    DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel">
+          <ToggleButton Classes="ghost bar" IsChecked="{Binding ShowSidebar, Mode=OneWay}" Command="{Binding ToggleSidebarCommand}"
+                        ToolTip.Tip="{Binding Tips[ToggleSidebar], Source={x:Static svc:ShortcutService.Instance}}">
+            <LucideIcon Kind="PanelLeft" Size="15" />
+          </ToggleButton>
+        </StackPanel>
+
         <!-- Too many tabs scroll sideways without a scrollbar: wheel over the strip, or select one to bring it into view. -->
-        <ListBox x:Name="TabStrip" Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}" IsVisible="{Binding HasTabs}" Margin="18,4,8,0"
+        <ListBox x:Name="TabStrip" Grid.Column="1" Classes="tabs" ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                 IsVisible="{Binding HasTabs}"
                  ScrollViewer.HorizontalScrollBarVisibility="Hidden" ScrollViewer.VerticalScrollBarVisibility="Disabled">
-          <!-- Tabs running past the edge fade out instead of being cut off. -->
-          <ListBox.OpacityMask>
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-              <GradientStop Offset="0.96" Color="Black" />
-              <GradientStop Offset="1" Color="Transparent" />
-            </LinearGradientBrush>
-          </ListBox.OpacityMask>
           <ListBox.ItemsPanel>
             <ItemsPanelTemplate>
               <StackPanel Orientation="Horizontal" />
@@ -203,25 +309,59 @@
           </ListBox.ItemsPanel>
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:TabViewModel">
-              <Grid RowDefinitions="*,2" ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped"
-                    ContextFlyout="{StaticResource TabMenu}">
-                <Border Grid.Row="1" Classes="tabline" />
-                <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="7" Margin="14,0,6,0" Height="34">
-                  <LucideIcon Kind="FolderTree" Size="13" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
-                  <LucideIcon Kind="Folder" Size="13" IsVisible="{Binding IsFolder}" VerticalAlignment="Center" />
-                  <TextBlock Classes="name" Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
-                  <TextBlock Classes="muted small" Text="{Binding Subtitle}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis" />
-                  <Button Classes="ghost close" Padding="3" Margin="2,0,0,0"
-                          Command="{Binding $parent[ListBox].((vm:WorkspaceViewModel)DataContext).CloseTabCommand}"
-                          CommandParameter="{Binding}" ToolTip.Tip="{Binding Tips[CloseTab], Source={x:Static svc:ShortcutService.Instance}}">
-                    <LucideIcon Kind="X" Size="12" />
-                  </Button>
-                </StackPanel>
-              </Grid>
+              <StackPanel Orientation="Horizontal" Spacing="7" Margin="10,0,6,0" Height="26"
+                          ToolTip.Tip="{Binding Path}" Background="Transparent" DoubleTapped="OnTabDoubleTapped"
+                          ContextFlyout="{StaticResource TabMenu}">
+                <LucideIcon Kind="GitBranch" Size="13" Foreground="{DynamicResource SignalBrush}" IsVisible="{Binding IsMainRepo}" VerticalAlignment="Center" />
+                <LucideIcon Kind="FolderTree" Size="13" Foreground="{DynamicResource SignalBrush}" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
+                <LucideIcon Kind="Folder" Size="13" Foreground="{DynamicResource FolderIconBrush}" IsVisible="{Binding IsFolder}" VerticalAlignment="Center" />
+                <TextBlock Classes="name" Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+                <TextBlock Classes="muted small" Text="{Binding Subtitle}" VerticalAlignment="Center" MaxWidth="160" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <Button Classes="ghost close" Width="16" Height="16" Padding="0" CornerRadius="8" Margin="2,0,0,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding $parent[ListBox].((vm:WorkspaceViewModel)DataContext).CloseTabCommand}"
+                        CommandParameter="{Binding}" ToolTip.Tip="{Binding Tips[CloseTab], Source={x:Static svc:ShortcutService.Instance}}">
+                  <LucideIcon Kind="X" Size="11" />
+                </Button>
+              </StackPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>
         </ListBox>
-      </Panel>
+
+        <Button x:Name="TabOverflowButton" Grid.Column="2" Classes="ghost" Width="26" Height="26" Padding="0" Margin="4,0,0,0"
+                CornerRadius="6" IsVisible="False" ToolTip.Tip="All open tabs">
+          <LucideIcon Kind="ChevronDown" Size="14" />
+          <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedRight">
+              <ListBox x:Name="TabOverflowList" Classes="dense pills" MaxHeight="360" MinWidth="220" MaxWidth="340"
+                       ItemsSource="{Binding Tabs}" SelectedItem="{Binding SelectedTab}"
+                       SelectionChanged="OnTabOverflowPicked">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:TabViewModel">
+                    <StackPanel Orientation="Horizontal" Spacing="8" Height="28" Margin="8,0" Background="Transparent">
+                      <LucideIcon Kind="GitBranch" Size="13" Foreground="{DynamicResource SignalBrush}" IsVisible="{Binding IsMainRepo}" VerticalAlignment="Center" />
+                      <LucideIcon Kind="FolderTree" Size="13" Foreground="{DynamicResource SignalBrush}" IsVisible="{Binding IsWorktree}" VerticalAlignment="Center" />
+                      <LucideIcon Kind="Folder" Size="13" Foreground="{DynamicResource FolderIconBrush}" IsVisible="{Binding IsFolder}" VerticalAlignment="Center" />
+                      <TextBlock Classes.preview="{Binding IsPreview}" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="180" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="muted small" Text="{Binding Subtitle}" VerticalAlignment="Center" MaxWidth="120" TextTrimming="CharacterEllipsis"
+                                 IsVisible="{Binding Subtitle, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Flyout>
+          </Button.Flyout>
+        </Button>
+
+        <ToggleButton x:Name="MacDetailsToggle" Grid.Column="3" Classes="ghost bar" Margin="4,0,0,0" VerticalAlignment="Center" IsVisible="False"
+                      DataContext="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext)}" x:DataType="vm:MainWindowViewModel"
+                      IsChecked="{Binding ShowDetailsPanel, Mode=OneWay}" Command="{Binding TogglePanelCommand}"
+                      IsEnabled="{Binding SelectedWorkspace.SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      ToolTip.Tip="{Binding Tips[TogglePanel], Source={x:Static svc:ShortcutService.Instance}}">
+          <LucideIcon Kind="PanelBottom" Size="15" />
+        </ToggleButton>
+      </Grid>
 
       <!-- The sheet: everything about the open repository -->
       <Border Grid.Row="1" Classes="sheet">
@@ -257,27 +397,30 @@
         </Border>
       </StackPanel>
 
-      <v:RepoTabView Grid.Row="1" DataContext="{Binding SelectedRepoTab}"
+      <v:RepoTabView x:Name="RepoTabHost" Grid.Row="1" DataContext="{Binding SelectedRepoTab}"
                      IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).SelectedRepoTab, Converter={x:Static ObjectConverters.IsNotNull}}" />
-      <v:FolderTabView Grid.Row="1" DataContext="{Binding SelectedFolderTab}"
+      <v:FolderTabView x:Name="FolderTabHost" Grid.Row="1" DataContext="{Binding SelectedFolderTab}"
                        IsVisible="{Binding $parent[Grid].((vm:WorkspaceViewModel)DataContext).SelectedFolderTab, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- Nothing open yet -->
-      <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="420"
-                  IsVisible="{Binding !HasTabs}">
-        <LucideIcon Kind="FolderGit2" Size="40" HorizontalAlignment="Center" StrokeWidth="1.4" />
-        <TextBlock Classes="title" HorizontalAlignment="Center" TextAlignment="Center"
-                   Text="{Binding Name, StringFormat='{}{0} has nothing open'}" />
-        <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasFolders}"
-                   Text="Pick a repository or worktree on the left to see its history." />
-        <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
-                   Text="Add a folder to this workspace. Every repository inside it, and each of its worktrees, shows up in the sidebar." />
-        <Button Classes="primary" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" IsVisible="{Binding !HasFolders}"
-                Content="Add folder" />
-        <Button Classes="secondary" HorizontalAlignment="Center" Content="Show sidebar"
-                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSidebarCommand}"
-                IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).ShowSidebar}" />
-      </StackPanel>
+      <shadui:Card Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   HasShadow="False" Padding="28,24" MaxWidth="420"
+                   IsVisible="{Binding !HasTabs}">
+        <StackPanel Spacing="14">
+          <LucideIcon Kind="FolderGit2" Size="40" HorizontalAlignment="Center" StrokeWidth="1.4" />
+          <TextBlock Classes="title" HorizontalAlignment="Center" TextAlignment="Center"
+                     Text="{Binding Name, StringFormat='{}{0} has nothing open'}" />
+          <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding HasFolders}"
+                     Text="Pick a repository or worktree on the left to see its history." />
+          <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap" IsVisible="{Binding !HasFolders}"
+                     Text="Add a folder to this workspace. Every repository inside it, and each of its worktrees, shows up in the sidebar." />
+          <Button Classes="Primary" HorizontalAlignment="Center" Command="{Binding AddFolderCommand}" IsVisible="{Binding !HasFolders}"
+                  Content="Add folder" />
+          <Button Classes="Outline" HorizontalAlignment="Center" Content="Show sidebar"
+                  Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleSidebarCommand}"
+                  IsVisible="{Binding !$parent[Window].((vm:MainWindowViewModel)DataContext).ShowSidebar}" />
+        </StackPanel>
+      </shadui:Card>
       </Grid>
       </Border>
     </Grid>
@@ -290,4 +433,4 @@
     <TextBlock x:Name="ChordHint" Classes="small" />
   </Border>
   </Panel>
-</Window>
+</shadui:Window>

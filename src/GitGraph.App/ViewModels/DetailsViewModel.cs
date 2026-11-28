@@ -100,6 +100,9 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
     private IReadOnlyList<SplitRowViewModel> _splitRows = [];
 
     [ObservableProperty]
+    private FullDiffViewModel? _inlineDiff;
+
+    [ObservableProperty]
     private string? _diffMessage;
 
     [ObservableProperty]
@@ -486,6 +489,7 @@ public partial class DetailsViewModel(GitRepository repo, IAppHost host) : Obser
         _shown = null;
         DiffLines = [];
         SplitRows = [];
+        InlineDiff = null;
         HasDiff = false;
         DiffMessage = message;
         SetImages(null, null);

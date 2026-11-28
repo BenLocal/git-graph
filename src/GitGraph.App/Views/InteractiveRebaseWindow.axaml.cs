@@ -8,7 +8,7 @@ using GitGraph.App.ViewModels;
 namespace GitGraph.App.Views;
 
 /// <summary>Plans an interactive rebase. Rows are reordered by dragging their handle; the list moves as the pointer does.</summary>
-public partial class InteractiveRebaseWindow : Window
+public partial class InteractiveRebaseWindow : ShadUI.Window
 {
     private RebaseRowViewModel? _dragging;
     private InteractiveRebaseViewModel? _vm;

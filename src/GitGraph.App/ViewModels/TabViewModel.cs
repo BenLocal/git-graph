@@ -42,9 +42,12 @@ public abstract partial class TabViewModel : ObservableObject, IDisposable
     private string? _subtitle;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMainRepo))]
     private bool _isWorktree;
 
     public virtual bool IsFolder => false;
+
+    public bool IsMainRepo => !IsWorktree && !IsFolder;
 
     /// <summary>How the tab is saved in the workspace; a folder and a repository at the same path are different tabs.</summary>
     public virtual string StateKey => Path;

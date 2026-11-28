@@ -6,7 +6,7 @@ using GitGraph.App.ViewModels;
 
 namespace GitGraph.App.Views;
 
-public partial class KeyboardShortcutsWindow : Window
+public partial class KeyboardShortcutsWindow : ShadUI.Window
 {
     private readonly ShortcutsEditorViewModel _vm = new();
     private bool _recording;

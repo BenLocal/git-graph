@@ -57,9 +57,11 @@ public partial class TerminalPanelView : UserControl
 
     private void ShowCurrent()
     {
+        var wasVisible = IsVisible;
         IsVisible = _current?.IsVisible == true;
         foreach (var (vm, entry) in _entries) entry.Control.IsVisible = vm == _current && IsVisible;
         if (!IsVisible || _current == null) return;
+        if (!wasVisible) Motion.SlideIn(this, offsetX: 0f, offsetY: 10f);
         if (!_entries.ContainsKey(_current)) CreateTerminal(_current);
         FocusTerminal();
     }

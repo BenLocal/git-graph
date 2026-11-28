@@ -105,9 +105,13 @@ public partial class DetailsViewModel
             var hunk = -1;
             SplitRows = diff.SplitRows.Select(r => new SplitRowViewModel(r, syntax, r.IsHunk ? hunks[++hunk] : null)).ToList();
             ShowComments();
+            InlineDiff = diff.AllRows.Count > 0
+                ? new FullDiffViewModel(file, RangeLabel(target), diff, syntax, message: null, _host.Dialogs, FullPath(file.Path),
+                    CommentsFor(fileVm), BlameFor(target, file))
+                : null;
             DiffMessage = null;
             HasDiff = true;
-            _ = Loads.Track(ColourAsync(target, file, loaded, cts.Token));
+            _ = Loads.Track(ColourAsync(target, fileVm, loaded, cts.Token));
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is GitException or IOException)
@@ -117,8 +121,9 @@ public partial class DetailsViewModel
     }
 
     /// <summary>Adds syntax colours to the diff on screen once they are worked out; picking another file stops it.</summary>
-    private async Task ColourAsync(DiffTarget target, FileChange file, LoadedDiff loaded, CancellationToken ct)
+    private async Task ColourAsync(DiffTarget target, FileChangeViewModel fileVm, LoadedDiff loaded, CancellationToken ct)
     {
+        var file = fileVm.Change;
         try
         {
             var syntax = await Task.Run(() => SyntaxHighlighter.Highlight(file.Path, loaded.Diff, ct), ct);
@@ -126,6 +131,11 @@ public partial class DetailsViewModel
             _shown = (target, file, loaded with { Syntax = syntax });
             foreach (var line in DiffLines) line.ApplySyntax(syntax);
             foreach (var row in SplitRows) row.ApplySyntax(syntax);
+            if (loaded.Diff.AllRows.Count > 0)
+            {
+                InlineDiff = new FullDiffViewModel(file, RangeLabel(target), loaded.Diff, syntax, message: null, _host.Dialogs, FullPath(file.Path),
+                    CommentsFor(fileVm), BlameFor(target, file));
+            }
         }
         catch (OperationCanceledException) { }
     }

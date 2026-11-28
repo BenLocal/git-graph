@@ -1,13 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
              xmlns:vm="using:GitGraph.App.ViewModels"
              xmlns:v="using:GitGraph.App.Views"
              xmlns:ctl="using:GitGraph.App.Controls"
              x:Class="GitGraph.App.Views.StatsView"
              x:DataType="vm:RepoStatsViewModel"
              Background="{DynamicResource CanvasBrush}">
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="24,18,24,28" Spacing="18" MaxWidth="1180">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" shadui:SmoothScrollAssist.IsEnabled="True">
+    <StackPanel Margin="16,14,16,24" Spacing="16">
       <!-- What is counted, and how much -->
       <Grid ColumnDefinitions="Auto,*,Auto,Auto">
         <Button Classes="ghost" Padding="6,4" Margin="0,2,10,0" VerticalAlignment="Top"
@@ -31,16 +32,22 @@
         </StackPanel>
       </Grid>
 
-      <TextBlock Classes="muted" Text="Reading the history…" IsVisible="{Binding IsLoading}" />
+      <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsLoading}">
+        <shadui:Loading Width="16" Height="16" />
+        <TextBlock Classes="muted" Text="Reading the history…" VerticalAlignment="Center" />
+      </StackPanel>
       <TextBlock Classes="muted" Text="{Binding Message}" TextWrapping="Wrap"
                  IsVisible="{Binding Message, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
       <!-- Activity by day, then by week, for everyone -->
-      <Border Classes="statcard">
+      <shadui:Card HasShadow="False" Padding="18,16">
+        <shadui:Card.Header>
+          <StackPanel Spacing="4">
+            <shadui:CardTitle Content="Languages" FontSize="{DynamicResource FontSizeBody}" />
+            <shadui:CardDescription Content="By file size in the current commit. Independent of the contribution period." />
+          </StackPanel>
+        </shadui:Card.Header>
         <StackPanel Spacing="10">
-          <TextBlock Classes="section" Text="Languages" />
-          <TextBlock Classes="muted small" Text="By file size in the current commit. Independent of the contribution period."
-                     TextWrapping="Wrap" />
           <ctl:LanguageBar Items="{Binding Languages}" Height="10" />
           <ItemsControl ItemsSource="{Binding Languages}">
             <ItemsControl.ItemsPanel>
@@ -60,19 +67,19 @@
           <TextBlock Classes="muted small" Text="Local estimate for common languages; skips common dependency, documentation and generated paths. Results may differ from GitHub."
                      TextWrapping="Wrap" />
         </StackPanel>
-      </Border>
-      <Border Classes="statcard" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="section" Text="Activity" />
-          <ctl:ContributionHeatmap Days="{Binding DailyCommits}" From="{Binding HeatmapFrom}" HorizontalAlignment="Left" />
-        </StackPanel>
-      </Border>
-      <Border Classes="statcard" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
-        <StackPanel Spacing="10">
-          <TextBlock Classes="section" Text="Commits per week" />
-          <ctl:ActivityChart Height="140" ShowGrid="True" Values="{Binding WeeklyCommits}" Weeks="{Binding Weeks}" />
-        </StackPanel>
-      </Border>
+      </shadui:Card>
+      <shadui:Card HasShadow="False" Padding="18,16" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <shadui:Card.Header>
+          <shadui:CardTitle Content="Activity" FontSize="{DynamicResource FontSizeBody}" />
+        </shadui:Card.Header>
+        <ctl:ContributionHeatmap Days="{Binding DailyCommits}" From="{Binding HeatmapFrom}" HorizontalAlignment="Left" />
+      </shadui:Card>
+      <shadui:Card HasShadow="False" Padding="18,16" IsVisible="{Binding Summary, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <shadui:Card.Header>
+          <shadui:CardTitle Content="Commits per week" FontSize="{DynamicResource FontSizeBody}" />
+        </shadui:Card.Header>
+        <ctl:ActivityChart Height="140" ShowGrid="True" Values="{Binding WeeklyCommits}" Weeks="{Binding Weeks}" />
+      </shadui:Card>
 
       <!-- One card per person, two to a row -->
       <ItemsControl ItemsSource="{Binding Contributors}">
@@ -83,7 +90,7 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="vm:ContributorCardViewModel">
-            <Border Classes="statcard" Margin="0,0,14,14">
+            <shadui:Card HasShadow="False" Padding="16,14" Margin="0,0,14,14">
               <StackPanel Spacing="10">
                 <Grid ColumnDefinitions="Auto,*,Auto">
                   <ctl:Avatar Email="{Binding Email}" AuthorName="{Binding Name}" Width="36" Height="36" VerticalAlignment="Center" />
@@ -111,7 +118,7 @@
                                    Maximum="{Binding $parent[ItemsControl].((vm:RepoStatsViewModel)DataContext).PersonMaximum}" />
                 <TextBlock Classes="muted small" Text="{Binding Active, StringFormat='Active {0}'}" />
               </StackPanel>
-            </Border>
+            </shadui:Card>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

@@ -66,6 +66,9 @@ public sealed partial class FileHistoryViewModel : ObservableObject
     private IReadOnlyList<DiffLineViewModel> _diffLines = [];
 
     [ObservableProperty]
+    private FullDiffViewModel? _inlineDiff;
+
+    [ObservableProperty]
     private string? _diffMessage;
 
     /// <summary>More commits than loaded so far changed the file; scrolling near the end loads the next page.</summary>
@@ -128,17 +131,21 @@ public sealed partial class FileHistoryViewModel : ObservableObject
             if (cts.IsCancellationRequested) return;
             var lines = diff.Lines.Select(l => new DiffLineViewModel(l, DiffSyntax.Empty)).ToList();
             DiffLines = lines;
+            InlineDiff = diff.IsBinary || diff.Lines.Count == 0 ? null : new FullDiffViewModel(change, c.ShortHash, diff, DiffSyntax.Empty, null, _dialogs, Path);
             DiffMessage = diff.IsBinary ? "Binary file. There is no text diff to show."
                 : diff.Lines.Count == 0 ? "The file's content didn't change in this commit." : null;
             // Colours take longest, so they follow the diff; picking another commit stops them.
             var syntax = await Task.Run(() => SyntaxHighlighter.Highlight(change.Path, diff, cts.Token), cts.Token);
             if (cts.IsCancellationRequested) return;
             foreach (var line in lines) line.ApplySyntax(syntax);
+            if (!diff.IsBinary && diff.Lines.Count > 0)
+                InlineDiff = new FullDiffViewModel(change, c.ShortHash, diff, syntax, null, _dialogs, Path);
         }
         catch (OperationCanceledException) { }
         catch (Exception e) when (e is GitException or IOException)
         {
             DiffLines = [];
+            InlineDiff = null;
             DiffMessage = $"Could not load this diff: {e.Message}";
         }
     }

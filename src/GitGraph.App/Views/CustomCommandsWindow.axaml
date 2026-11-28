@@ -1,13 +1,19 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        x:Class="GitGraph.App.Views.CustomCommandsWindow"
-        x:DataType="vm:CustomCommandsViewModel"
-        Title="Custom commands – Git Graph"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="920" Height="560" MinWidth="640" MinHeight="400"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceBrush}">
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               x:Class="GitGraph.App.Views.CustomCommandsWindow"
+               x:DataType="vm:CustomCommandsViewModel"
+               Title="Custom commands – Git Graph"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="920" Height="560" MinWidth="640" MinHeight="400"
+               IsTitleBarVisible="True" TitleFontSize="13"
+               ShowBottomBorder="True" SaveWindowState="False" EnableTrafficLightPositioning="True" TrafficLightOffset="6,6"
+               WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource SurfaceBrush}">
+  <shadui:Window.LogoContent>
+    <Image Source="/Assets/Icons/gitgraph-128.png" Width="16" Height="16" Margin="4,0,2,0" />
+  </shadui:Window.LogoContent>
   <Grid RowDefinitions="Auto,*,Auto">
     <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,12">
       <StackPanel Spacing="3">
@@ -50,10 +56,10 @@
 
     <Border Grid.Row="2" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,1,0,0" Padding="20,10">
       <Grid ColumnDefinitions="Auto,Auto,*,Auto">
-        <Button Content="Add" Command="{Binding AddCommand}" Margin="0,0,8,0" />
-        <Button Grid.Column="1" Content="Remove" Command="{Binding RemoveCommand}" />
-        <Button Grid.Column="3" Classes="primary" Content="Done" Click="OnClose" />
+        <Button Classes="Outline" Content="Add" Command="{Binding AddCommand}" Margin="0,0,8,0" />
+        <Button Grid.Column="1" Classes="Outline" Content="Remove" Command="{Binding RemoveCommand}" />
+        <Button Grid.Column="3" Classes="Primary" Content="Done" Click="OnClose" />
       </Grid>
     </Border>
   </Grid>
-</Window>
+</shadui:Window>

@@ -6,7 +6,7 @@ using GitGraph.App.ViewModels;
 namespace GitGraph.App.Views;
 
 /// <summary>File → Custom commands.</summary>
-public partial class CustomCommandsWindow : Window
+public partial class CustomCommandsWindow : ShadUI.Window
 {
     public CustomCommandsWindow()
     {

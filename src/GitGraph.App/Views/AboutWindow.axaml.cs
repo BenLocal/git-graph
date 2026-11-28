@@ -10,7 +10,7 @@ using Lucide.Avalonia;
 namespace GitGraph.App.Views;
 
 /// <summary>Help → About: the version from the release tag, the commit, and the platform.</summary>
-public partial class AboutWindow : Window
+public partial class AboutWindow : ShadUI.Window
 {
     public AboutWindow()
     {

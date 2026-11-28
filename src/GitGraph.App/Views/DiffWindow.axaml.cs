@@ -8,7 +8,7 @@ using GitGraph.App.ViewModels;
 namespace GitGraph.App.Views;
 
 /// <summary>One file's diff, side by side, in its own maximized window.</summary>
-public partial class DiffWindow : Window
+public partial class DiffWindow : ShadUI.Window
 {
     public DiffWindow()
     {

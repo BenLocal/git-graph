@@ -1,14 +1,20 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        xmlns:ctl="using:GitGraph.App.Controls"
-        x:Class="GitGraph.App.Views.KeyboardShortcutsWindow"
-        x:DataType="vm:ShortcutsEditorViewModel"
-        Title="Keyboard shortcuts"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="760" Height="620" MinWidth="560" MinHeight="400"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource CanvasBrush}">
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               xmlns:ctl="using:GitGraph.App.Controls"
+               x:Class="GitGraph.App.Views.KeyboardShortcutsWindow"
+               x:DataType="vm:ShortcutsEditorViewModel"
+               Title="Keyboard shortcuts"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="760" Height="620" MinWidth="560" MinHeight="400"
+               IsTitleBarVisible="True" TitleFontSize="13"
+               ShowBottomBorder="True" SaveWindowState="False" EnableTrafficLightPositioning="True" TrafficLightOffset="6,6"
+               WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource CanvasBrush}">
+  <shadui:Window.LogoContent>
+    <Image Source="/Assets/Icons/gitgraph-128.png" Width="16" Height="16" Margin="4,0,2,0" />
+  </shadui:Window.LogoContent>
   <Grid RowDefinitions="Auto,Auto,*">
     <Border Padding="20,16,20,10">
       <StackPanel Spacing="4">
@@ -19,8 +25,8 @@
     </Border>
 
     <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="20,0,20,10">
-      <TextBox Text="{Binding Filter}" PlaceholderText="Search by command or keys" />
-      <Button Grid.Column="1" Classes="ghost text" Margin="8,0,0,0" Command="{Binding ResetAllCommand}" Content="Reset all" />
+      <TextBox Text="{Binding Filter}" shadui:TextBoxAssist.Clearable="True" PlaceholderText="Search by command or keys" />
+      <Button Grid.Column="1" Classes="Outline" Margin="8,0,0,0" Command="{Binding ResetAllCommand}" Content="Reset all" />
     </Grid>
 
     <ListBox x:Name="List" Grid.Row="2" Classes="dense pills" ItemsSource="{Binding Rows}" Margin="0,0,0,12"
@@ -33,10 +39,10 @@
               <TextBlock Text="{Binding Title}" Classes.changed="{Binding IsChanged}" />
               <TextBlock Classes="small" Foreground="{DynamicResource DangerBrush}" Text="{Binding Conflict}" IsVisible="{Binding HasConflict}" />
             </StackPanel>
-            <Border Grid.Column="2" Classes="keycap" IsVisible="{Binding HasShortcut}" HorizontalAlignment="Left" VerticalAlignment="Center"
-                    ToolTip.Tip="{Binding DefaultLabel}">
-              <TextBlock Text="{Binding Label}" />
-            </Border>
+            <shadui:Badge Grid.Column="2" Variant="Outline" Padding="8,2" CornerRadius="5"
+                          IsVisible="{Binding HasShortcut}" HorizontalAlignment="Left" VerticalAlignment="Center"
+                          ToolTip.Tip="{Binding DefaultLabel}"
+                          Content="{Binding Label}" FontFamily="{StaticResource CodeFont}" FontSize="{DynamicResource FontSizeSmall}" />
             <TextBlock Grid.Column="2" Classes="muted small" Text="Not assigned" IsVisible="{Binding !HasShortcut}" VerticalAlignment="Center"
                        HorizontalAlignment="Left" Margin="8,0,0,0" />
             <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
@@ -57,4 +63,4 @@
       </ListBox.ItemTemplate>
     </ListBox>
   </Grid>
-</Window>
+</shadui:Window>

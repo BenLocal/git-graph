@@ -1,16 +1,22 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        xmlns:ctl="using:GitGraph.App.Controls"
-        xmlns:v="using:GitGraph.App.Views"
-        xmlns:svc="using:GitGraph.App.Services"
-        x:Class="GitGraph.App.Views.DiffWindow"
-        x:DataType="vm:FullDiffViewModel"
-        Title="{Binding Path, StringFormat='{}{0} – Git Graph'}"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="1280" Height="800" MinWidth="640" MinHeight="400"
-        WindowState="Maximized" WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource CanvasBrush}">
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               xmlns:ctl="using:GitGraph.App.Controls"
+               xmlns:v="using:GitGraph.App.Views"
+               xmlns:svc="using:GitGraph.App.Services"
+               x:Class="GitGraph.App.Views.DiffWindow"
+               x:DataType="vm:FullDiffViewModel"
+               Title="{Binding Path, StringFormat='{}{0} – Git Graph'}"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="1280" Height="800" MinWidth="640" MinHeight="400"
+               IsTitleBarVisible="True" TitleFontSize="13"
+               ShowBottomBorder="True" SaveWindowState="False" EnableTrafficLightPositioning="True" TrafficLightOffset="6,6"
+               WindowState="Maximized" WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource CanvasBrush}">
+  <shadui:Window.LogoContent>
+    <Image Source="/Assets/Icons/gitgraph-128.png" Width="16" Height="16" Margin="4,0,2,0" />
+  </shadui:Window.LogoContent>
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <!-- File and range -->
     <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,10,10,10">
@@ -135,4 +141,4 @@
       </ScrollViewer>
     </Border>
   </Grid>
-</Window>
+</shadui:Window>

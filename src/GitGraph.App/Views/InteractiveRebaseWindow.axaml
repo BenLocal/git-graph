@@ -1,14 +1,20 @@
-<Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:GitGraph.App.ViewModels"
-        x:Class="GitGraph.App.Views.InteractiveRebaseWindow"
-        x:DataType="vm:InteractiveRebaseViewModel"
-        Title="{Binding Title, StringFormat='{}{0} – Interactive rebase – Git Graph'}"
-        Icon="/Assets/Icons/gitgraph-256.png"
-        Width="1040" Height="700" MinWidth="640" MinHeight="360"
-        WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource SurfaceBrush}">
-  <Window.Styles>
+<shadui:Window xmlns="https://github.com/avaloniaui"
+               xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+               xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
+               xmlns:vm="using:GitGraph.App.ViewModels"
+               x:Class="GitGraph.App.Views.InteractiveRebaseWindow"
+               x:DataType="vm:InteractiveRebaseViewModel"
+               Title="{Binding Title, StringFormat='{}{0} – Interactive rebase – Git Graph'}"
+               Icon="/Assets/Icons/gitgraph-256.png"
+               Width="1040" Height="700" MinWidth="640" MinHeight="360"
+               IsTitleBarVisible="True" TitleFontSize="13"
+               ShowBottomBorder="True" SaveWindowState="False" EnableTrafficLightPositioning="True" TrafficLightOffset="6,6"
+               WindowStartupLocation="CenterOwner"
+               Background="{DynamicResource SurfaceBrush}">
+  <shadui:Window.LogoContent>
+    <Image Source="/Assets/Icons/gitgraph-128.png" Width="16" Height="16" Margin="4,0,2,0" />
+  </shadui:Window.LogoContent>
+  <shadui:Window.Styles>
     <!-- A dropped commit is struck through; one folded into the commit below it is set in. -->
     <Style Selector="TextBlock.subject.dropped">
       <Setter Property="TextDecorations" Value="Strikethrough" />
@@ -18,7 +24,7 @@
       <Setter Property="Cursor" Value="SizeNorthSouth" />
       <Setter Property="Background" Value="Transparent" />
     </Style>
-  </Window.Styles>
+  </shadui:Window.Styles>
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <Border BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" Padding="20,12,10,12">
       <StackPanel Spacing="3">
@@ -72,11 +78,11 @@
         <TextBlock Classes="small" Text="{Binding Problem}" TextWrapping="Wrap" VerticalAlignment="Center"
                    Foreground="{DynamicResource DelFgBrush}" Margin="0,0,16,0" />
         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Button Content="Cancel" Command="{Binding CancelCommand}" />
-          <Button Classes="primary" Content="Start rebase" Command="{Binding StartCommand}"
+          <Button Classes="Outline" Content="Cancel" Command="{Binding CancelCommand}" />
+          <Button Classes="Primary" Content="Start rebase" Command="{Binding StartCommand}"
                   ToolTip.Tip="Uncommitted changes are stashed first and brought back after. A conflict stops the rebase: resolve it, then continue or abort from the bar above the graph." />
         </StackPanel>
       </Grid>
     </Border>
   </Grid>
-</Window>
+</shadui:Window>

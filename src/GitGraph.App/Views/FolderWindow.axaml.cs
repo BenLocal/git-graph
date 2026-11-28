@@ -8,7 +8,7 @@ using GitGraph.App.ViewModels;
 namespace GitGraph.App.Views;
 
 /// <summary>A folder's files in a window of its own; closing the window closes the folder and its terminal.</summary>
-public partial class FolderWindow : Window
+public partial class FolderWindow : ShadUI.Window
 {
     private DateTime _lastActivated;
     private readonly Dictionary<string, Action> _actions;

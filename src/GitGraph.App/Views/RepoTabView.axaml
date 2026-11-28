@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
              xmlns:vm="using:GitGraph.App.ViewModels"
              xmlns:v="using:GitGraph.App.Views"
              xmlns:ctl="using:GitGraph.App.Controls"
@@ -84,13 +85,13 @@
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Center" MaxWidth="260" TextTrimming="CharacterEllipsis"
                      ToolTip.Tip="{Binding Path}" />
-          <Border Background="{DynamicResource RaisedBrush}" CornerRadius="4" Padding="7,2" VerticalAlignment="Center">
+          <shadui:Badge Variant="Secondary" Padding="8,2" CornerRadius="6" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal" Spacing="6">
               <LucideIcon Kind="FolderTree" Size="12" IsVisible="{Binding IsWorktree}"
                             VerticalAlignment="Center" ToolTip.Tip="This is a linked worktree" />
               <TextBlock Classes="small" Text="{Binding BranchLabel}" VerticalAlignment="Center" />
             </StackPanel>
-          </Border>
+          </shadui:Badge>
           <!-- Pull/push state: counts to pull and push, a plain sync icon when up to date, or Publish for a new branch. -->
           <Button Classes="ghost syncbutton" Command="{Binding SyncNowCommand}" IsVisible="{Binding ShowSync}" ToolTip.Tip="{Binding SyncTooltip}"
                   Padding="6,3" Margin="-6,0,0,0">
@@ -112,11 +113,14 @@
                   ToolTip.Tip="{Binding Tips[GoToHead], Source={x:Static svc:ShortcutService.Instance}, StringFormat='{}{0}: select the checked-out commit'}">
             <LucideIcon Kind="LocateFixed" Size="15" />
           </Button>
-          <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" IsVisible="{Binding IsLoading}" />
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsLoading}">
+            <shadui:Loading Width="14" Height="14" />
+            <TextBlock Classes="muted small" Text="Loading…" VerticalAlignment="Center" />
+          </StackPanel>
         </StackPanel>
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
-          <ComboBox ItemsSource="{Binding BranchOptions}" SelectedItem="{Binding SelectedBranch}" MinWidth="170" MaxWidth="260"
+          <ComboBox ItemsSource="{Binding BranchOptions}" SelectedItem="{Binding SelectedBranch}" MinWidth="140" MaxWidth="240"
                     VerticalAlignment="Center" ToolTip.Tip="Show one branch, or all of them">
             <ComboBox.ItemTemplate>
               <DataTemplate x:DataType="vm:BranchOption">
@@ -127,8 +131,8 @@
           <CheckBox Content="Remotes" IsChecked="{Binding ShowRemotes}" VerticalAlignment="Center" Margin="4,0"
                     ToolTip.Tip="Include remote-tracking branches in the graph" />
 
-          <Panel Width="230" VerticalAlignment="Center">
-            <TextBox x:Name="FindBox" Classes="find" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
+          <Panel Width="200" VerticalAlignment="Center">
+            <TextBox x:Name="FindBox" Classes="find" shadui:TextBoxAssist.Clearable="True" Text="{Binding FindText}" PlaceholderText="{Binding Labels[Find], Source={x:Static svc:ShortcutService.Instance}, StringFormat='Find commits  {0}'}"
                      ToolTip.Tip="Message, author, hash or branch. Enter for next, Shift+Enter for previous. To filter, type author:name, path:src/, code:text (added or removed), since:week|month|3m|year, quoting values with spaces, then Enter.">
               <TextBox.KeyBindings>
                 <KeyBinding Gesture="Enter" Command="{Binding FindEnterCommand}" />
@@ -214,9 +218,9 @@
           <LucideIcon Kind="GitMerge" Size="15" Foreground="{DynamicResource SignalBrush}" VerticalAlignment="Center" Margin="0,0,10,0" />
           <TextBlock Grid.Column="1" Text="{Binding OperationText}" TextWrapping="Wrap" VerticalAlignment="Center" />
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" Margin="12,0,0,0" VerticalAlignment="Center">
-            <Button Classes="ghost text" Command="{Binding ShowConflictsCommand}" Content="Show changes" />
-            <Button Classes="ghost text" Command="{Binding AbortOperationCommand}" Content="Abort" />
-            <Button Classes="primary" Command="{Binding ContinueOperationCommand}" Content="Continue"
+            <Button Classes="Outline" Command="{Binding ShowConflictsCommand}" Content="Show changes" />
+            <Button Classes="Destructive" Command="{Binding AbortOperationCommand}" Content="Abort" />
+            <Button Classes="Primary" Command="{Binding ContinueOperationCommand}" Content="Continue"
                     ToolTip.Tip="Go on once every conflict is resolved and staged" />
           </StackPanel>
         </Grid>

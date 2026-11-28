@@ -84,7 +84,7 @@
           </Grid>
         </Border>
         <Grid ColumnDefinitions="*,1,*" IsVisible="{Binding !IsHunk}">
-          <Border Classes="cell" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
+          <Border Classes="cell left" Classes.add="{Binding Left.IsAdded}" Classes.del="{Binding Left.IsDeleted}" Classes.empty="{Binding Left.IsEmpty}">
             <Grid Classes="diffline" ColumnDefinitions="16,40,*">
               <Button Classes="ghost commentadd" Command="{Binding Left.Spot.AddCommand, FallbackValue={x:Null}}"
                       IsVisible="{Binding Left.Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">
@@ -96,7 +96,7 @@
             </Grid>
           </Border>
           <Border Grid.Column="1" Background="{DynamicResource RuleBrush}" />
-          <Border Grid.Column="2" Classes="cell" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
+          <Border Grid.Column="2" Classes="cell right" Classes.add="{Binding Right.IsAdded}" Classes.del="{Binding Right.IsDeleted}" Classes.empty="{Binding Right.IsEmpty}">
             <Grid Classes="diffline" ColumnDefinitions="16,40,*">
               <Button Classes="ghost commentadd" Command="{Binding Right.Spot.AddCommand, FallbackValue={x:Null}}"
                       IsVisible="{Binding Right.Spot, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="Comment on this line">

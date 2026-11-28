@@ -1,6 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:shadui="clr-namespace:ShadUI;assembly=ShadUI"
              xmlns:vm="using:GitGraph.App.ViewModels"
+             xmlns:v="using:GitGraph.App.Views"
              xmlns:ctl="using:GitGraph.App.Controls"
              xmlns:svc="using:GitGraph.App.Services"
              x:Class="GitGraph.App.Views.DetailsView"
@@ -48,15 +50,12 @@
                Text="Select a commit to see what it changed. Ctrl+click a second one to compare the two." />
 
     <Panel x:Name="ContentRoot" IsVisible="{Binding HasContent}">
-      <!-- Rule under the tab strip; the TabControl template has no border of its own. -->
-      <Border Height="34" VerticalAlignment="Top" BorderBrush="{DynamicResource RuleBrush}" BorderThickness="0,0,0,1" />
-
       <TabControl Classes="pane" SelectedIndex="{Binding SelectedTabIndex}">
         <!-- The full commit message and its metadata -->
         <TabItem Header="Commit">
           <Panel>
           <!-- Uncommitted changes: write the message and commit what is staged (the files are on the Changes tab) -->
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding IsStaging}">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" shadui:SmoothScrollAssist.IsEnabled="True" IsVisible="{Binding IsStaging}">
             <StackPanel Margin="20,14,20,16" Spacing="10">
               <TextBlock Text="Commit" FontWeight="SemiBold" FontSize="{DynamicResource FontSizeTitle}" />
               <TextBlock Classes="muted" Text="{Binding StagedText}" TextWrapping="Wrap" />
@@ -69,7 +68,7 @@
               <Grid ColumnDefinitions="*,Auto">
                 <CheckBox Content="Amend last commit" IsChecked="{Binding Amend}" VerticalAlignment="Center"
                           ToolTip.Tip="Replace the last commit with the staged changes and this message" />
-                <Button Grid.Column="1" Classes="primary" Command="{Binding CommitCommand}" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)">
+                <Button Grid.Column="1" Classes="Primary" Command="{Binding CommitCommand}" ToolTip.Tip="Commit the staged changes (Ctrl+Enter)">
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <LucideIcon Kind="GitCommitHorizontal" Size="14" Foreground="{Binding $parent[Button].Foreground}" VerticalAlignment="Center" />
                     <TextBlock Text="Commit" VerticalAlignment="Center" />
@@ -79,7 +78,7 @@
             </StackPanel>
           </ScrollViewer>
 
-          <ScrollViewer HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !IsStaging}">
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" shadui:SmoothScrollAssist.IsEnabled="True" IsVisible="{Binding !IsStaging}">
             <StackPanel x:Name="MessagePage" Margin="20,14,20,16" Spacing="10" Background="Transparent">
               <!-- Right-click anywhere in the message: copy what's selected, or the whole message. -->
               <StackPanel.ContextMenu>
@@ -103,27 +102,29 @@
               </SelectableTextBlock>
               <TextBlock Classes="muted" Text="{Binding RangeText}" TextWrapping="Wrap"
                          IsVisible="{Binding RangeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto"
-                    IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <TextBlock Classes="muted small" Text="Commit" Margin="0,0,16,4" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
-                  <SelectableTextBlock Classes="mono" Text="{Binding HashText}" VerticalAlignment="Center" />
-                  <Button Classes="ghost" Padding="4" Command="{Binding CopyHashCommand}" ToolTip.Tip="Copy commit hash">
-                    <LucideIcon Kind="Copy" Size="13" />
-                  </Button>
-                </StackPanel>
-                <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,16,4" VerticalAlignment="Center" />
-                <!-- As on a GitHub commit page: a large avatar, the name over the address -->
-                <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,2,0,6">
-                  <ctl:Avatar Email="{Binding AuthorEmail}" AuthorName="{Binding AuthorName}" Width="40" Height="40" VerticalAlignment="Center" />
-                  <StackPanel VerticalAlignment="Center" Spacing="1">
-                    <SelectableTextBlock Text="{Binding AuthorName}" FontWeight="SemiBold" />
-                    <SelectableTextBlock Classes="muted" Text="{Binding AuthorEmail}" FontSize="{DynamicResource FontSizeCaption}" />
+              <shadui:Card HasShadow="False" Padding="14,12"
+                           IsVisible="{Binding HashText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+                  <TextBlock Classes="muted small" Text="Commit" Margin="0,0,16,4" VerticalAlignment="Center" />
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6">
+                    <SelectableTextBlock Classes="mono" Text="{Binding HashText}" VerticalAlignment="Center" />
+                    <Button Classes="ghost" Padding="4" Command="{Binding CopyHashCommand}" ToolTip.Tip="Copy commit hash">
+                      <LucideIcon Kind="Copy" Size="13" />
+                    </Button>
                   </StackPanel>
-                </StackPanel>
-                <TextBlock Grid.Row="2" Classes="muted small" Text="Date" Margin="0,0,16,0" VerticalAlignment="Center" />
-                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DateText}" />
-              </Grid>
+                  <TextBlock Grid.Row="1" Classes="muted small" Text="Author" Margin="0,0,16,4" VerticalAlignment="Center" />
+                  <!-- As on a GitHub commit page: a large avatar, the name over the address -->
+                  <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="10" Margin="0,2,0,6">
+                    <ctl:Avatar Email="{Binding AuthorEmail}" AuthorName="{Binding AuthorName}" Width="40" Height="40" VerticalAlignment="Center" />
+                    <StackPanel VerticalAlignment="Center" Spacing="1">
+                      <SelectableTextBlock Text="{Binding AuthorName}" FontWeight="SemiBold" />
+                      <SelectableTextBlock Classes="muted" Text="{Binding AuthorEmail}" FontSize="{DynamicResource FontSizeCaption}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <TextBlock Grid.Row="2" Classes="muted small" Text="Date" Margin="0,0,16,0" VerticalAlignment="Center" />
+                  <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding DateText}" />
+                </Grid>
+              </shadui:Card>
               <TextBlock Classes="muted small" Text="{Binding CommitterText}" TextWrapping="Wrap"
                          IsVisible="{Binding CommitterText, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <TextBlock Classes="muted small" Text="{Binding ParentsText}" TextWrapping="Wrap"
@@ -142,9 +143,8 @@
           <TabItem.Header>
             <StackPanel Orientation="Horizontal" Spacing="7">
               <TextBlock Text="Changes" VerticalAlignment="Center" />
-              <Border Classes="count" VerticalAlignment="Center">
-                <TextBlock Text="{Binding FileCount}" />
-              </Border>
+              <shadui:Badge Variant="Secondary" Padding="6,0" MinWidth="18" CornerRadius="10" VerticalAlignment="Center"
+                            Content="{Binding FileCount}" />
             </StackPanel>
           </TabItem.Header>
           <Grid ColumnDefinitions="320,1,*">
@@ -270,18 +270,10 @@
                             ToolTip.Tip="File history and blame">
                       <LucideIcon Kind="FileClock" Size="14" />
                     </Button>
-                    <ToggleButton Classes="ghost" IsChecked="{Binding IsUnified, Mode=OneWay}" Command="{Binding ShowUnifiedCommand}" ToolTip.Tip="One column">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <LucideIcon Kind="TextAlignStart" Size="14" VerticalAlignment="Center" />
-                        <TextBlock Classes="small" Text="Unified" VerticalAlignment="Center" />
-                      </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton Classes="ghost" IsChecked="{Binding IsSplit, Mode=OneWay}" Command="{Binding ShowSplitCommand}" ToolTip.Tip="Before and after side by side">
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <LucideIcon Kind="Columns2" Size="14" VerticalAlignment="Center" />
-                        <TextBlock Classes="small" Text="Split" VerticalAlignment="Center" />
-                      </StackPanel>
-                    </ToggleButton>
+                    <Button Classes="ghost" Command="{Binding OpenFullDiffCommand}" CommandParameter="{x:Null}" IsVisible="{Binding HasDiff}"
+                            ToolTip.Tip="Open diff in full window">
+                      <LucideIcon Kind="Maximize2" Size="14" />
+                    </Button>
                   </StackPanel>
                 </Grid>
               </Border>
@@ -306,13 +298,9 @@
                 </Grid>
               </Grid>
 
-              <ListBox Grid.Row="1" Classes="dense plain" Classes.nowrap="{Binding !WrapLines}" ItemsSource="{Binding DiffLines}"
-                       IsVisible="{Binding IsUnified}" ItemTemplate="{StaticResource UnifiedLineTemplate}"
-                       ScrollViewer.HorizontalScrollBarVisibility="{Binding WrapLines, Converter={x:Static vm:Converters.ScrollUnlessWrapped}}" />
-
-              <ListBox Grid.Row="1" Classes="dense plain" Classes.nowrap="{Binding !WrapLines}" ItemsSource="{Binding SplitRows}"
-                       IsVisible="{Binding IsSplit}" ItemTemplate="{StaticResource SplitRowTemplate}"
-                       ScrollViewer.HorizontalScrollBarVisibility="{Binding WrapLines, Converter={x:Static vm:Converters.ScrollUnlessWrapped}}" />
+              <Panel Grid.Row="1" IsVisible="{Binding HasDiff}">
+                <v:CompareView DataContext="{Binding InlineDiff}" />
+              </Panel>
             </Grid>
           </Grid>
         </TabItem>
@@ -329,7 +317,7 @@
     </Border>
 
     <!-- Panel actions on the right of the tab strip, as in VS Code. -->
-    <StackPanel Orientation="Horizontal" Spacing="2" Height="34" Margin="0,0,8,0"
+    <StackPanel Orientation="Horizontal" Spacing="2" Height="36" Margin="0,0,8,0"
                 HorizontalAlignment="Right" VerticalAlignment="Top">
       <Button Classes="ghost" Command="{Binding ToggleMaximizeCommand}" ToolTip.Tip="{Binding Tips[MaximizePanel], Source={x:Static svc:ShortcutService.Instance}}" IsVisible="{Binding !IsMaximized}">
         <LucideIcon Kind="ChevronUp" Size="14" />

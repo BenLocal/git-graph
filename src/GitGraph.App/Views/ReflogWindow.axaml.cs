@@ -6,7 +6,7 @@ using GitGraph.App.Controls;
 namespace GitGraph.App.Views;
 
 /// <summary>A repository's reflog, in a window of its own.</summary>
-public partial class ReflogWindow : Window
+public partial class ReflogWindow : ShadUI.Window
 {
     public ReflogWindow()
     {
