@@ -576,11 +576,8 @@ public partial class RepoNodeViewModel : ObservableObject
     [RelayCommand]
     private void BrowseFilesInWindow() => _workspace.OpenFolderWindow(MainPath);
 
-    [RelayCommand]
-    private void OpenInVsCode()
-    {
-        if (ExternalTools.OpenInVsCode(MainPath) is { } error) _workspace.Host.ReportError(error);
-    }
+    /// <summary>The apps of the "Open in" submenu, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> OpenWith => OpenWithMenu.For(_workspace.Host, MainPath);
 
     [RelayCommand]
     private void OpenInTerminal() => _workspace.OpenTerminal(MainPath);
@@ -657,11 +654,8 @@ public partial class WorktreeNodeViewModel(WorktreeInfo info, RepoNodeViewModel 
     [RelayCommand]
     private void BrowseFilesInWindow() => repo.Workspace.OpenFolderWindow(Path);
 
-    [RelayCommand]
-    private void OpenInVsCode()
-    {
-        if (ExternalTools.OpenInVsCode(Path) is { } error) repo.Workspace.Host.ReportError(error);
-    }
+    /// <summary>The apps of the "Open in" submenu, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> OpenWith => OpenWithMenu.For(repo.Workspace.Host, Path);
 
     [RelayCommand]
     private void OpenInTerminal() => repo.Workspace.OpenTerminal(Path);

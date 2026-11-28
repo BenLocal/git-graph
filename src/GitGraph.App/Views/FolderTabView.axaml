@@ -9,7 +9,7 @@
   <UserControl.Resources>
     <!-- Shared by every row: a flyout is built when it opens and takes the row it opened on as its data (see RepoTabView). -->
     <MenuFlyout x:Key="FileNodeMenu" x:DataType="vm:FileNodeViewModel">
-      <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}" />
+      <MenuItem Header="Open in" ItemsSource="{Binding OpenWith}" ItemContainerTheme="{StaticResource CustomCommandItem}" />
       <MenuItem Header="File history" Command="{Binding Owner.FileHistoryCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
       <MenuItem Header="Blame" Command="{Binding Owner.BlameCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsFile}" />
       <Separator />

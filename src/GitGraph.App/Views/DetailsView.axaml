@@ -23,7 +23,7 @@
       <MenuItem Header="Take incoming version (theirs)" Command="{Binding Owner.TakeTheirsCommand}" CommandParameter="{Binding}"
                 IsVisible="{Binding IsConflicted}"
                 ToolTip.Tip="The version being merged, picked or reverted; during a rebase, your commit being replayed" />
-      <MenuItem Header="Open in VS Code" Command="{Binding Owner.OpenInVsCodeCommand}" CommandParameter="{Binding}"
+      <MenuItem Header="Open in" ItemsSource="{Binding OpenWith}" ItemContainerTheme="{StaticResource CustomCommandItem}"
                 IsVisible="{Binding CanOpen}" />
       <Separator />
       <MenuItem Header="Copy path" Command="{Binding Owner.CopyPathCommand}" CommandParameter="{Binding}" />

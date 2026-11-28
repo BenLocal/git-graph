@@ -23,6 +23,8 @@ internal sealed class FakeHost : IAppHost, IDialogService
     public bool WrapDiffLines => true;
     public void ReportError(string message) => Errors.Add(message);
     public List<CustomCommand> CustomCommands { get; } = [];
+    /// <summary>Somewhere that doesn't exist unless a test writes it, so menus never touch the real file.</summary>
+    public string OpenWithConfigPath { get; set; } = Path.Combine(Path.GetTempPath(), "gitgraph-test-" + Guid.NewGuid().ToString("N"), "open-with.toml");
     IReadOnlyList<CustomCommand> IAppHost.CustomCommands => CustomCommands;
     public void Notify(string message) { }
     public void SaveState() { }

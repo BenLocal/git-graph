@@ -104,4 +104,23 @@ public sealed class FolderTreeClickTests : IDisposable
         Assert.Same(readme, folder.SelectedNode);
         Assert.False(Node(folder, "src").IsExpanded);
     });
+
+    [Fact]
+    public Task A_rows_menu_lists_the_open_with_apps() => RunAsync((window, folder) =>
+    {
+        var readme = Node(folder, "README.md");
+        var row = window.GetVisualDescendants().OfType<Grid>().First(g => g.DataContext == readme && g.ContextFlyout is not null);
+        var menu = (MenuFlyout)row.ContextFlyout!;
+
+        menu.ShowAt(row);
+        Dispatcher.UIThread.RunJobs();
+        var openIn = menu.Items.OfType<MenuItem>().Single(i => (string?)i.Header == "Open in");
+        openIn.IsSubMenuOpen = true;
+        Dispatcher.UIThread.RunJobs();
+
+        var names = openIn.GetRealizedContainers().OfType<MenuItem>().Select(i => i.Header as string).ToList();
+        Assert.Contains("VS Code", names);
+        Assert.Equal("Edit open-with.toml…", names[^1]);
+        menu.Hide();
+    });
 }

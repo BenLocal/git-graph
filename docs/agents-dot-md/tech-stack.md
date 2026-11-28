@@ -18,6 +18,7 @@ Structure and design trade-offs are in `architecture.md`.
 | UI | Avalonia + Themes.Fluent | 12.1.3 | `AvaloniaUseCompiledBindingsByDefault` is on |
 | MVVM | CommunityToolkit.Mvvm | 8.4.2 | `[ObservableProperty]` fields + `[RelayCommand]` |
 | Serialization | System.Text.Json | BCL | source generator |
+| TOML | Tomlyn | 2.11.1 | only `open-with.toml`, the hand-edited list of "Open in" apps (`Workspaces/OpenWithConfig.cs`), read as an untyped `TomlTable`; app state stays in JSON |
 | Text diff | DiffPlex | 1.9.0 | line diff plus word diff inside modified lines (`Diff/TextDiff.cs`) |
 | Embedded terminal | Iciclecreek.Avalonia.Terminal | 4.1.1 | ANSI rendering and keyboard input; its Porta.Pty dependency provides Unix PTYs and Windows ConPTY. Existing editors do not emulate a terminal. |
 | Terminal UI tests | Avalonia.Headless | 12.1.3 | Real PTY integration tests dispatched on the headless UI thread, using the existing xunit v2 runner |

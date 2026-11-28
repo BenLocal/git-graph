@@ -422,6 +422,8 @@ public sealed partial class FolderTabViewModel : TabViewModel
         if (ExternalTools.OpenInVsCode(target) is { } error) _host.ReportError(error);
     }
 
+    internal IReadOnlyList<CustomCommandItem> OpenWith(string path) => OpenWithMenu.For(_host, path);
+
     [RelayCommand]
     private Task FileHistory(FileNodeViewModel? node) => ShowHistoryAsync(node, blame: false);
 
@@ -526,6 +528,9 @@ public sealed partial class FileNodeViewModel : ObservableObject
     public bool IsFile => !IsDirectory && !IsPlaceholder;
     public ObservableCollection<FileNodeViewModel> Children { get; } = [];
     public FolderTabViewModel? Owner => _owner;
+
+    /// <summary>The apps of the "Open in" submenu, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> OpenWith => _owner?.OpenWith(FullPath) ?? [];
 
     /// <summary>The user's custom commands for a file, read when the menu opens.</summary>
     public IReadOnlyList<CustomCommandItem> CustomCommands => IsFile && _owner is { } owner

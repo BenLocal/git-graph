@@ -10,7 +10,7 @@
       <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
       <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
       <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
-      <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+      <MenuItem Header="Open in" ItemsSource="{Binding OpenWith}" ItemContainerTheme="{StaticResource CustomCommandItem}" />
       <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
       <Separator />
       <MenuItem Header="Add worktree…" Command="{Binding AddWorktreeCommand}" />
@@ -22,7 +22,7 @@
       <MenuItem Header="Open history" Command="{Binding OpenCommand}" />
       <MenuItem Header="Browse files" Command="{Binding BrowseFilesCommand}" />
       <MenuItem Header="Browse files in new window" Command="{Binding BrowseFilesInWindowCommand}" />
-      <MenuItem Header="Open in VS Code" Command="{Binding OpenInVsCodeCommand}" />
+      <MenuItem Header="Open in" ItemsSource="{Binding OpenWith}" ItemContainerTheme="{StaticResource CustomCommandItem}" />
       <MenuItem Header="Open in Terminal" Command="{Binding OpenInTerminalCommand}" />
       <Separator />
       <MenuItem Classes="danger" Header="Remove worktree…" Command="{Binding RemoveCommand}" />

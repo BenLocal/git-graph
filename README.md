@@ -11,7 +11,7 @@ A desktop git history viewer built with Avalonia and modelled on the [Git Graph]
 - **Staging & git operations**: File, hunk, and line-level staging, commit/amend, stashes, cherry-pick, revert, merge, interactive rebase, fold staged changes, undo/reflog, and background auto-fetch.
 - **Repositories & worktrees**: Discover repositories from folders, manage linked worktrees, and track ahead/behind status from the sidebar.
 - **File browser & code navigation**: Read-only code viewer with git state colors, syntax highlighting, and in-app tree-sitter go-to-definition, references, implementations, and fuzzy/symbol/`git grep` search.
-- **Embedded terminal & customization**: Built-in shell per tab, VS Code-style keyboard shortcuts (`Ctrl+K Ctrl+S`), custom shell commands, and configurable avatars and themes.
+- **Embedded terminal & customization**: Built-in shell per tab, VS Code-style keyboard shortcuts (`Ctrl+K Ctrl+S`), custom shell commands, "Open in" apps listed in `open-with.toml` next to the app state, and configurable avatars and themes.
 
 See the [full feature guide](docs/features.md) for details on every capability.
 

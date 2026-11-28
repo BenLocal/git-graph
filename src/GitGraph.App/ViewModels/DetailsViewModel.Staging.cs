@@ -320,6 +320,8 @@ public partial class DetailsViewModel
         if ((file ?? SelectedFile) is { } f && ExternalTools.OpenInVsCode(FullPath(f.Change.Path)) is { } error) _host.ReportError(error);
     }
 
+    internal IReadOnlyList<CustomCommandItem> OpenWith(FileChangeViewModel file) => OpenWithMenu.For(_host, FullPath(file.Change.Path));
+
     /// <summary>
     /// Applies one hunk of the diff on screen, or its picked lines; the staged side's hunks come out of the index in
     /// reverse.

@@ -89,6 +89,9 @@ public sealed partial class FileChangeViewModel(FileChange change, DetailsViewMo
     public bool IsDeleted => Change.Kind == ChangeKind.Deleted;
     public bool IsModified => !IsAdded && !IsDeleted;
 
+    /// <summary>The apps of the "Open in" submenu, read when the menu opens.</summary>
+    public IReadOnlyList<CustomCommandItem> OpenWith => Owner.OpenWith(this);
+
     /// <summary>The user's custom commands for a file, read when the menu opens.</summary>
     public IReadOnlyList<CustomCommandItem> CustomCommands => Owner.Commands?.For("File", () => new()
     {

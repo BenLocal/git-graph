@@ -26,6 +26,8 @@ public interface IAppHost
     void ReportError(string message);
     /// <summary>The user's own commands for the context menus.</summary>
     IReadOnlyList<CustomCommand> CustomCommands { get; }
+    /// <summary>The open-with.toml file listing the apps of the "Open in" menus.</summary>
+    string OpenWithConfigPath { get; }
     /// <summary>A note that isn't an error, such as new commits found by the periodic fetch.</summary>
     void Notify(string message);
     void SaveState();
@@ -314,6 +316,7 @@ public partial class MainWindowViewModel : ObservableObject, IAppHost
     public void ReportError(string message) => ErrorMessage = message;
 
     public IReadOnlyList<CustomCommand> CustomCommands => _state.CustomCommands;
+    public string OpenWithConfigPath => OpenWithConfig.PathNextTo(_store.FilePath);
 
     [RelayCommand]
     private void EditCustomCommands() => Dialogs.ShowCustomCommands(new CustomCommandsViewModel(_state.CustomCommands, SaveState));
