@@ -15,7 +15,7 @@ Structure and design trade-offs are in `architecture.md`.
 | Area | Choice | Version | Notes |
 |---|---|---|---|
 | Runtime | .NET | net10.0 (SDK 10.0.401) | `Nullable=enable` in every project |
-| UI | Avalonia + Themes.Fluent | 12.1.3 | `AvaloniaUseCompiledBindingsByDefault` is on |
+| UI | Avalonia + ShadUI | 12.1.3 / ShadUI 0.2.4 | `AvaloniaUseCompiledBindingsByDefault` is on; ShadUI replaced Themes.Fluent, AvaloniaEdit uses its Simple theme. Visual rules in `docs/ui-design-system.md` |
 | MVVM | CommunityToolkit.Mvvm | 8.4.2 | `[ObservableProperty]` fields + `[RelayCommand]` |
 | Serialization | System.Text.Json | BCL | source generator |
 | TOML | Tomlyn | 2.11.1 | only `open-with.toml`, the hand-edited list of "Open in" apps (`Workspaces/OpenWithConfig.cs`), read as an untyped `TomlTable`; app state stays in JSON |
