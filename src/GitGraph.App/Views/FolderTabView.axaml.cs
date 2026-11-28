@@ -208,6 +208,21 @@ public partial class FolderTabView : UserControl
         if (sender is Control { DataContext: NavItem item }) _vm?.OpenCommand.Execute(item);
     }
 
+    /// <summary>A click on a folder's row opens or closes it, as in VS Code's explorer; a file's row only selects it.</summary>
+    private void OnNodeTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FileNodeViewModel { IsDirectory: true } node }) node.IsExpanded = !node.IsExpanded;
+    }
+
+    /// <summary>
+    /// The first click of a double click has already opened or closed the folder; the tree item would toggle it
+    /// back on the double tap, so a double-clicked folder ends up as one click left it.
+    /// </summary>
+    private void OnNodeDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: FileNodeViewModel { IsDirectory: true } }) e.Handled = true;
+    }
+
     private void ShowPreviewText()
     {
         _previewMark.Spans = [];

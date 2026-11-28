@@ -72,6 +72,8 @@
       <Color x:Key="OnTooltipColor">#FFFFFF</Color>
       <!-- The edge of a small control such as an unchecked checkbox, stronger than a rule so it stays visible -->
       <Color x:Key="ControlEdgeColor">#656C76</Color>
+      <!-- Folder icons in a folder tab's tree, blue as in GitHub's file tree, so folders stand out from files -->
+      <Color x:Key="FolderIconColor">#54AEFF</Color>
 
       <Color x:Key="SystemAccentColor">#1F6FEB</Color>
       <Color x:Key="SystemAccentColorDark1">#1158C7</Color>
@@ -120,6 +122,7 @@
       <Color x:Key="TooltipColor">#25292E</Color>
       <Color x:Key="OnTooltipColor">#FFFFFF</Color>
       <Color x:Key="ControlEdgeColor">#818B98</Color>
+      <Color x:Key="FolderIconColor">#54AEFF</Color>
 
       <Color x:Key="SystemAccentColor">#0969DA</Color>
       <Color x:Key="SystemAccentColorDark1">#0550AE</Color>
@@ -164,6 +167,7 @@
   <SolidColorBrush x:Key="ButtonBrush" Color="{DynamicResource ButtonColor}" />
   <SolidColorBrush x:Key="ButtonHoverBrush" Color="{DynamicResource ButtonHoverColor}" />
   <SolidColorBrush x:Key="OverlayBrush" Color="{DynamicResource OverlayColor}" />
+  <SolidColorBrush x:Key="FolderIconBrush" Color="{DynamicResource FolderIconColor}" />
 
   <!--
     Menus (context menus, flyouts, the menu bar's drop-downs and their submenus) after Primer's ActionMenu: the

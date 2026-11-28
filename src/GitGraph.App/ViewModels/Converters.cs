@@ -15,6 +15,13 @@ public static class Converters
     /// <summary>A menu with items to show: a custom commands submenu hides when there are none.</summary>
     public static readonly IValueConverter HasItems = new FuncValueConverter<System.Collections.ICollection?, bool>(c => c is { Count: > 0 });
 
+    /// <summary>A file's icon in the folder tree, from its name (<see cref="FileIcons"/>).</summary>
+    public static readonly IValueConverter FileIcon = new FuncValueConverter<string?, Lucide.Avalonia.LucideIconKind>(n => FileIcons.For(n ?? ""));
+
+    /// <summary>A folder's icon in the folder tree: open while it is expanded.</summary>
+    public static readonly IValueConverter FolderIcon = new FuncValueConverter<bool, Lucide.Avalonia.LucideIconKind>(open =>
+        open ? Lucide.Avalonia.LucideIconKind.FolderOpen : Lucide.Avalonia.LucideIconKind.Folder);
+
     public static readonly IValueConverter DimIfTrue = new FuncValueConverter<bool, double>(b => b ? 0.5 : 1.0);
 
     /// <summary>Checks a radio menu item when the bound value reads the same as the ConverterParameter.</summary>
